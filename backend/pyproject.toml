@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "twitter-clone-backend"
+version = "0.1.0"
+description = "Twitter Clone Backend"
+authors = ["maxh33 <contact@maxhaider.dev>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+django = "4.2.11"
+djangorestframework = "^3.15.2"
+django-cors-headers = "^4.7.0"
+pillow = "^11.1.0"
+psycopg2-binary = "^2.9.10"
+python-dotenv = "^1.0.0"  # Environment variable management
+dj-database-url = "^2.1.0"  # Database URL parsing
+djangorestframework-simplejwt = "^5.3.1"  # JWT Authentication
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+pylint = "^3.3.5"
+black = "^25.1.0"
+mypy = "^1.15.0"
+django-debug-toolbar = "^5.0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+server = "python manage.py runserver"
+test = "pytest"
+test-cov = "coverage run -m pytest && coverage report"
+lint = "pylint **/*.py"
+format = "black ."
+type-check = "mypy ."
+migrate = "python manage.py migrate"
+makemigrations = "python manage.py makemigrations"
