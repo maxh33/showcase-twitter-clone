@@ -15,10 +15,11 @@ psycopg2-binary = "^2.9.10"
 python-dotenv = "^1.0.0"  # Environment variable management
 dj-database-url = "^2.1.0"  # Database URL parsing
 djangorestframework-simplejwt = "^5.3.1"  # JWT Authentication
+pytest = "^7.4.0"
+pytest-django = "^4.5.2"
+pytest-cov = "^4.1.0"
 
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.5"
+[tool.poetry.dev-dependencies]
 pylint = "^3.3.5"
 black = "^25.1.0"
 mypy = "^1.15.0"

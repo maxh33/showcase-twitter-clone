@@ -39,7 +39,7 @@ const VerifyEmailPage: React.FC = () => {
       }
 
       try {
-        await verifyEmail({ token });
+        await verifyEmail({ token, uidb64: '' });
         setSuccess('Email verified successfully! You can now login to your account.');
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'response' in error) {

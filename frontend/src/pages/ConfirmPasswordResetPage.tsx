@@ -95,7 +95,8 @@ const ConfirmPasswordResetPage: React.FC = () => {
       await confirmResetPassword({
         token,
         password: formData.password,
-        password_confirmation: formData.password_confirmation
+        uidb64: '',
+        password2: ''
       });
       
       setSuccess('Password has been reset successfully!');

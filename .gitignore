@@ -142,6 +142,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-
 # figma design
 /frontend/src/assets/figmaDesign
+
+# Ignore testing files if not needed
+# ../TESTING.md
+/backend/.coveragerc
+/backend/pytest.ini
+/backend/run_tests.sh
+/frontend/cypress/screenshots
+/frontend/cypress/videos

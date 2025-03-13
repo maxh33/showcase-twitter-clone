@@ -82,7 +82,12 @@ const SignupPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      await register(formData);
+      await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password2: formData.password_confirmation
+      });
       // Redirect to login page with a success message
       navigate('/login', { state: { message: 'Registration successful! Please check your email to verify your account.' } });
     } catch (error: unknown) {
