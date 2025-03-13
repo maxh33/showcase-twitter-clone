@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import styled from 'styled-components';
 import { Colors } from '../styles/global';
 
+//Just a dummy home page to test the authentication system
 const HomeContainer = styled.div`
   display: flex;
   flex-direction: column;
