@@ -44,7 +44,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: ./backend
-        run: poetry install
+        run: poetry install --no-root
       
       - name: Set up environment variables
         working-directory: ./backend
@@ -84,7 +84,10 @@ jobs:
       
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: |
+          rm -f package-lock.json
+          npm install
+          npm ci
       
       - name: Set up environment variables
         working-directory: ./frontend
@@ -153,7 +156,7 @@ jobs:
       
       - name: Install backend dependencies
         working-directory: ./backend
-        run: poetry install --no-dev
+        run: poetry install --no-dev --no-root
       
       - name: Archive backend app
         uses: actions/upload-artifact@v3
