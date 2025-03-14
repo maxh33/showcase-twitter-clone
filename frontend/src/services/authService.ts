@@ -32,10 +32,6 @@ interface ConfirmResetPasswordData {
   password2: string;
 }
 
-interface RefreshTokenData {
-  refresh: string;
-}
-
 export const register = async (data: RegisterData) => {
   const response = await axios.post(`${API_URL}/auth/register/`, data);
   return response.data;

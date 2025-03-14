@@ -61,7 +61,11 @@ jobs:
       
       - name: Run tests with coverage
         working-directory: ./backend
-        run: poetry run pytest --cov=. --cov-report=xml
+        run: |
+          echo "Running backend tests..."
+          # Use Django test command for proper test discovery
+          poetry run coverage run --source='.' manage.py test
+          poetry run coverage xml
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
@@ -100,7 +104,7 @@ jobs:
       
       - name: Run tests with coverage
         working-directory: ./frontend
-        run: npm test -- --coverage --watchAll=false
+        run: NODE_OPTIONS="--max-old-space-size=4096" npm test -- --coverage --watchAll=false
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3

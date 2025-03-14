@@ -18,7 +18,7 @@ import {
 import Button from '../components/Button';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 
 const VerifyEmailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);

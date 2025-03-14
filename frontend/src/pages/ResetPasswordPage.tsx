@@ -22,7 +22,7 @@ import {
 } from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 
 const ResetPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
