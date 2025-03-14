@@ -37,26 +37,18 @@ interface RefreshTokenData {
 }
 
 export const register = async (data: RegisterData) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/register/`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/auth/register/`, data);
+  return response.data;
 };
 
 export const login = async (data: LoginData) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/login/`, data);
-    if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-    }
-    return response.data;
-  } catch (error) {
-    throw error;
+  const response = await axios.post(`${API_URL}/auth/login/`, data);
+  if (response.data.access) {
+    localStorage.setItem('token', response.data.access);
+    localStorage.setItem('refreshToken', response.data.refresh);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
   }
+  return response.data;
 };
 
 export const logout = async () => {
@@ -100,30 +92,18 @@ export const refreshToken = async () => {
 };
 
 export const verifyEmail = async (data: VerifyEmailData) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
+  return response.data;
 };
 
 export const resetPassword = async (data: ResetPasswordData) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/password-reset/`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/auth/password-reset/`, data);
+  return response.data;
 };
 
 export const confirmResetPassword = async (data: ConfirmResetPasswordData) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
+  return response.data;
 };
 
 export const isAuthenticated = () => {

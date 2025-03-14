@@ -22,6 +22,7 @@ import {
 } from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
+import axios, { AxiosError } from 'axios';
 
 const ConfirmPasswordResetPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -115,9 +116,9 @@ const ConfirmPasswordResetPage: React.FC = () => {
       }, 3000);
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const responseObj = error.response as any;
-        if (responseObj && typeof responseObj === 'object' && 'data' in responseObj) {
-          setErrors(responseObj.data as Record<string, string>);
+        const axiosError = error as AxiosError<Record<string, string>>;
+        if (axiosError.response?.data) {
+          setErrors(axiosError.response.data);
         } else {
           setErrors({ general: 'Failed to reset password. Please try again later.' });
         }
