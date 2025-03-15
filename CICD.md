@@ -98,11 +98,10 @@ This job deploys the frontend to Vercel:
 The workflow uses the following secrets that need to be configured in the GitHub repository settings:
 
 ### PythonAnywhere Secrets
-- `PYTHONANYWHERE_HOST`: The hostname for SSH access
+- `PYTHONANYWHERE_HOST`: The hostname for SSH access (typically ssh.pythonanywhere.com)
 - `PYTHONANYWHERE_USERNAME`: Your PythonAnywhere username
 - `PYTHONANYWHERE_PASSWORD`: Your PythonAnywhere password
-- `PYTHONANYWHERE_PROJECT_PATH`: Path to the project on PythonAnywhere
-- `PYTHONANYWHERE_VENV_PATH`: Path to the virtual environment
+- `PYTHONANYWHERE_PROJECT_PATH`: Path to the project on PythonAnywhere (e.g., /home/yourusername/showcase-twitter-clone)
 - `PYTHONANYWHERE_WSGI_PATH`: Path to the WSGI file
 
 ### Vercel Secrets

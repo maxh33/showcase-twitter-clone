@@ -20,16 +20,10 @@ This document provides instructions for deploying the Twitter Clone application 
    - Go to the Dashboard and click on "Web" tab
    - Click "Add a new web app"
    - Choose "Manual configuration"
-   - Select Python 3.9
+   - Select Python 3.10 (same version as in the PythonAnywhere account)
    - Set your domain name (will be something like `yourusername.pythonanywhere.com`)
 
-3. **Set up your virtual environment**
-   ```bash
-   # From the PythonAnywhere bash console
-   mkvirtualenv --python=python3.9 twitter_clone_env
-   ```
-
-4. **Clone the repository**
+3. **Clone the repository**
    ```bash
    # From the PythonAnywhere bash console
    cd ~
@@ -37,17 +31,18 @@ This document provides instructions for deploying the Twitter Clone application 
    cd showcase-twitter-clone
    ```
 
-5. **Install dependencies**
+4. **Install dependencies globally**
    ```bash
    # From the PythonAnywhere bash console
    cd ~/showcase-twitter-clone/backend
-   workon twitter_clone_env
-   pip install poetry
-   poetry config virtualenvs.create false
-   poetry install --no-dev
+   pip install --user -r requirements.txt
+   # Alternatively, if you're using Poetry
+   pip install --user poetry
+   poetry export -f requirements.txt --output requirements.txt --without-hashes
+   pip install --user -r requirements.txt
    ```
 
-6. **Configure environment variables**
+5. **Configure environment variables**
    - Go to the "Web" tab in the PythonAnywhere dashboard
    - Under the "Code" section, add these variables to the WSGI configuration file:
    ```python
@@ -61,7 +56,7 @@ This document provides instructions for deploying the Twitter Clone application 
    os.environ['CORS_ALLOWED_ORIGINS'] = 'https://your-vercel-app.vercel.app'
    ```
 
-7. **Configure the WSGI file**
+6. **Configure the WSGI file**
    - Find your WSGI file path in the PythonAnywhere dashboard under the "Web" tab
    - Edit the file to include this code:
    ```python
@@ -81,18 +76,17 @@ This document provides instructions for deploying the Twitter Clone application 
    application = get_wsgi_application()
    ```
 
-8. **Set up the database**
+7. **Set up the database**
    - Go to the "Databases" tab and create a new PostgreSQL database
    - Note the database name, username, password, and hostname
    - Run migrations:
    ```bash
    # From the PythonAnywhere bash console
    cd ~/showcase-twitter-clone/backend
-   workon twitter_clone_env
    python manage.py migrate
    ```
 
-9. **Configure static files**
+8. **Configure static files**
    - Go to the "Web" tab
    - Under "Static files", add:
      - URL: `/static/`
@@ -100,22 +94,20 @@ This document provides instructions for deploying the Twitter Clone application 
    - Collect static files:
    ```bash
    cd ~/showcase-twitter-clone/backend
-   workon twitter_clone_env
    python manage.py collectstatic --noinput
    ```
 
-10. **Reload the web app**
+9. **Reload the web app**
     - Click the "Reload" button on the Web tab
 
 ### CI/CD Secret Configuration for GitHub Actions
 
-Add these secrets to your GitHub repository:
+When using the non-virtual environment approach, update these secrets in your GitHub repository:
 
 - `PYTHONANYWHERE_HOST`: Your PythonAnywhere hostname (typically ssh.pythonanywhere.com)
 - `PYTHONANYWHERE_USERNAME`: Your PythonAnywhere username
 - `PYTHONANYWHERE_PASSWORD`: Your PythonAnywhere account password
 - `PYTHONANYWHERE_PROJECT_PATH`: The path to your project (e.g., /home/yourusername/showcase-twitter-clone)
-- `PYTHONANYWHERE_VENV_PATH`: The path to your virtual environment (e.g., /home/yourusername/.virtualenvs/twitter_clone_env)
 - `PYTHONANYWHERE_WSGI_PATH`: The path to your WSGI file (shown in the PythonAnywhere Web tab)
 
 ## Frontend Deployment on Vercel
@@ -165,7 +157,6 @@ Once the CI/CD pipeline is set up, deployment will happen automatically when cha
 cd ~/showcase-twitter-clone
 git pull
 cd backend
-workon twitter_clone_env
 python manage.py migrate
 python manage.py collectstatic --noinput
 # Reload the web app from the PythonAnywhere dashboard

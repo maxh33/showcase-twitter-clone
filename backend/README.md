@@ -12,8 +12,8 @@ This is the backend component of the Twitter Clone project, built with Django an
 
 ## Technology Stack
 
-- Python 3.9+
-- Django 4.2 (LTS)
+- Python 3.10
+- Django 4.0.6
 - Django REST Framework
 - PostgreSQL
 - JWT Authentication (Simple JWT)

@@ -207,11 +207,15 @@ jobs:
           script: |
             cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
             git pull
-            source ${{ secrets.PYTHONANYWHERE_VENV_PATH }}/bin/activate
             cd backend
-            pip install poetry
-            poetry install --without dev
+            # Install dependencies globally
+            pip install --user poetry
+            poetry export -f requirements.txt --output requirements.txt --without-hashes
+            pip install --user -r requirements.txt
+            # Run Django migrations
             python manage.py migrate
+            python manage.py collectstatic --noinput --clear
+            # Reload the webapp
             touch ${{ secrets.PYTHONANYWHERE_WSGI_PATH }}
   
   deploy-frontend:
