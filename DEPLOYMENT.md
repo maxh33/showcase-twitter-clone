@@ -102,7 +102,7 @@ This document provides instructions for deploying the Twitter Clone application 
 
 ### CI/CD Secret Configuration for GitHub Actions
 
-When using the non-virtual environment approach, update these secrets in your GitHub repository:
+For the non-virtual environment approach, these are the secrets in your GitHub repository:
 
 - `PYTHONANYWHERE_HOST`: Your PythonAnywhere hostname (typically ssh.pythonanywhere.com)
 - `PYTHONANYWHERE_USERNAME`: Your PythonAnywhere username
@@ -122,7 +122,7 @@ When using the non-virtual environment approach, update these secrets in your Gi
    - Click "Add New..." > "Project"
    - Select your GitHub repository
    - Set the "Framework Preset" to "Create React App"
-   - Configure the "Root Directory" to `frontend`
+   - Configure the "Root Directory" to `frontend` (this is critical - make sure it's just `frontend`, not nested)
 
 3. **Set environment variables**
    - Add these variables in the Vercel project settings:
@@ -130,6 +130,12 @@ When using the non-virtual environment approach, update these secrets in your Gi
 
 4. **Deploy**
    - Click "Deploy"
+
+### Important Configuration Notes
+
+- **Check your project settings**: If deployment fails with path errors, go to Vercel project settings and verify the Root Directory is correctly set to `frontend`
+- **Project structure**: Ensure your repository structure has a single `frontend` directory at the top level with your React app inside it
+- **Environment variables**: Double-check that all required environment variables are properly set in the Vercel dashboard
 
 ### CI/CD Secret Configuration for GitHub Actions
 
