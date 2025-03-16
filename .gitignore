@@ -153,6 +153,7 @@ yarn-error.log*
 
 # Ignore testing files if not needed
 # ../TESTING.md
+/PYTHONANYWHERE.md
 /backend/.coveragerc
 /backend/pytest.ini
 /backend/run_tests.sh

@@ -248,12 +248,58 @@ jobs:
             # Pull latest changes
             git pull
             
-            # Navigate to proper backend directory
-            cd backend/showcase_twitter_clone
+            # Check directory structure and find pyproject.toml
+            PYPROJECT_PATH=""
+            if [ -f "backend/pyproject.toml" ]; then
+              PYPROJECT_PATH="backend/pyproject.toml"
+              echo "Found pyproject.toml in backend directory"
+            elif [ -f "backend/showcase_twitter_clone/pyproject.toml" ]; then
+              PYPROJECT_PATH="backend/showcase_twitter_clone/pyproject.toml"
+              echo "Found pyproject.toml in showcase_twitter_clone directory"
+            fi
             
-            # Install dependencies globally
-            pip install --user poetry
-            poetry export -f requirements.txt --output requirements.txt --without-hashes
+            # Check if we're in the correct directory structure
+            if [ -d "backend/showcase_twitter_clone" ]; then
+              echo "Directory structure has showcase_twitter_clone subdirectory"
+              cd backend/showcase_twitter_clone
+            else
+              echo "Standard directory structure"
+              cd backend
+            fi
+            
+            # Try to use Poetry if installed
+            if command -v pip &> /dev/null; then
+              echo "Installing Poetry"
+              pip install --user poetry
+            fi
+            
+            if [ ! -z "$PYPROJECT_PATH" ] && command -v poetry &> /dev/null; then
+              echo "Using Poetry to export requirements.txt"
+              cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
+              poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
+              
+              # Move requirements.txt to the correct directory
+              if [ -d "backend/showcase_twitter_clone" ]; then
+                mv requirements.txt backend/showcase_twitter_clone/
+                cd backend/showcase_twitter_clone
+              else
+                mv requirements.txt backend/
+                cd backend
+              fi
+            else
+              echo "Falling back to hardcoded requirements.txt"
+              # Create requirements.txt since we can't use Poetry
+              echo "Django>=4.2.0,<4.3.0" > requirements.txt
+              echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
+              echo "django-cors-headers>=4.3.0,<4.4.0" >> requirements.txt
+              echo "djangorestframework-simplejwt>=5.3.0,<5.4.0" >> requirements.txt
+              echo "dj-database-url>=2.1.0,<2.2.0" >> requirements.txt
+              echo "psycopg2-binary>=2.9.9,<2.10.0" >> requirements.txt
+              echo "python-dotenv>=1.0.0,<1.1.0" >> requirements.txt
+              echo "pillow>=11.0.0,<12.0.0" >> requirements.txt
+            fi
+            
+            # Install dependencies
             pip install --user -r requirements.txt
             
             # Run Django migrations
@@ -343,8 +389,59 @@ jobs:
             git fetch
             git checkout staging
             
-            # Navigate to proper backend directory  
-            cd backend/showcase_twitter_clone
+            # Check directory structure and find pyproject.toml
+            PYPROJECT_PATH=""
+            if [ -f "backend/pyproject.toml" ]; then
+              PYPROJECT_PATH="backend/pyproject.toml"
+              echo "Found pyproject.toml in backend directory"
+            elif [ -f "backend/showcase_twitter_clone/pyproject.toml" ]; then
+              PYPROJECT_PATH="backend/showcase_twitter_clone/pyproject.toml"
+              echo "Found pyproject.toml in showcase_twitter_clone directory"
+            fi
+            
+            # Check if we're in the correct directory structure
+            if [ -d "backend/showcase_twitter_clone" ]; then
+              echo "Directory structure has showcase_twitter_clone subdirectory"
+              cd backend/showcase_twitter_clone
+            else
+              echo "Standard directory structure"
+              cd backend
+            fi
+            
+            # Try to use Poetry if installed
+            if command -v pip &> /dev/null; then
+              echo "Installing Poetry"
+              pip install --user poetry
+            fi
+            
+            if [ ! -z "$PYPROJECT_PATH" ] && command -v poetry &> /dev/null; then
+              echo "Using Poetry to export requirements.txt"
+              cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
+              poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
+              
+              # Move requirements.txt to the correct directory
+              if [ -d "backend/showcase_twitter_clone" ]; then
+                mv requirements.txt backend/showcase_twitter_clone/
+                cd backend/showcase_twitter_clone
+              else
+                mv requirements.txt backend/
+                cd backend
+              fi
+            else
+              echo "Falling back to hardcoded requirements.txt"
+              # Create requirements.txt for validation
+              echo "Django>=4.2.0,<4.3.0" > requirements.txt
+              echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
+              echo "django-cors-headers>=4.3.0,<4.4.0" >> requirements.txt
+              echo "djangorestframework-simplejwt>=5.3.0,<5.4.0" >> requirements.txt
+              echo "dj-database-url>=2.1.0,<2.2.0" >> requirements.txt
+              echo "psycopg2-binary>=2.9.9,<2.10.0" >> requirements.txt
+              echo "python-dotenv>=1.0.0,<1.1.0" >> requirements.txt
+              echo "pillow>=11.0.0,<12.0.0" >> requirements.txt
+            fi
+            
+            # Install dependencies
+            pip install --user -r requirements.txt
             
             # Check if migrations would work, but don't apply them
             python manage.py makemigrations --check
