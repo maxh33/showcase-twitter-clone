@@ -142,8 +142,8 @@ describe('Authentication Flow', () => {
     
     // Check if localStorage tokens are cleared
     cy.window().then((window) => {
-      expect(window.localStorage.getItem('token')).to.be.null;
-      expect(window.localStorage.getItem('refreshToken')).to.be.null;
+      cy.wrap(window.localStorage.getItem('token')).should('be.null');
+      cy.wrap(window.localStorage.getItem('refreshToken')).should('be.null');
     });
   });
 

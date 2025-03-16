@@ -1,0 +1,11 @@
+{
+  "buildCommand": "echo 'Using pre-built files'",
+  "outputDirectory": "build",
+  "framework": "create-react-app",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "github": {
+    "enabled": false
+  }
+} 

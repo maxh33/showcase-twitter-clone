@@ -18,6 +18,7 @@ import {
 import Button from '../components/Button';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
+import { AxiosError } from 'axios';
 
 const VerifyEmailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -43,10 +44,9 @@ const VerifyEmailPage: React.FC = () => {
         setSuccess('Email verified successfully! You can now login to your account.');
       } catch (error: unknown) {
         if (error && typeof error === 'object' && 'response' in error) {
-          const responseObj = error.response as any;
-          if (responseObj && typeof responseObj === 'object' && 'data' in responseObj && 
-              responseObj.data && typeof responseObj.data === 'object' && 'message' in responseObj.data) {
-            setError(responseObj.data.message as string);
+          const axiosError = error as AxiosError<{ message?: string }>;
+          if (axiosError.response?.data && 'message' in axiosError.response.data) {
+            setError(axiosError.response.data.message || 'Email verification failed');
           } else {
             setError('Failed to verify email. Please try again or contact support.');
           }

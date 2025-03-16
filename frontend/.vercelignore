@@ -1,0 +1,4 @@
+# Only ignore what's necessary since we're providing a pre-built app
+node_modules
+.git
+.github 

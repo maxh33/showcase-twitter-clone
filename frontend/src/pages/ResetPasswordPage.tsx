@@ -22,6 +22,7 @@ import {
 } from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
+import { AxiosError } from 'axios';
 
 const ResetPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -58,10 +59,9 @@ const ResetPasswordPage: React.FC = () => {
       setEmail(''); // Clear the form
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const responseObj = error.response as any;
-        if (responseObj && typeof responseObj === 'object' && 'data' in responseObj && 
-            responseObj.data && typeof responseObj.data === 'object' && 'message' in responseObj.data) {
-          setError(responseObj.data.message as string);
+        const axiosError = error as AxiosError<{ message?: string }>;
+        if (axiosError.response?.data && 'message' in axiosError.response.data) {
+          setError(axiosError.response.data.message || 'Failed to send reset email');
         } else {
           setError('Failed to process your request. Please try again later.');
         }

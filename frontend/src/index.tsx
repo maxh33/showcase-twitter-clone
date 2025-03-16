@@ -17,3 +17,7 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+// This empty export ensures the file is treated as a module for TypeScript
+// This fixes the TS1208 error: "'index.tsx' cannot be compiled under '--isolatedModules'"
+export {};

@@ -62,7 +62,11 @@ yarn-error.log*
 
 # IDE and Editor folders
 .idea/
-.vscode/
+# Don't ignore VSCode workspace settings for consistent development experience
+!.vscode/settings.json
+!.vscode/extensions.json
+.vscode/tasks.json
+.vscode/launch.json
 *.swp
 *.swo
 *~
@@ -115,6 +119,8 @@ backend/prompts
 frontend/prompts
 
 # Docker files 
+# Don't ignore production Dockerfiles
+!**/Dockerfile.prod
 Dockerfile
 docker-compose.yml
 
