@@ -276,8 +276,8 @@ jobs:
           pwd
           ls -la
           
-          # Simple direct deployment command
-          vercel deploy --prod --token=$VERCEL_TOKEN --project=$VERCEL_PROJECT_ID --yes
+          # Standard Vercel deployment command without --project flag
+          vercel deploy --prod --token=$VERCEL_TOKEN --yes
   
   deploy-staging:
     needs: build
@@ -307,5 +307,5 @@ jobs:
           pwd
           ls -la
           
-          # Simple direct deployment command
-          vercel deploy --token=$VERCEL_TOKEN --project=$VERCEL_PROJECT_ID --yes 
+          # Standard Vercel deployment command without --project flag
+          vercel deploy --token=$VERCEL_TOKEN --yes 
