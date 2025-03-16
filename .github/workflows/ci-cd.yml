@@ -146,7 +146,11 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         run: |
-          # Run the actual build with the fixed TypeScript module
+          # Ensure index.tsx has an export to fix TypeScript module issue
+          if ! grep -q "export" src/index.tsx; then
+            echo -e "\n// This empty export is required for TypeScript\nexport {};" >> src/index.tsx
+          fi
+          # Run the build
           npm run build
       
       - name: Archive frontend build
