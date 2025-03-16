@@ -375,7 +375,7 @@ jobs:
           vercel deploy --token=$VERCEL_TOKEN --yes
       
       # Backend deployment steps - Test but don't impact production
-      - name: Deploy backend to staging environment
+      - name: Validate PythonAnywhere deployment
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.PYTHONANYWHERE_HOST }}
@@ -389,23 +389,29 @@ jobs:
             git fetch
             git checkout staging
             
+            # Ensure directory structure matches PythonAnywhere configuration
+            BACKEND_DIR=""
+            if [ -d "backend/showcase_twitter_clone" ]; then
+              BACKEND_DIR="backend/showcase_twitter_clone"
+              echo "Using showcase_twitter_clone directory structure"
+            else
+              # Create the expected directory structure if it doesn't exist
+              mkdir -p backend/showcase_twitter_clone
+              cp -r backend/* backend/showcase_twitter_clone/ 2>/dev/null || :
+              # Remove any git-related files to avoid conflicts
+              rm -rf backend/showcase_twitter_clone/.git* 2>/dev/null || :
+              BACKEND_DIR="backend/showcase_twitter_clone"
+              echo "Created showcase_twitter_clone directory structure"
+            fi
+            
             # Check directory structure and find pyproject.toml
             PYPROJECT_PATH=""
             if [ -f "backend/pyproject.toml" ]; then
               PYPROJECT_PATH="backend/pyproject.toml"
               echo "Found pyproject.toml in backend directory"
-            elif [ -f "backend/showcase_twitter_clone/pyproject.toml" ]; then
-              PYPROJECT_PATH="backend/showcase_twitter_clone/pyproject.toml"
-              echo "Found pyproject.toml in showcase_twitter_clone directory"
-            fi
-            
-            # Check if we're in the correct directory structure
-            if [ -d "backend/showcase_twitter_clone" ]; then
-              echo "Directory structure has showcase_twitter_clone subdirectory"
-              cd backend/showcase_twitter_clone
-            else
-              echo "Standard directory structure"
-              cd backend
+            elif [ -f "${BACKEND_DIR}/pyproject.toml" ]; then
+              PYPROJECT_PATH="${BACKEND_DIR}/pyproject.toml"
+              echo "Found pyproject.toml in ${BACKEND_DIR} directory"
             fi
             
             # Try to use Poetry if installed
@@ -416,19 +422,14 @@ jobs:
             
             if [ ! -z "$PYPROJECT_PATH" ] && command -v poetry &> /dev/null; then
               echo "Using Poetry to export requirements.txt"
-              cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
               poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
               
-              # Move requirements.txt to the correct directory
-              if [ -d "backend/showcase_twitter_clone" ]; then
-                mv requirements.txt backend/showcase_twitter_clone/
-                cd backend/showcase_twitter_clone
-              else
-                mv requirements.txt backend/
-                cd backend
-              fi
+              # Move requirements.txt to the expected directory
+              mv requirements.txt ${BACKEND_DIR}/
+              cd ${BACKEND_DIR}
             else
               echo "Falling back to hardcoded requirements.txt"
+              cd ${BACKEND_DIR}
               # Create requirements.txt for validation
               echo "Django>=4.2.0,<4.3.0" > requirements.txt
               echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
@@ -439,6 +440,9 @@ jobs:
               echo "python-dotenv>=1.0.0,<1.1.0" >> requirements.txt
               echo "pillow>=11.0.0,<12.0.0" >> requirements.txt
             fi
+            
+            # Create directories for static and media files if they don't exist
+            mkdir -p static media
             
             # Install dependencies
             pip install --user -r requirements.txt
