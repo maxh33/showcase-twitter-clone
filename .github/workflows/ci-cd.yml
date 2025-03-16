@@ -241,7 +241,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: vercel deploy --prod --cwd . --token=$VERCEL_TOKEN
+        run: vercel deploy --prod --token=$VERCEL_TOKEN
   
   deploy-staging:
     needs: build
@@ -266,4 +266,4 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: vercel deploy --cwd . --token=$VERCEL_TOKEN 
+        run: vercel deploy --token=$VERCEL_TOKEN 
