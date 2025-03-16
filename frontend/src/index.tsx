@@ -18,6 +18,6 @@ root.render(
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
 
-// This empty export is required to make TypeScript treat this file as a module
-// when using the isolatedModules compiler flag (default in Create React App)
+// This empty export ensures the file is treated as a module for TypeScript
+// This fixes the TS1208 error: "'index.tsx' cannot be compiled under '--isolatedModules'"
 export {};

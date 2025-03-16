@@ -148,7 +148,7 @@ jobs:
         run: |
           echo "Attempting to fix TypeScript module issue and build the real frontend..."
           
-          # 1. Create a tsconfig.build.json file that fixes the isolatedModules issue
+          # 1. Create a modified tsconfig that disables the problematic flag
           cat > tsconfig.build.json << 'EOL'
           {
             "extends": "./tsconfig.json",
@@ -158,22 +158,24 @@ jobs:
           }
           EOL
           
-          # 2. Add the export statement to index.tsx before building
-          echo -e "\n// This empty export is required for TypeScript\nexport {};" >> src/index.tsx
+          # 2. Verify index.tsx has the export statement (add if missing)
+          if ! grep -q "export {};" src/index.tsx; then
+            echo -e "\n// This empty export ensures the file is treated as a module for TypeScript\nexport {};" >> src/index.tsx
+          fi
           
-          # 3. Use this config for the build by setting environment variables
+          # 3. Use environment variables to control the build
           export TSC_COMPILE_ON_ERROR=true
           export SKIP_PREFLIGHT_CHECK=true
           export GENERATE_SOURCEMAP=false
-          export TS_CONFIG_PATH=./tsconfig.build.json
           
-          # 4. Run the build with maximum debugging
+          # 4. Run the build with CI=false to ignore warnings
           CI=false npm run build
           
           # 5. Check if build succeeded
           if [ $? -ne 0 ]; then
             echo "Build failed with real frontend, diagnostic information:"
             ls -la
+            cat tsconfig.json
             cat tsconfig.build.json
             echo "TypeScript module issue could not be resolved automatically."
             exit 1
@@ -271,10 +273,11 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           # Debug information
+          pwd
           ls -la
           
-          # Force deployment with the correct paths
-          vercel deploy --prod --token=$VERCEL_TOKEN --yes
+          # Simple direct deployment command
+          vercel deploy --prod --token=$VERCEL_TOKEN --project=$VERCEL_PROJECT_ID --yes
   
   deploy-staging:
     needs: build
@@ -301,7 +304,8 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           # Debug information
+          pwd
           ls -la
           
-          # Force deployment with the correct paths
-          vercel deploy --token=$VERCEL_TOKEN --yes 
+          # Simple direct deployment command
+          vercel deploy --token=$VERCEL_TOKEN --project=$VERCEL_PROJECT_ID --yes 
