@@ -220,7 +220,7 @@ jobs:
             !backend/.pytest_cache/
             !backend/__pycache__/
   
-  deploy-backend:
+  deploy-backend-production:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -240,19 +240,30 @@ jobs:
           password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
           script: |
             cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
+            
+            # Check current directory for debugging
+            pwd
+            ls -la
+            
+            # Pull latest changes
             git pull
-            cd backend
+            
+            # Navigate to proper backend directory
+            cd backend/showcase_twitter_clone
+            
             # Install dependencies globally
             pip install --user poetry
             poetry export -f requirements.txt --output requirements.txt --without-hashes
             pip install --user -r requirements.txt
+            
             # Run Django migrations
             python manage.py migrate
             python manage.py collectstatic --noinput --clear
+            
             # Reload the webapp
             touch ${{ secrets.PYTHONANYWHERE_WSGI_PATH }}
   
-  deploy-frontend:
+  deploy-frontend-production:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -269,7 +280,7 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
       
-      - name: Deploy to Vercel
+      - name: Deploy to Vercel Production
         working-directory: ./frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -281,15 +292,16 @@ jobs:
           ls -la
           ls -la build
           
-          # Deploy directly without the --prebuilt flag
+          # Deploy to production
           vercel deploy --prod --token=$VERCEL_TOKEN --yes
-      
+  
   deploy-staging:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     
     steps:
+      # Frontend deployment steps
       - uses: actions/checkout@v4
         
       - name: Download frontend build
@@ -313,5 +325,33 @@ jobs:
           ls -la
           ls -la build
           
-          # Deploy directly without the --prebuilt flag
-          vercel deploy --token=$VERCEL_TOKEN --yes 
+          # Deploy to preview
+          vercel deploy --token=$VERCEL_TOKEN --yes
+      
+      # Backend deployment steps - Test but don't impact production
+      - name: Deploy backend to staging environment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PYTHONANYWHERE_HOST }}
+          username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+          password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
+          script: |
+            echo "Running backend validation for staging branch..."
+            cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
+            
+            # Just pull the latest code but don't reload the production app
+            git fetch
+            git checkout staging
+            
+            # Navigate to proper backend directory  
+            cd backend/showcase_twitter_clone
+            
+            # Check if migrations would work, but don't apply them
+            python manage.py makemigrations --check
+            
+            # Verify the collectstatic command would work
+            python manage.py collectstatic --dry-run
+            
+            # Switch back to main branch to avoid affecting production
+            cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
+            git checkout main 
