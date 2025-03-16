@@ -1,0 +1,12 @@
+# Ignore source files - we're deploying the pre-built app
+src
+public
+node_modules
+.husky
+cypress
+**/tsconfig*.json
+package.json
+package-lock.json
+
+# Don't ignore the build directory - that's what we want to deploy
+!build 

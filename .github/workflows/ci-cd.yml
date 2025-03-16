@@ -158,7 +158,11 @@ jobs:
           }
           EOL
           
-          # 2. Verify index.tsx has the export statement (add if missing)
+          # 2. Explicitly add the export statement to index.tsx
+          # First, make a backup of the original file
+          cp src/index.tsx src/index.tsx.bak
+          
+          # Add the export statement if it's not already there
           if ! grep -q "export {};" src/index.tsx; then
             echo -e "\n// This empty export ensures the file is treated as a module for TypeScript\nexport {};" >> src/index.tsx
           fi
@@ -275,9 +279,10 @@ jobs:
           # Debug information
           pwd
           ls -la
+          ls -la build
           
-          # Standard Vercel deployment command without --project flag
-          vercel deploy --prod --token=$VERCEL_TOKEN --yes
+          # Deploy pre-built static files
+          vercel deploy --prod --token=$VERCEL_TOKEN --yes --prebuilt
   
   deploy-staging:
     needs: build
@@ -306,6 +311,7 @@ jobs:
           # Debug information
           pwd
           ls -la
+          ls -la build
           
-          # Standard Vercel deployment command without --project flag
-          vercel deploy --token=$VERCEL_TOKEN --yes 
+          # Deploy pre-built static files
+          vercel deploy --token=$VERCEL_TOKEN --yes --prebuilt 
