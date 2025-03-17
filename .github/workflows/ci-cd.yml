@@ -289,22 +289,7 @@ jobs:
           time.sleep(30)
           
           # Create WSGI file content
-          wsgi_content = f"""import os
-import sys
-
-path = '/home/{username}/showcase-twitter-clone/backend'
-if path not in sys.path:
-    sys.path.insert(0, path)
-
-os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
-os.environ['DEBUG'] = 'False'
-os.environ['ALLOWED_HOSTS'] = '{username}.pythonanywhere.com,localhost,127.0.0.1'
-os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
-os.environ['SECRET_KEY'] = '{secret_key}'
-
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
-"""
+          wsgi_content = "import os\nimport sys\n\npath = '/home/" + username + "/showcase-twitter-clone/backend'\nif path not in sys.path:\n    sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
           
           # Update WSGI file using files parameter (not json)
           print("Updating WSGI file...")
@@ -471,22 +456,7 @@ application = get_wsgi_application()
           time.sleep(30)
           
           # Create WSGI file content
-          wsgi_content = f"""import os
-import sys
-
-path = '/home/{username}/showcase-twitter-clone/backend'
-if path not in sys.path:
-    sys.path.insert(0, path)
-
-os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
-os.environ['DEBUG'] = 'False'
-os.environ['ALLOWED_HOSTS'] = '{username}.pythonanywhere.com,localhost,127.0.0.1'
-os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
-os.environ['SECRET_KEY'] = '{secret_key}'
-
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
-"""
+          wsgi_content = "import os\nimport sys\n\npath = '/home/" + username + "/showcase-twitter-clone/backend'\nif path not in sys.path:\n    sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
           
           # Update WSGI file using files parameter (not json)
           print("Updating WSGI file...")
