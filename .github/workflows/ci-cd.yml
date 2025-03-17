@@ -392,12 +392,7 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          # Debug information
-          pwd
-          ls -la
-          ls -la build
-          
-          # Deploy to preview
+          npm install --save-dev react-scripts
           vercel deploy --token=$VERCEL_TOKEN --yes
       
       # Backend deployment steps - Use PythonAnywhere API instead of SSH
