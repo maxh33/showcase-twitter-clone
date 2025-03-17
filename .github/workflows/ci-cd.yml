@@ -234,67 +234,124 @@ jobs:
           name: backend-app
           path: backend
       
-      - name: Deploy to PythonAnywhere
-        uses: appleboy/ssh-action@master
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          host: ${{ secrets.PYTHONANYWHERE_HOST }}
-          username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
-          password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
-          port: 22
-          script: |
-            echo "Starting deployment to PythonAnywhere..."
-            
-            # Clean up and re-clone the repository
-            cd ~
-            if [ -d "showcase-twitter-clone" ]; then
-              echo "Removing existing repository..."
-              rm -rf showcase-twitter-clone
-            fi
-            
-            echo "Cloning fresh repository..."
-            git clone https://github.com/maxh33/showcase-twitter-clone.git
-            cd showcase-twitter-clone
-            git checkout staging
-            
-            # Navigate to backend and install dependencies
-            cd backend
-            
-            echo "Installing dependencies..."
-            pip install --user -r requirements.txt
-            
-            # Create static and media directories
-            mkdir -p static media
-            
-            # Run collectstatic
-            python manage.py collectstatic --noinput
-            
-            # Update WSGI file configuration
-            echo "Updating WSGI file..."
-            cat > /var/www/maxh33_pythonanywhere_com_wsgi.py << 'EOL'
-            import os
-            import sys
-
-            # Add your project directory to the system path
-            path = '/home/maxh33/showcase-twitter-clone/backend'
-            if path not in sys.path:
-                sys.path.insert(0, path)
-
-            # Set environment variables for Django
-            os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
-            os.environ['DEBUG'] = 'False'
-            os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1' 
-            os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
-            os.environ['SECRET_KEY'] = '${{ secrets.DJANGO_SECRET_KEY }}'
-
-            # Import Django's WSGI handler
-            from django.core.wsgi import get_wsgi_application
-            application = get_wsgi_application()
-            EOL
-            
-            # Touch WSGI file to reload the app
-            touch /var/www/maxh33_pythonanywhere_com_wsgi.py
-            
-            echo "Deployment completed successfully!"
+          python-version: '3.10'
+      
+      - name: Install deployment dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Deploy to PythonAnywhere using API
+        env:
+          PA_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
+          PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+        run: |
+          # Create deployment script
+          cat > deploy_to_pythonanywhere.py << 'EOL'
+          import os
+          import requests
+          import time
+          
+          # Configuration
+          username = os.environ['PA_USERNAME']
+          api_token = os.environ['PA_API_TOKEN']
+          domain_name = f"{username}.pythonanywhere.com"
+          api_base_url = f"https://www.pythonanywhere.com/api/v0/user/{username}/"
+          headers = {'Authorization': f'Token {api_token}'}
+          
+          # Step 1: Update files with Git
+          print("Updating repository via API...")
+          update_url = f"{api_base_url}consoles/"
+          console_response = requests.post(
+              update_url,
+              headers=headers,
+              json={"executable": "bash", "arguments": "-c 'cd ~/ && rm -rf showcase-twitter-clone && git clone https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone && git checkout main'"}
+          )
+          
+          if console_response.status_code != 201:
+              print(f"Error creating console: {console_response.text}")
+              exit(1)
+          
+          console_id = console_response.json()["id"]
+          print(f"Console created with ID: {console_id}")
+          
+          # Wait for the console process to complete
+          time.sleep(10)
+          
+          # Step 2: Install dependencies
+          print("Installing dependencies...")
+          update_url = f"{api_base_url}consoles/"
+          console_response = requests.post(
+              update_url,
+              headers=headers,
+              json={"executable": "bash", "arguments": "-c 'cd ~/showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p static media && python manage.py collectstatic --noinput'"}
+          )
+          
+          if console_response.status_code != 201:
+              print(f"Error creating console: {console_response.text}")
+              exit(1)
+          
+          console_id = console_response.json()["id"]
+          print(f"Console created with ID: {console_id}")
+          
+          # Wait for the dependencies to install
+          time.sleep(30)
+          
+          # Step 3: Update WSGI file
+          print("Updating WSGI file...")
+          wsgi_path = f"/var/www/{username}_pythonanywhere_com_wsgi.py"
+          wsgi_content = f'''
+          import os
+          import sys
+          
+          # Add your project directory to the system path
+          path = '/home/{username}/showcase-twitter-clone/backend'
+          if path not in sys.path:
+              sys.path.insert(0, path)
+          
+          # Set environment variables for Django
+          os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
+          os.environ['DEBUG'] = 'False'
+          os.environ['ALLOWED_HOSTS'] = '{domain_name},localhost,127.0.0.1' 
+          os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
+          os.environ['SECRET_KEY'] = '{os.environ.get("DJANGO_SECRET_KEY", "DEFAULT_SECRET_KEY")}'
+          
+          # Import Django's WSGI handler
+          from django.core.wsgi import get_wsgi_application
+          application = get_wsgi_application()
+          '''
+          
+          update_url = f"{api_base_url}files/path{wsgi_path}"
+          response = requests.post(
+              update_url,
+              headers=headers,
+              json={"content": wsgi_content}
+          )
+          
+          if response.status_code != 200 and response.status_code != 201:
+              print(f"Error updating WSGI file: {response.text}")
+              exit(1)
+          
+          print("WSGI file updated successfully")
+          
+          # Step 4: Reload web app
+          print("Reloading web app...")
+          reload_url = f"{api_base_url}webapps/{domain_name}/reload/"
+          response = requests.post(reload_url, headers=headers)
+          
+          if response.status_code != 200:
+              print(f"Error reloading app: {response.text}")
+              exit(1)
+          
+          print("Web app reloaded successfully")
+          print("Deployment completed!")
+          EOL
+          
+          # Run the deployment script
+          python deploy_to_pythonanywhere.py
   
   deploy-frontend-production:
     needs: build
@@ -361,50 +418,122 @@ jobs:
           # Deploy to preview
           vercel deploy --token=$VERCEL_TOKEN --yes
       
-      # Backend deployment steps - Test but don't impact production
-      - name: Validate PythonAnywhere deployment
-        uses: appleboy/ssh-action@master
+      # Backend deployment steps - Use PythonAnywhere API instead of SSH
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          host: ${{ secrets.PYTHONANYWHERE_HOST }}
-          username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
-          password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
-          port: 22
-          script: |
-            echo "Running backend validation for staging branch..."
-            
-            # Force remove and re-clone the repository with staging branch
-            rm -rf ~/showcase-twitter-clone
-            git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git
-            cd ~/showcase-twitter-clone
-            
-            # Navigate to backend and install dependencies
-            cd backend
-            
-            # Create requirements.txt if it doesn't exist
-            if [ ! -f "requirements.txt" ]; then
-              echo "Creating requirements.txt..."
-              cat > requirements.txt << EOL
-              Django>=4.2.0,<4.3.0
-              djangorestframework>=3.14.0,<3.15.0
-              django-cors-headers>=4.3.0,<4.4.0
-              djangorestframework-simplejwt>=5.3.0,<5.4.0
-              dj-database-url>=2.1.0,<2.2.0
-              psycopg2-binary>=2.9.9,<2.10.0
-              python-dotenv>=1.0.0,<1.1.0
-              pillow>=11.0.0,<12.0.0
-              EOL
-            fi
-            
-            # Install requirements but don't affect production
-            pip install --user -r requirements.txt
-            
-            # Create static and media directories
-            mkdir -p static media
-            
-            # Don't run migrations in staging validation
-            echo "Checking migrations without applying..."
-            python manage.py showmigrations
-            
-            # Switch back to main branch to avoid affecting production
-            cd ~
-            echo "Staging validation complete" 
+          python-version: '3.10'
+      
+      - name: Install deployment dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Deploy to PythonAnywhere using API (Staging)
+        env:
+          PA_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
+          PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
+        run: |
+          # Create deployment script
+          cat > deploy_to_pythonanywhere_staging.py << 'EOL'
+          import os
+          import requests
+          import time
+          
+          # Configuration
+          username = os.environ['PA_USERNAME']
+          api_token = os.environ['PA_API_TOKEN']
+          domain_name = f"{username}.pythonanywhere.com"
+          api_base_url = f"https://www.pythonanywhere.com/api/v0/user/{username}/"
+          headers = {'Authorization': f'Token {api_token}'}
+          
+          # Step 1: Update files with Git
+          print("Updating repository via API (STAGING)...")
+          update_url = f"{api_base_url}consoles/"
+          console_response = requests.post(
+              update_url,
+              headers=headers,
+              json={"executable": "bash", "arguments": "-c 'cd ~/ && rm -rf showcase-twitter-clone && git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone'"}
+          )
+          
+          if console_response.status_code != 201:
+              print(f"Error creating console: {console_response.text}")
+              exit(1)
+          
+          console_id = console_response.json()["id"]
+          print(f"Console created with ID: {console_id}")
+          
+          # Wait for the console process to complete
+          time.sleep(10)
+          
+          # Step 2: Install dependencies
+          print("Installing dependencies...")
+          update_url = f"{api_base_url}consoles/"
+          console_response = requests.post(
+              update_url,
+              headers=headers,
+              json={"executable": "bash", "arguments": "-c 'cd ~/showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p static media && python manage.py collectstatic --noinput'"}
+          )
+          
+          if console_response.status_code != 201:
+              print(f"Error creating console: {console_response.text}")
+              exit(1)
+          
+          console_id = console_response.json()["id"]
+          print(f"Console created with ID: {console_id}")
+          
+          # Wait for the dependencies to install
+          time.sleep(30)
+          
+          # Step 3: Update WSGI file
+          print("Updating WSGI file...")
+          wsgi_path = f"/var/www/{username}_pythonanywhere_com_wsgi.py"
+          wsgi_content = f'''
+          import os
+          import sys
+          
+          # Add your project directory to the system path
+          path = '/home/{username}/showcase-twitter-clone/backend'
+          if path not in sys.path:
+              sys.path.insert(0, path)
+          
+          # Set environment variables for Django
+          os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
+          os.environ['DEBUG'] = 'False'
+          os.environ['ALLOWED_HOSTS'] = '{domain_name},localhost,127.0.0.1' 
+          os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
+          os.environ['SECRET_KEY'] = '{os.environ.get("DJANGO_SECRET_KEY", "DEFAULT_SECRET_KEY")}'
+          
+          # Import Django's WSGI handler
+          from django.core.wsgi import get_wsgi_application
+          application = get_wsgi_application()
+          '''
+          
+          update_url = f"{api_base_url}files/path{wsgi_path}"
+          response = requests.post(
+              update_url,
+              headers=headers,
+              json={"content": wsgi_content}
+          )
+          
+          if response.status_code != 200 and response.status_code != 201:
+              print(f"Error updating WSGI file: {response.text}")
+              exit(1)
+          
+          print("WSGI file updated successfully")
+          
+          # Step 4: Reload web app
+          print("Reloading web app...")
+          reload_url = f"{api_base_url}webapps/{domain_name}/reload/"
+          response = requests.post(reload_url, headers=headers)
+          
+          if response.status_code != 200:
+              print(f"Error reloading app: {response.text}")
+              exit(1)
+          
+          print("Web app reloaded successfully")
+          print("Staging deployment completed!")
+          EOL
+          
+          # Run the deployment script
+          python deploy_to_pythonanywhere_staging.py 
