@@ -22,12 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-$-t%@y85s$wl_ud2!o=(b2#(#(x+5x9!8-p6v&a&g#kn7+4bm-"
+SECRET_KEY = os.environ.get('SECRET_KEY', "django-insecure-$-t%@y85s$wl_ud2!o=(b2#(#(x+5x9!8-p6v&a&g#kn7+4bm-")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['maxh33.pythonanywhere.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -63,8 +63,16 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
+    "https://showcase-twitter-clone-maxh33s-projects.vercel.app",  # Vercel production
+    "https://showcase-twitter-clone-git-staging-maxh33s-projects.vercel.app",  # Vercel staging
+    "https://showcase-twitter-clone-27flgsqmu-maxh33s-projects.vercel.app",  # Another Vercel preview
 ]
 
+# For any other preview deployments we might create
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+
+# Required for cookies, authorization headers with HTTPS
+CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "core.urls"
 

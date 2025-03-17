@@ -1,4 +1,29 @@
-# Only ignore what's necessary since we're providing a pre-built app
+# Node modules
 node_modules
+
+# Source files (since we're using pre-built files)
+src
+public
+
+# Test files
+__tests__
+**/*.test.*
+**/*.spec.*
+
+# Config files
+.eslintrc*
+.prettierrc*
+tsconfig.json
+jest.config.js
+
+# Git files
 .git
-.github 
+.github
+
+# Environment files
+.env*
+!.env.production
+
+# Misc
+README.md
+LICENSE 
