@@ -20,8 +20,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 os.environ.setdefault('DEBUG', 'False')
 os.environ.setdefault('ALLOWED_HOSTS', 'maxh33.pythonanywhere.com,localhost,127.0.0.1')
 os.environ.setdefault('CORS_ALLOW_ALL_ORIGINS', 'True')
-# Note: In production, you should set SECRET_KEY in the PythonAnywhere dashboard
-# or in the actual WSGI file on the server, not in this version-controlled file
+os.environ.setdefault('SECRET_KEY', 'django-insecure-$-t%@y85s$wl_ud2!o=(b2#(#(x+5x9!8-p6v&a&g#kn7+4bm-')  # Replace with a secure key in production
 
 # Import the Django WSGI application
 from django.core.wsgi import get_wsgi_application

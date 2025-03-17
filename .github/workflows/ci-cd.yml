@@ -242,41 +242,35 @@ jobs:
           password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
           port: 22
           script: |
-            # Force remove and re-clone the repository
-            rm -rf ~/showcase-twitter-clone
+            echo "Starting deployment to PythonAnywhere..."
+            
+            # Clean up and re-clone the repository
+            cd ~
+            if [ -d "showcase-twitter-clone" ]; then
+              echo "Removing existing repository..."
+              rm -rf showcase-twitter-clone
+            fi
+            
+            echo "Cloning fresh repository..."
             git clone https://github.com/maxh33/showcase-twitter-clone.git
-            cd ~/showcase-twitter-clone
+            cd showcase-twitter-clone
+            git checkout staging
             
             # Navigate to backend and install dependencies
             cd backend
             
-            # Create requirements.txt if it doesn't exist
-            if [ ! -f "requirements.txt" ]; then
-              echo "Creating requirements.txt..."
-              cat > requirements.txt << EOL
-              Django>=4.2.0,<4.3.0
-              djangorestframework>=3.14.0,<3.15.0
-              django-cors-headers>=4.3.0,<4.4.0
-              djangorestframework-simplejwt>=5.3.0,<5.4.0
-              dj-database-url>=2.1.0,<2.2.0
-              psycopg2-binary>=2.9.9,<2.10.0
-              python-dotenv>=1.0.0,<1.1.0
-              pillow>=11.0.0,<12.0.0
-              EOL
-            fi
-            
-            # Install requirements
+            echo "Installing dependencies..."
             pip install --user -r requirements.txt
             
             # Create static and media directories
             mkdir -p static media
             
-            # Run Django migrations
-            python manage.py migrate
+            # Run collectstatic
             python manage.py collectstatic --noinput
             
-            # Ensure WSGI file is correct
-            cat > /var/www/maxh33_pythonanywhere_com_wsgi.py << EOL
+            # Update WSGI file configuration
+            echo "Updating WSGI file..."
+            cat > /var/www/maxh33_pythonanywhere_com_wsgi.py << 'EOL'
             import os
             import sys
 
@@ -288,7 +282,9 @@ jobs:
             # Set environment variables for Django
             os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
             os.environ['DEBUG'] = 'False'
-            os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com'
+            os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1' 
+            os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
+            os.environ['SECRET_KEY'] = '${{ secrets.DJANGO_SECRET_KEY }}'
 
             # Import Django's WSGI handler
             from django.core.wsgi import get_wsgi_application
@@ -297,6 +293,8 @@ jobs:
             
             # Touch WSGI file to reload the app
             touch /var/www/maxh33_pythonanywhere_com_wsgi.py
+            
+            echo "Deployment completed successfully!"
   
   deploy-frontend-production:
     needs: build
