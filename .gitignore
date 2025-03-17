@@ -153,9 +153,12 @@ yarn-error.log*
 
 # Ignore testing files if not needed
 # ../TESTING.md
+/PYTHONANYWHERE_TROUBLESHOOTING.md
 /PYTHONANYWHERE.md
+/pythonanywhere_setup.md
 /backend/.coveragerc
 /backend/pytest.ini
 /backend/run_tests.sh
 /frontend/cypress/screenshots
 /frontend/cypress/videos
+/scripts/setup_pythonanywhere.sh
