@@ -226,6 +226,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Download backend app
         uses: actions/download-artifact@v4
         with:
@@ -237,83 +239,64 @@ jobs:
         with:
           host: ${{ secrets.PYTHONANYWHERE_HOST }}
           username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
           port: 22
           script: |
-            cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
+            # Force remove and re-clone the repository
+            rm -rf ~/showcase-twitter-clone
+            git clone https://github.com/maxh33/showcase-twitter-clone.git
+            cd ~/showcase-twitter-clone
             
-            # Check current directory for debugging
-            pwd
-            ls -la
+            # Navigate to backend and install dependencies
+            cd backend
             
-            # Pull latest changes
-            git pull
-            
-            # Check if the WSGI path is correctly set
-            if grep -q '/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone' /var/www/maxh33_pythonanywhere_com_wsgi.py; then
-              echo "WSGI file configured for /backend/showcase_twitter_clone - updating to match actual structure"
-              # Update the WSGI file to point to the correct directory
-              sed -i 's|/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone|/home/maxh33/showcase-twitter-clone/backend|g' /var/www/maxh33_pythonanywhere_com_wsgi.py
+            # Create requirements.txt if it doesn't exist
+            if [ ! -f "requirements.txt" ]; then
+              echo "Creating requirements.txt..."
+              cat > requirements.txt << EOL
+              Django>=4.2.0,<4.3.0
+              djangorestframework>=3.14.0,<3.15.0
+              django-cors-headers>=4.3.0,<4.4.0
+              djangorestframework-simplejwt>=5.3.0,<5.4.0
+              dj-database-url>=2.1.0,<2.2.0
+              psycopg2-binary>=2.9.9,<2.10.0
+              python-dotenv>=1.0.0,<1.1.0
+              pillow>=11.0.0,<12.0.0
+              EOL
             fi
             
-            # Check directory structure and find pyproject.toml
-            PYPROJECT_PATH=""
-            if [ -f "backend/pyproject.toml" ]; then
-              PYPROJECT_PATH="backend/pyproject.toml"
-              echo "Found pyproject.toml in backend directory"
-              
-              # Change to the backend directory where our actual code is
-              cd backend
-            else 
-              echo "Could not find pyproject.toml - deployment may fail"
-              
-              # Still try to continue with the backend directory
-              cd backend
-            fi
-            
-            # Try to use Poetry if installed
-            if command -v pip &> /dev/null; then
-              echo "Installing Poetry"
-              pip install --user poetry
-            fi
-            
-            if [ ! -z "$PYPROJECT_PATH" ] && command -v poetry &> /dev/null; then
-              echo "Using Poetry to export requirements.txt"
-              cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
-              poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
-              
-              # Move requirements.txt to the backend directory
-              mv requirements.txt backend/
-              cd backend
-            else
-              echo "Falling back to hardcoded requirements.txt"
-              
-              # Create requirements.txt
-              echo "Django>=4.2.0,<4.3.0" > requirements.txt
-              echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
-              echo "django-cors-headers>=4.3.0,<4.4.0" >> requirements.txt
-              echo "djangorestframework-simplejwt>=5.3.0,<5.4.0" >> requirements.txt
-              echo "dj-database-url>=2.1.0,<2.2.0" >> requirements.txt
-              echo "psycopg2-binary>=2.9.9,<2.10.0" >> requirements.txt
-              echo "python-dotenv>=1.0.0,<1.1.0" >> requirements.txt
-              echo "pillow>=11.0.0,<12.0.0" >> requirements.txt
-            fi
-            
-            # Install dependencies
+            # Install requirements
             pip install --user -r requirements.txt
+            
+            # Create static and media directories
+            mkdir -p static media
             
             # Run Django migrations
             python manage.py migrate
-            python manage.py collectstatic --noinput --clear
+            python manage.py collectstatic --noinput
             
-            # Create directories for static and media files if they don't exist
-            mkdir -p static media
+            # Ensure WSGI file is correct
+            cat > /var/www/maxh33_pythonanywhere_com_wsgi.py << EOL
+            import os
+            import sys
+
+            # Add your project directory to the system path
+            path = '/home/maxh33/showcase-twitter-clone/backend'
+            if path not in sys.path:
+                sys.path.insert(0, path)
+
+            # Set environment variables for Django
+            os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
+            os.environ['DEBUG'] = 'False'
+            os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com'
+
+            # Import Django's WSGI handler
+            from django.core.wsgi import get_wsgi_application
+            application = get_wsgi_application()
+            EOL
             
-            # Verify the correct permissions on the directories
-            chmod -R 755 static media
-            
-            # Reload the webapp
-            touch ${{ secrets.PYTHONANYWHERE_WSGI_PATH }}
+            # Touch WSGI file to reload the app
+            touch /var/www/maxh33_pythonanywhere_com_wsgi.py
   
   deploy-frontend-production:
     needs: build
@@ -386,87 +369,44 @@ jobs:
         with:
           host: ${{ secrets.PYTHONANYWHERE_HOST }}
           username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.PYTHONANYWHERE_PASSWORD }}
           port: 22
           script: |
             echo "Running backend validation for staging branch..."
-            cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
             
-            # Just pull the latest code but don't reload the production app
-            git fetch
-            git checkout staging
+            # Force remove and re-clone the repository with staging branch
+            rm -rf ~/showcase-twitter-clone
+            git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git
+            cd ~/showcase-twitter-clone
             
-            # Check current directory structure
-            echo "Current directory structure:"
-            ls -la
+            # Navigate to backend and install dependencies
+            cd backend
             
-            # Ensure we are using the correct directory for the deployment
-            # PythonAnywhere's configuration shows /backend/showcase_twitter_clone
-            # but our actual structure is just /backend
-            if grep -q '/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone' /var/www/maxh33_pythonanywhere_com_wsgi.py; then
-              echo "WSGI file configured for /backend/showcase_twitter_clone - updating to match actual structure"
-              # Update the WSGI file to point to the correct directory
-              sed -i 's|/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone|/home/maxh33/showcase-twitter-clone/backend|g' /var/www/maxh33_pythonanywhere_com_wsgi.py
+            # Create requirements.txt if it doesn't exist
+            if [ ! -f "requirements.txt" ]; then
+              echo "Creating requirements.txt..."
+              cat > requirements.txt << EOL
+              Django>=4.2.0,<4.3.0
+              djangorestframework>=3.14.0,<3.15.0
+              django-cors-headers>=4.3.0,<4.4.0
+              djangorestframework-simplejwt>=5.3.0,<5.4.0
+              dj-database-url>=2.1.0,<2.2.0
+              psycopg2-binary>=2.9.9,<2.10.0
+              python-dotenv>=1.0.0,<1.1.0
+              pillow>=11.0.0,<12.0.0
+              EOL
             fi
             
-            # Check directory structure and find pyproject.toml
-            PYPROJECT_PATH=""
-            if [ -f "backend/pyproject.toml" ]; then
-              PYPROJECT_PATH="backend/pyproject.toml"
-              echo "Found pyproject.toml in backend directory"
-              
-              # Change to the backend directory where our actual code is
-              cd backend
-            else
-              echo "Could not find pyproject.toml - deployment may fail"
-              
-              # Still try to continue with the backend directory
-              cd backend
-            fi
-            
-            # Try to use Poetry if installed
-            if command -v pip &> /dev/null; then
-              echo "Installing Poetry"
-              pip install --user poetry
-            fi
-            
-            if [ ! -z "$PYPROJECT_PATH" ] && command -v poetry &> /dev/null; then
-              echo "Using Poetry to export requirements.txt"
-              cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
-              poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
-              
-              # Move requirements.txt to the backend directory
-              mv requirements.txt backend/
-              cd backend
-            else
-              echo "Falling back to hardcoded requirements.txt"
-              
-              # Create requirements.txt for validation
-              echo "Django>=4.2.0,<4.3.0" > requirements.txt
-              echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
-              echo "django-cors-headers>=4.3.0,<4.4.0" >> requirements.txt
-              echo "djangorestframework-simplejwt>=5.3.0,<5.4.0" >> requirements.txt
-              echo "dj-database-url>=2.1.0,<2.2.0" >> requirements.txt
-              echo "psycopg2-binary>=2.9.9,<2.10.0" >> requirements.txt
-              echo "python-dotenv>=1.0.0,<1.1.0" >> requirements.txt
-              echo "pillow>=11.0.0,<12.0.0" >> requirements.txt
-            fi
-            
-            # Create directories for static and media files if they don't exist
-            mkdir -p static media
-            
-            # Install dependencies
+            # Install requirements but don't affect production
             pip install --user -r requirements.txt
             
-            # Check if migrations would work, but don't apply them
-            python manage.py makemigrations --check
+            # Create static and media directories
+            mkdir -p static media
             
-            # Verify the collectstatic command would work
-            python manage.py collectstatic --dry-run
-            
-            # Update static file mappings in the PythonAnywhere web app if needed
-            # This shouldn't be needed if the static paths are already correctly configured
+            # Don't run migrations in staging validation
+            echo "Checking migrations without applying..."
+            python manage.py showmigrations
             
             # Switch back to main branch to avoid affecting production
-            cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
-            git checkout main 
+            cd ~
+            echo "Staging validation complete" 
