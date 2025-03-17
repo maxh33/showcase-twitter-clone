@@ -248,22 +248,25 @@ jobs:
             # Pull latest changes
             git pull
             
+            # Check if the WSGI path is correctly set
+            if grep -q '/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone' /var/www/maxh33_pythonanywhere_com_wsgi.py; then
+              echo "WSGI file configured for /backend/showcase_twitter_clone - updating to match actual structure"
+              # Update the WSGI file to point to the correct directory
+              sed -i 's|/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone|/home/maxh33/showcase-twitter-clone/backend|g' /var/www/maxh33_pythonanywhere_com_wsgi.py
+            fi
+            
             # Check directory structure and find pyproject.toml
             PYPROJECT_PATH=""
             if [ -f "backend/pyproject.toml" ]; then
               PYPROJECT_PATH="backend/pyproject.toml"
               echo "Found pyproject.toml in backend directory"
-            elif [ -f "backend/showcase_twitter_clone/pyproject.toml" ]; then
-              PYPROJECT_PATH="backend/showcase_twitter_clone/pyproject.toml"
-              echo "Found pyproject.toml in showcase_twitter_clone directory"
-            fi
-            
-            # Check if we're in the correct directory structure
-            if [ -d "backend/showcase_twitter_clone" ]; then
-              echo "Directory structure has showcase_twitter_clone subdirectory"
-              cd backend/showcase_twitter_clone
-            else
-              echo "Standard directory structure"
+              
+              # Change to the backend directory where our actual code is
+              cd backend
+            else 
+              echo "Could not find pyproject.toml - deployment may fail"
+              
+              # Still try to continue with the backend directory
               cd backend
             fi
             
@@ -278,17 +281,13 @@ jobs:
               cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
               poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
               
-              # Move requirements.txt to the correct directory
-              if [ -d "backend/showcase_twitter_clone" ]; then
-                mv requirements.txt backend/showcase_twitter_clone/
-                cd backend/showcase_twitter_clone
-              else
-                mv requirements.txt backend/
-                cd backend
-              fi
+              # Move requirements.txt to the backend directory
+              mv requirements.txt backend/
+              cd backend
             else
               echo "Falling back to hardcoded requirements.txt"
-              # Create requirements.txt since we can't use Poetry
+              
+              # Create requirements.txt
               echo "Django>=4.2.0,<4.3.0" > requirements.txt
               echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
               echo "django-cors-headers>=4.3.0,<4.4.0" >> requirements.txt
@@ -305,6 +304,12 @@ jobs:
             # Run Django migrations
             python manage.py migrate
             python manage.py collectstatic --noinput --clear
+            
+            # Create directories for static and media files if they don't exist
+            mkdir -p static media
+            
+            # Verify the correct permissions on the directories
+            chmod -R 755 static media
             
             # Reload the webapp
             touch ${{ secrets.PYTHONANYWHERE_WSGI_PATH }}
@@ -389,19 +394,17 @@ jobs:
             git fetch
             git checkout staging
             
-            # Ensure directory structure matches PythonAnywhere configuration
-            BACKEND_DIR=""
-            if [ -d "backend/showcase_twitter_clone" ]; then
-              BACKEND_DIR="backend/showcase_twitter_clone"
-              echo "Using showcase_twitter_clone directory structure"
-            else
-              # Create the expected directory structure if it doesn't exist
-              mkdir -p backend/showcase_twitter_clone
-              cp -r backend/* backend/showcase_twitter_clone/ 2>/dev/null || :
-              # Remove any git-related files to avoid conflicts
-              rm -rf backend/showcase_twitter_clone/.git* 2>/dev/null || :
-              BACKEND_DIR="backend/showcase_twitter_clone"
-              echo "Created showcase_twitter_clone directory structure"
+            # Check current directory structure
+            echo "Current directory structure:"
+            ls -la
+            
+            # Ensure we are using the correct directory for the deployment
+            # PythonAnywhere's configuration shows /backend/showcase_twitter_clone
+            # but our actual structure is just /backend
+            if grep -q '/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone' /var/www/maxh33_pythonanywhere_com_wsgi.py; then
+              echo "WSGI file configured for /backend/showcase_twitter_clone - updating to match actual structure"
+              # Update the WSGI file to point to the correct directory
+              sed -i 's|/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone|/home/maxh33/showcase-twitter-clone/backend|g' /var/www/maxh33_pythonanywhere_com_wsgi.py
             fi
             
             # Check directory structure and find pyproject.toml
@@ -409,9 +412,14 @@ jobs:
             if [ -f "backend/pyproject.toml" ]; then
               PYPROJECT_PATH="backend/pyproject.toml"
               echo "Found pyproject.toml in backend directory"
-            elif [ -f "${BACKEND_DIR}/pyproject.toml" ]; then
-              PYPROJECT_PATH="${BACKEND_DIR}/pyproject.toml"
-              echo "Found pyproject.toml in ${BACKEND_DIR} directory"
+              
+              # Change to the backend directory where our actual code is
+              cd backend
+            else
+              echo "Could not find pyproject.toml - deployment may fail"
+              
+              # Still try to continue with the backend directory
+              cd backend
             fi
             
             # Try to use Poetry if installed
@@ -422,14 +430,15 @@ jobs:
             
             if [ ! -z "$PYPROJECT_PATH" ] && command -v poetry &> /dev/null; then
               echo "Using Poetry to export requirements.txt"
+              cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
               poetry export -f requirements.txt --output requirements.txt --without-hashes -p $PYPROJECT_PATH
               
-              # Move requirements.txt to the expected directory
-              mv requirements.txt ${BACKEND_DIR}/
-              cd ${BACKEND_DIR}
+              # Move requirements.txt to the backend directory
+              mv requirements.txt backend/
+              cd backend
             else
               echo "Falling back to hardcoded requirements.txt"
-              cd ${BACKEND_DIR}
+              
               # Create requirements.txt for validation
               echo "Django>=4.2.0,<4.3.0" > requirements.txt
               echo "djangorestframework>=3.14.0,<3.15.0" >> requirements.txt
@@ -452,6 +461,9 @@ jobs:
             
             # Verify the collectstatic command would work
             python manage.py collectstatic --dry-run
+            
+            # Update static file mappings in the PythonAnywhere web app if needed
+            # This shouldn't be needed if the static paths are already correctly configured
             
             # Switch back to main branch to avoid affecting production
             cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
