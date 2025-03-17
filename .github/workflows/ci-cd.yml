@@ -250,120 +250,105 @@ jobs:
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         run: |
-          # Create deployment script
-          cat > deploy_to_pythonanywhere.py << 'EOL'
+          # Create a simple Python script to handle deployment
+          cat > deploy.py << 'EOL'
           import os
           import requests
           import time
-          import json
           
-          # Configuration
-          username = os.environ['PA_USERNAME']
-          api_token = os.environ['PA_API_TOKEN']
-          domain_name = f"{username}.pythonanywhere.com"
-          api_base_url = f"https://www.pythonanywhere.com/api/v0/user/{username}/"
+          # Get environment variables
+          username = os.environ.get('PA_USERNAME')
+          api_token = os.environ.get('PA_API_TOKEN')
+          secret_key = os.environ.get('DJANGO_SECRET_KEY', 'default-secret-key')
+          
+          api_url = f"https://www.pythonanywhere.com/api/v0/user/{username}"
           headers = {'Authorization': f'Token {api_token}'}
           
-          # Step 1: Clean up existing consoles to avoid hitting console limit
+          # Clean up consoles to avoid hitting limit
           print("Cleaning up existing consoles...")
-          consoles_url = f"{api_base_url}consoles/"
-          response = requests.get(consoles_url, headers=headers)
+          r = requests.get(f"{api_url}/consoles/", headers=headers)
+          if r.status_code == 200:
+              for console in r.json():
+                  if 'id' in console:
+                      requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
           
-          if response.status_code == 200:
-              consoles = response.json()
-              for console in consoles:
-                  console_id = console.get('id')
-                  if console_id:
-                      print(f"Killing console {console_id}...")
-                      kill_url = f"{consoles_url}{console_id}/"
-                      requests.delete(kill_url, headers=headers)
-              print("All existing consoles cleaned up")
-          else:
-              print(f"Warning: Could not get console list: {response.text}")
-              
-          # Step 2: Create a single console for all operations
-          print("Starting deployment process...")
-          update_url = f"{api_base_url}consoles/"
-          deployment_commands = f"""
-          cd ~/
-          rm -rf showcase-twitter-clone
-          git clone https://github.com/maxh33/showcase-twitter-clone.git
-          cd showcase-twitter-clone/backend
-          pip install --user -r requirements.txt
-          mkdir -p static media
-          python manage.py collectstatic --noinput
-          exit
-          """
-          
-          console_response = requests.post(
-              update_url,
+          # Create console for deployment commands
+          print("Creating deployment console...")
+          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p static media && python manage.py collectstatic --noinput"
+          r = requests.post(
+              f"{api_url}/consoles/",
               headers=headers,
-              json={"executable": "bash", "arguments": "-c '$COMMAND'".replace('$COMMAND', deployment_commands)}
+              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
           )
           
-          if console_response.status_code != 201:
-              print(f"Error creating console: {console_response.text}")
+          if r.status_code != 201:
+              print(f"Error creating console: {r.text}")
               exit(1)
-          
-          console_id = console_response.json()["id"]
-          print(f"Console created with ID: {console_id}")
-          
-          # Wait for the console commands to complete
-          print("Waiting for deployment commands to complete...")
+              
+          print("Waiting for deployment to complete...")
           time.sleep(30)
           
-          # Step 3: Update WSGI file
+          # Create WSGI file content
+          wsgi_content = f"""import os
+import sys
+
+path = '/home/{username}/showcase-twitter-clone/backend'
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
+os.environ['DEBUG'] = 'False'
+os.environ['ALLOWED_HOSTS'] = '{username}.pythonanywhere.com,localhost,127.0.0.1'
+os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
+os.environ['SECRET_KEY'] = '{secret_key}'
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+"""
+          
+          # Update WSGI file using files parameter (not json)
           print("Updating WSGI file...")
           wsgi_path = f"/var/www/{username}_pythonanywhere_com_wsgi.py"
-          wsgi_content = f'''
-          import os
-          import sys
-          
-          # Add your project directory to the system path
-          path = '/home/{username}/showcase-twitter-clone/backend'
-          if path not in sys.path:
-              sys.path.insert(0, path)
-          
-          # Set environment variables for Django
-          os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
-          os.environ['DEBUG'] = 'False'
-          os.environ['ALLOWED_HOSTS'] = '{domain_name},localhost,127.0.0.1' 
-          os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
-          os.environ['SECRET_KEY'] = '{os.environ.get("DJANGO_SECRET_KEY", "DEFAULT_SECRET_KEY")}'
-          
-          # Import Django's WSGI handler
-          from django.core.wsgi import get_wsgi_application
-          application = get_wsgi_application()
-          '''
-          
-          update_url = f"{api_base_url}files/path{wsgi_path}"
-          response = requests.post(
-              update_url,
+          r = requests.post(
+              f"{api_url}/files/path{wsgi_path}",
               headers=headers,
-              json={"content": wsgi_content}
+              files={"content": wsgi_content}
           )
           
-          if response.status_code != 200 and response.status_code != 201:
-              print(f"Error updating WSGI file: {response.text}")
+          if r.status_code not in (200, 201):
+              print(f"Error updating WSGI file: {r.text}")
               exit(1)
           
-          print("WSGI file updated successfully")
-          
-          # Step 4: Reload web app
+          # Reload web app
           print("Reloading web app...")
-          reload_url = f"{api_base_url}webapps/{domain_name}/reload/"
-          response = requests.post(reload_url, headers=headers)
+          r = requests.post(
+              f"{api_url}/webapps/{username}.pythonanywhere.com/reload/",
+              headers=headers
+          )
           
-          if response.status_code != 200:
-              print(f"Error reloading app: {response.text}")
+          if r.status_code != 200:
+              print(f"Error reloading web app: {r.text}")
               exit(1)
           
-          print("Web app reloaded successfully")
+          # Debug URL configuration
+          print("Debugging URLs...")
+          debug_cmd = "cd ~/showcase-twitter-clone/backend && python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{debug_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error creating debug console: {r.text}")
+          else:
+              print(f"Debug console created with ID: {r.json().get('id')}")
+          
           print("Deployment completed!")
           EOL
           
           # Run the deployment script
-          python deploy_to_pythonanywhere.py
+          python deploy.py
   
   deploy-frontend-production:
     needs: build
@@ -447,117 +432,102 @@ jobs:
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         run: |
-          # Create deployment script
-          cat > deploy_to_pythonanywhere_staging.py << 'EOL'
+          # Create a simple Python script to handle deployment
+          cat > deploy_staging.py << 'EOL'
           import os
           import requests
           import time
-          import json
           
-          # Configuration
-          username = os.environ['PA_USERNAME']
-          api_token = os.environ['PA_API_TOKEN']
-          domain_name = f"{username}.pythonanywhere.com"
-          api_base_url = f"https://www.pythonanywhere.com/api/v0/user/{username}/"
+          # Get environment variables
+          username = os.environ.get('PA_USERNAME')
+          api_token = os.environ.get('PA_API_TOKEN')
+          secret_key = os.environ.get('DJANGO_SECRET_KEY', 'default-secret-key')
+          
+          api_url = f"https://www.pythonanywhere.com/api/v0/user/{username}"
           headers = {'Authorization': f'Token {api_token}'}
           
-          # Step 1: Clean up existing consoles to avoid hitting console limit
+          # Clean up consoles to avoid hitting limit
           print("Cleaning up existing consoles...")
-          consoles_url = f"{api_base_url}consoles/"
-          response = requests.get(consoles_url, headers=headers)
+          r = requests.get(f"{api_url}/consoles/", headers=headers)
+          if r.status_code == 200:
+              for console in r.json():
+                  if 'id' in console:
+                      requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
           
-          if response.status_code == 200:
-              consoles = response.json()
-              for console in consoles:
-                  console_id = console.get('id')
-                  if console_id:
-                      print(f"Killing console {console_id}...")
-                      kill_url = f"{consoles_url}{console_id}/"
-                      requests.delete(kill_url, headers=headers)
-              print("All existing consoles cleaned up")
-          else:
-              print(f"Warning: Could not get console list: {response.text}")
-              
-          # Step 2: Create a single console for all operations
-          print("Starting deployment process...")
-          update_url = f"{api_base_url}consoles/"
-          deployment_commands = f"""
-          cd ~/
-          rm -rf showcase-twitter-clone
-          git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git
-          cd showcase-twitter-clone/backend
-          pip install --user -r requirements.txt
-          mkdir -p static media
-          python manage.py collectstatic --noinput
-          exit
-          """
-          
-          console_response = requests.post(
-              update_url,
+          # Create console for deployment commands
+          print("Creating deployment console...")
+          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p static media && python manage.py collectstatic --noinput"
+          r = requests.post(
+              f"{api_url}/consoles/",
               headers=headers,
-              json={"executable": "bash", "arguments": "-c '$COMMAND'".replace('$COMMAND', deployment_commands)}
+              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
           )
           
-          if console_response.status_code != 201:
-              print(f"Error creating console: {console_response.text}")
+          if r.status_code != 201:
+              print(f"Error creating console: {r.text}")
               exit(1)
-          
-          console_id = console_response.json()["id"]
-          print(f"Console created with ID: {console_id}")
-          
-          # Wait for the console commands to complete
-          print("Waiting for deployment commands to complete...")
+              
+          print("Waiting for deployment to complete...")
           time.sleep(30)
           
-          # Step 3: Update WSGI file
+          # Create WSGI file content
+          wsgi_content = f"""import os
+import sys
+
+path = '/home/{username}/showcase-twitter-clone/backend'
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
+os.environ['DEBUG'] = 'False'
+os.environ['ALLOWED_HOSTS'] = '{username}.pythonanywhere.com,localhost,127.0.0.1'
+os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
+os.environ['SECRET_KEY'] = '{secret_key}'
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+"""
+          
+          # Update WSGI file using files parameter (not json)
           print("Updating WSGI file...")
           wsgi_path = f"/var/www/{username}_pythonanywhere_com_wsgi.py"
-          wsgi_content = f'''
-          import os
-          import sys
-          
-          # Add your project directory to the system path
-          path = '/home/{username}/showcase-twitter-clone/backend'
-          if path not in sys.path:
-              sys.path.insert(0, path)
-          
-          # Set environment variables for Django
-          os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'
-          os.environ['DEBUG'] = 'False'
-          os.environ['ALLOWED_HOSTS'] = '{domain_name},localhost,127.0.0.1' 
-          os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'
-          os.environ['SECRET_KEY'] = '{os.environ.get("DJANGO_SECRET_KEY", "DEFAULT_SECRET_KEY")}'
-          
-          # Import Django's WSGI handler
-          from django.core.wsgi import get_wsgi_application
-          application = get_wsgi_application()
-          '''
-          
-          update_url = f"{api_base_url}files/path{wsgi_path}"
-          response = requests.post(
-              update_url,
+          r = requests.post(
+              f"{api_url}/files/path{wsgi_path}",
               headers=headers,
-              json={"content": wsgi_content}
+              files={"content": wsgi_content}
           )
           
-          if response.status_code != 200 and response.status_code != 201:
-              print(f"Error updating WSGI file: {response.text}")
+          if r.status_code not in (200, 201):
+              print(f"Error updating WSGI file: {r.text}")
               exit(1)
           
-          print("WSGI file updated successfully")
-          
-          # Step 4: Reload web app
+          # Reload web app
           print("Reloading web app...")
-          reload_url = f"{api_base_url}webapps/{domain_name}/reload/"
-          response = requests.post(reload_url, headers=headers)
+          r = requests.post(
+              f"{api_url}/webapps/{username}.pythonanywhere.com/reload/",
+              headers=headers
+          )
           
-          if response.status_code != 200:
-              print(f"Error reloading app: {response.text}")
+          if r.status_code != 200:
+              print(f"Error reloading web app: {r.text}")
               exit(1)
           
-          print("Web app reloaded successfully")
+          # Debug URL configuration
+          print("Debugging URLs...")
+          debug_cmd = "cd ~/showcase-twitter-clone/backend && python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{debug_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error creating debug console: {r.text}")
+          else:
+              print(f"Debug console created with ID: {r.json().get('id')}")
+          
           print("Staging deployment completed!")
           EOL
           
           # Run the deployment script
-          python deploy_to_pythonanywhere_staging.py 
+          python deploy_staging.py 
