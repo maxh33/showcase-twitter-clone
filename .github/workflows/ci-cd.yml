@@ -238,6 +238,7 @@ jobs:
           host: ${{ secrets.PYTHONANYWHERE_HOST }}
           username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           script: |
             cd ${{ secrets.PYTHONANYWHERE_PROJECT_PATH }}
@@ -387,6 +388,7 @@ jobs:
           host: ${{ secrets.PYTHONANYWHERE_HOST }}
           username: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           script: |
             echo "Running backend validation for staging branch..."
