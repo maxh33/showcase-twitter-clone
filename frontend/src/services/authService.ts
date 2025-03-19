@@ -1,6 +1,24 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Store the original API URL from environment for debugging
+const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+// Try to detect if we're in a deployed environment and use PythonAnywhere API
+// The hostname check helps detect when running on Vercel
+const isDeployed = typeof window !== 'undefined' && 
+                  window.location.hostname !== 'localhost' && 
+                  window.location.hostname !== '127.0.0.1';
+
+// If deployed and still using localhost, force to PythonAnywhere
+const API_URL = isDeployed && ORIGINAL_API_URL.includes('localhost') 
+  ? 'https://maxh33.pythonanywhere.com/api' 
+  : ORIGINAL_API_URL;
+
+// Store the API URL in localStorage for debugging
+if (typeof window !== 'undefined') {
+  localStorage.setItem('debug-api-url', API_URL);
+  console.log('Using API URL:', API_URL);
+}
 
 interface RegisterData {
   username: string;
