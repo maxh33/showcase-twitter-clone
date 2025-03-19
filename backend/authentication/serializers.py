@@ -17,25 +17,42 @@ class UserSerializer(serializers.ModelSerializer):
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Custom token serializer that includes user data in the response"""
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'] = serializers.EmailField()
+        self.fields.pop('username', None)
+    
     def validate(self, attrs):
-        data = super().validate(attrs)
+        # Map email to username for authentication
+        attrs['username'] = attrs.pop('email')
         
-        # Add user details to response
-        user = self.user
-        data.update({
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'bio': user.bio,
-                'location': user.location,
-                'profile_picture': user.profile_picture.url if user.profile_picture else None,
-                'followers_count': user.followers_count,
-                'following_count': user.following_count,
-            }
-        })
-        
-        return data
+        try:
+            data = super().validate(attrs)
+            
+            # Add user details to response
+            user = self.user
+            data.update({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'bio': user.bio,
+                    'location': user.location,
+                    'profile_picture': user.profile_picture.url if user.profile_picture else None,
+                    'followers_count': user.followers_count,
+                    'following_count': user.following_count,
+                }
+            })
+            
+            return data
+        except serializers.ValidationError as e:
+            # Re-raise validation errors with 401 status for invalid credentials
+            if 'no active account found with the given credentials' in str(e).lower():
+                raise serializers.ValidationError('Invalid email or password', code='authentication_failed')
+            raise
+        except Exception as e:
+            # Log unexpected errors but don't expose them to the client
+            raise serializers.ValidationError('An error occurred during authentication')
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
