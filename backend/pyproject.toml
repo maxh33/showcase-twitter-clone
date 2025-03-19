@@ -18,6 +18,8 @@ djangorestframework-simplejwt = "^5.3.1"  # JWT Authentication
 pytest = "^7.4.0"
 pytest-django = "^4.5.2"
 pytest-cov = "^4.1.0"
+drf-yasg = "^1.21.7"  # Swagger/OpenAPI documentation
+mysqlclient = "^2.1.1"  # MySQL database connector
 
 [tool.poetry.dev-dependencies]
 pylint = "^3.3.5"

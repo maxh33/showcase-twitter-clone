@@ -208,7 +208,7 @@ jobs:
       
       - name: Install backend dependencies
         working-directory: ./backend
-        run: poetry install --without dev --no-root
+        run: poetry install --no-root
       
       - name: Archive backend app
         uses: actions/upload-artifact@v4
