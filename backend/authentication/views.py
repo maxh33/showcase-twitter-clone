@@ -5,7 +5,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
-from rest_framework import status, generics, permissions
+from rest_framework import status, generics, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -51,32 +51,46 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         }
     )
     def post(self, request, *args, **kwargs):
-        username = request.data.get('username', '')
+        email = request.data.get('email', '')
         ip_address = self.get_client_ip(request)
         
         # Check if account is locked
-        if FailedLoginAttempt.is_account_locked(username, ip_address):
+        if FailedLoginAttempt.is_account_locked(email):
             return Response(
                 {'error': 'Account locked due to too many failed login attempts. Please try again later.'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         
-        # Attempt to authenticate
-        serializer = self.get_serializer(data=request.data)
-        
         try:
+            # Attempt to authenticate
+            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            
             # If we get here, login was successful
-            FailedLoginAttempt.clear_failed_attempts(username)
+            FailedLoginAttempt.clear_failed_attempts(email)
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
-            # Record failed attempt
-            FailedLoginAttempt.record_failed_attempt(username, ip_address)
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            # Record failed attempt
-            FailedLoginAttempt.record_failed_attempt(username, ip_address)
+            
+        except serializers.ValidationError as e:
+            # Record failed attempt and return appropriate status code
+            FailedLoginAttempt.record_failed_attempt(email, ip_address)
+            
+            # Check if this is an authentication error
+            if getattr(e, 'code', None) == 'authentication_failed':
+                return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+        except (InvalidToken, TokenError) as e:
+            # Record failed attempt for token-related errors
+            FailedLoginAttempt.record_failed_attempt(email, ip_address)
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        except Exception as e:
+            # For any other errors, don't record a failed attempt as it might be a server issue
+            return Response(
+                {'error': 'An unexpected error occurred. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def get_client_ip(self, request):
         """Get client IP address from request"""

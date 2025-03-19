@@ -17,10 +17,10 @@ class LoginRateThrottle(AnonRateThrottle):
     scope = 'auth'
     
     def get_cache_key(self, request, view):
-        # Use the username as part of the cache key
-        username = request.data.get('username', '')
-        if username:
-            ident = username
+        # Use the email as part of the cache key
+        email = request.data.get('email', '')
+        if email:
+            ident = email
         else:
             ident = self.get_ident(request)
             
