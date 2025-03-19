@@ -208,7 +208,7 @@ jobs:
       
       - name: Install backend dependencies
         working-directory: ./backend
-        run: poetry install --without dev --no-root
+        run: poetry install --no-root
       
       - name: Archive backend app
         uses: actions/upload-artifact@v4
@@ -250,7 +250,7 @@ jobs:
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
         run: |
-          # Create a simple Python script to handle deployment
+          # Generate a simple Python script to handle deployment
           cat > deploy.py << 'EOL'
           import os
           import requests
@@ -260,6 +260,7 @@ jobs:
           username = os.environ.get('PA_USERNAME')
           api_token = os.environ.get('PA_API_TOKEN')
           secret_key = os.environ.get('DJANGO_SECRET_KEY', 'default-secret-key')
+          mysql_password = os.environ.get('MYSQL_PASSWORD', '')
           
           api_url = f"https://www.pythonanywhere.com/api/v0/user/{username}"
           headers = {'Authorization': f'Token {api_token}'}
@@ -274,7 +275,7 @@ jobs:
           
           # Create console for deployment commands
           print("Creating deployment console...")
-          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p static media && python manage.py collectstatic --noinput"
+          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && python manage.py collectstatic --noinput"
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -289,7 +290,7 @@ jobs:
           time.sleep(30)
           
           # Create WSGI file content
-          wsgi_content = "import os\nimport sys\n\npath = '/home/" + username + "/showcase-twitter-clone/backend'\nif path not in sys.path:\n    sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
+          wsgi_content = "import os\nimport sys\n\npaths = ['/home/" + username + "/showcase-twitter-clone/backend', '/home/" + username + "/showcase-twitter-clone/backend/showcase_twitter_clone', '/home/" + username + "/showcase-twitter-clone']\nfor path in paths:\n    if path not in sys.path:\n        sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\nos.environ['PYTHONANYWHERE'] = 'true'\nos.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
           
           # Update WSGI file using files parameter (not json)
           print("Updating WSGI file...")
@@ -302,6 +303,19 @@ jobs:
           
           if r.status_code not in (200, 201):
               print(f"Error updating WSGI file: {r.text}")
+              exit(1)
+          
+          # Run database migrations
+          print("Running database migrations...")
+          migration_cmd = "cd ~/showcase-twitter-clone/backend && MYSQL_PASSWORD='" + mysql_password + "' PYTHONANYWHERE=true python manage.py migrate"
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{migration_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error running migrations: {r.text}")
               exit(1)
           
           # Reload web app
@@ -317,7 +331,7 @@ jobs:
           
           # Debug URL configuration
           print("Debugging URLs...")
-          debug_cmd = "cd ~/showcase-twitter-clone/backend && python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
+          debug_cmd = "cd ~/showcase-twitter-clone/backend && PYTHONANYWHERE=true MYSQL_PASSWORD='" + mysql_password + "' python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -423,6 +437,7 @@ jobs:
           username = os.environ.get('PA_USERNAME')
           api_token = os.environ.get('PA_API_TOKEN')
           secret_key = os.environ.get('DJANGO_SECRET_KEY', 'default-secret-key')
+          mysql_password = os.environ.get('MYSQL_PASSWORD', '')
           
           api_url = f"https://www.pythonanywhere.com/api/v0/user/{username}"
           headers = {'Authorization': f'Token {api_token}'}
@@ -437,7 +452,7 @@ jobs:
           
           # Create console for deployment commands
           print("Creating deployment console...")
-          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p static media && python manage.py collectstatic --noinput"
+          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && python manage.py collectstatic --noinput"
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -452,7 +467,7 @@ jobs:
           time.sleep(30)
           
           # Create WSGI file content
-          wsgi_content = "import os\nimport sys\n\npath = '/home/" + username + "/showcase-twitter-clone/backend'\nif path not in sys.path:\n    sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
+          wsgi_content = "import os\nimport sys\n\npaths = ['/home/" + username + "/showcase-twitter-clone/backend', '/home/" + username + "/showcase-twitter-clone/backend/showcase_twitter_clone', '/home/" + username + "/showcase-twitter-clone']\nfor path in paths:\n    if path not in sys.path:\n        sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\nos.environ['PYTHONANYWHERE'] = 'true'\nos.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
           
           # Update WSGI file using files parameter (not json)
           print("Updating WSGI file...")
@@ -465,6 +480,19 @@ jobs:
           
           if r.status_code not in (200, 201):
               print(f"Error updating WSGI file: {r.text}")
+              exit(1)
+          
+          # Run database migrations
+          print("Running database migrations...")
+          migration_cmd = "cd ~/showcase-twitter-clone/backend && MYSQL_PASSWORD='" + mysql_password + "' PYTHONANYWHERE=true python manage.py migrate"
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{migration_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error running migrations: {r.text}")
               exit(1)
           
           # Reload web app
@@ -480,7 +508,7 @@ jobs:
           
           # Debug URL configuration
           print("Debugging URLs...")
-          debug_cmd = "cd ~/showcase-twitter-clone/backend && python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
+          debug_cmd = "cd ~/showcase-twitter-clone/backend && PYTHONANYWHERE=true MYSQL_PASSWORD='" + mysql_password + "' python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
