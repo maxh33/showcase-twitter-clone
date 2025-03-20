@@ -71,11 +71,18 @@ npm test -- --coverage
 
 ### Running End-to-End Tests
 
-To run the Cypress tests in headless mode:
+To run the Cypress tests in headless mode against the local environment:
 
 ```bash
 cd frontend
 npx cypress run
+```
+
+To run tests against the production environment:
+
+```bash
+cd frontend
+npx cypress run --env API_URL=https://maxh33.pythonanywhere.com/api
 ```
 
 To open the Cypress test runner UI:
@@ -84,6 +91,29 @@ To open the Cypress test runner UI:
 cd frontend
 npx cypress open
 ```
+
+### Test Environments
+
+The E2E tests can be run against different environments:
+
+- **Local Development**: Uses `http://localhost:8000/api` (default)
+- **Production**: Uses `https://maxh33.pythonanywhere.com/api`
+
+To switch environments, you can:
+
+1. Use the command line flag:
+   ```bash
+   npx cypress run --env API_URL=https://maxh33.pythonanywhere.com/api
+   ```
+
+2. Create a `cypress.env.json` file:
+   ```json
+   {
+     "API_URL": "https://maxh33.pythonanywhere.com/api"
+   }
+   ```
+
+3. Or modify `cypress.config.ts` directly.
 
 ### Test Structure
 
@@ -96,6 +126,7 @@ npx cypress open
   - Located in `cypress/e2e`
   - Focus on testing complete user flows
   - Use Cypress fixtures and interceptors to mock API responses
+  - Support testing against both local and production environments
 
 ## Authentication Testing
 
