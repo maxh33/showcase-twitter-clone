@@ -43,7 +43,7 @@ def api_root(request):
 
 # Define the API v1 URL patterns
 api_v1_patterns = [
-    path("auth/", include("authentication.urls")),
+    path("auth/", include("authentication.urls", namespace="auth")),
     path("users/", include("users.urls", namespace="users")),
     path("tweets/", include("tweets.urls", namespace="tweets")),
     path("notifications/", include("notifications.urls", namespace="notifications")),

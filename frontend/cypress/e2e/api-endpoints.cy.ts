@@ -2,14 +2,23 @@
 /// <reference types="@types/chai" />
 
 describe('API Endpoints Test', () => {
-  const API_URL = 'https://maxh33.pythonanywhere.com/api';
-  //const API_URL = 'http://localhost:8000/api';
+  // API URL Configuration
+  // Use environment variable if set, otherwise fallback to local
+  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api';
+  
+  // Test user data with timestamp to ensure uniqueness
+  const timestamp = new Date().getTime();
   const testUser = {
-    username: 'testuser',
-    email: 'testuser@example.com',
+    username: `testuser_${timestamp}`,
+    email: `testuser_${timestamp}@example.com`,
     password: 'TestPass123!',
     password2: 'TestPass123!'
   };
+
+  // Log which environment we're testing against
+  before(() => {
+    cy.log(`Testing against API: ${API_URL}`);
+  });
 
   describe('Authentication Endpoints', () => {
     it('should access API root', () => {
@@ -42,30 +51,11 @@ describe('API Endpoints Test', () => {
     });
 
     it('should handle login', () => {
-      const loginData = {
-        email: testUser.email,
-        password: testUser.password
-      };
-      cy.log('Login request data:', loginData);
-      cy.request({
-        method: 'POST',
-        url: `${API_URL}/v1/auth/login/`,
-        body: loginData,
-        failOnStatusCode: false
-      }).then((response) => {
-        cy.log('Login response:', response.body);
-        cy.log('Login status:', response.status);
-        expect(response.status).to.be.oneOf([200, 401, 429]);
-        if (response.status === 200) {
-          expect(response.body).to.have.property('access');
-          expect(response.body).to.have.property('refresh');
-          expect(response.body).to.have.property('user');
-          
-          // Store tokens for subsequent requests
-          Cypress.env('accessToken', response.body.access);
-          Cypress.env('refreshToken', response.body.refresh);
-        } else if (response.status === 429) {
-          cy.log('Account is temporarily locked due to too many failed attempts');
+      cy.login(testUser.email, testUser.password).then((response) => {
+        if (response) {
+          expect(response).to.have.property('access');
+          expect(response).to.have.property('refresh');
+          expect(response).to.have.property('user');
         }
       });
     });
@@ -120,22 +110,7 @@ describe('API Endpoints Test', () => {
 
   describe('User Endpoints', () => {
     beforeEach(() => {
-      // Login before each test if we don't have a token
-      if (!Cypress.env('accessToken')) {
-        cy.request({
-          method: 'POST',
-          url: `${API_URL}/v1/auth/login/`,
-          body: {
-            email: testUser.email,
-            password: testUser.password
-          },
-          failOnStatusCode: false
-        }).then((response) => {
-          if (response.status === 200) {
-            Cypress.env('accessToken', response.body.access);
-          }
-        });
-      }
+      cy.ensureAuthenticated(testUser);
     });
 
     it('should get user profile', () => {
@@ -164,22 +139,7 @@ describe('API Endpoints Test', () => {
 
   describe('Tweet Endpoints', () => {
     beforeEach(() => {
-      // Login before each test if we don't have a token
-      if (!Cypress.env('accessToken')) {
-        cy.request({
-          method: 'POST',
-          url: `${API_URL}/v1/auth/login/`,
-          body: {
-            email: testUser.email,
-            password: testUser.password
-          },
-          failOnStatusCode: false
-        }).then((response) => {
-          if (response.status === 200) {
-            Cypress.env('accessToken', response.body.access);
-          }
-        });
-      }
+      cy.ensureAuthenticated(testUser);
     });
 
     it('should create and fetch tweets', () => {

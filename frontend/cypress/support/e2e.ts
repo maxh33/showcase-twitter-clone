@@ -16,5 +16,21 @@
 // Import commands.js using ES2015 syntax:
 import './commands'
 
+// Import Chai and plugins
+import chai from 'chai';
+import chaiString from 'chai-string';
+
+// Configure Chai
+chai.use(chaiString);
+
+// Add Chai to global namespace
+declare global {
+  export namespace Cypress {
+    interface Chainable {
+      // Add custom commands here
+    }
+  }
+}
+
 // Alternatively you can use CommonJS syntax:
 // require('./commands') 
