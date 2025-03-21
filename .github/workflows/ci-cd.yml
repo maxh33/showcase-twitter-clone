@@ -373,10 +373,10 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          # Copy configuration files to build directory to ensure they're used
+          # Copy configuration files to build directory
           cp vercel.json build/
           cp build-config.json build/
-          # Deploy to production without the skip-build flag
+          # Deploy to production
           vercel deploy --prod --token=$VERCEL_TOKEN --yes
   
   deploy-staging:
@@ -404,10 +404,10 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          # Copy configuration files to build directory to ensure they're used
+          # Copy configuration files to build directory
           cp vercel.json build/
           cp build-config.json build/
-          # Deploy without the skip-build flag
+          # Deploy to staging
           vercel deploy --token=$VERCEL_TOKEN --yes
       
       # Backend deployment steps - Use PythonAnywhere API instead of SSH
