@@ -1,5 +1,6 @@
 # Twitter Clone **[Under Development]**
 
+
 ## Overview
 This Showcase is a Twitter clone that implements core functionalities such as user authentication, tweet management, and notifications. The application is built using Django for the backend and React for the frontend, providing a seamless user experience.
 
@@ -119,4 +120,20 @@ The application is deployed using a CI/CD pipeline:
    - Install dependencies using npm:
      ```bash
      npm install
-     ```
+    ```
+## Project Status & Quality Checks
+
+### Code Quality Badges
+[![CodeFactor](https://www.codefactor.io/repository/github/maxh33/showcase-twitter-clone/badge)](https://www.codefactor.io/repository/github/maxh33/showcase-twitter-clone)
+[![Snyk Security](https://snyk.io/test/github/maxh33/showcase-twitter-clone/badge.svg)](https://snyk.io/test/github/maxh33/showcase-twitter-clone)
+
+### Code Analysis Details
+- **CodeFactor Grade**: Automated analysis of code quality
+- **Snyk Security**: Continuous vulnerability monitoring
+- **Continuous Monitoring**: Automated checks on every commit
+
+### Scan Highlights
+- Static code analysis
+- Dependency vulnerability scanning
+- Best practices enforcement
+- Security risk assessment
