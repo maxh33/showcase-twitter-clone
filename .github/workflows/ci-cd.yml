@@ -376,10 +376,8 @@ jobs:
           # Copy essential files to build directory
           cp vercel.json build/
           cp build-config.json build/
-          cp .vercelignore build/
           
-          # Deploy using pre-built files
-          cd build
+          # Deploy using pre-built files (using the exact command that worked)
           vercel deploy --prod --token=$VERCEL_TOKEN --yes
   
   deploy-staging:
@@ -410,10 +408,8 @@ jobs:
           # Copy essential files to build directory
           cp vercel.json build/
           cp build-config.json build/
-          cp .vercelignore build/
           
-          # Deploy using pre-built files
-          cd build
+          # Deploy using pre-built files (using the exact command that worked)
           vercel deploy --token=$VERCEL_TOKEN --yes
       
       # Backend deployment steps - Use PythonAnywhere API instead of SSH
