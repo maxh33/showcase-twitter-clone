@@ -376,8 +376,8 @@ jobs:
           # Copy configuration files to build directory to ensure they're used
           cp vercel.json build/
           cp build-config.json build/
-          # Deploy to production without the skip-build flag
-          vercel deploy --prod --token=$VERCEL_TOKEN --yes
+          # Deploy to production using the build directory
+          vercel deploy ./build --prod --token=$VERCEL_TOKEN --yes
   
   deploy-staging:
     needs: build
@@ -407,8 +407,8 @@ jobs:
           # Copy configuration files to build directory to ensure they're used
           cp vercel.json build/
           cp build-config.json build/
-          # Deploy without the skip-build flag
-          vercel deploy --token=$VERCEL_TOKEN --yes
+          # Deploy using the build directory
+          vercel deploy ./build --token=$VERCEL_TOKEN --yes
       
       # Backend deployment steps - Use PythonAnywhere API instead of SSH
       - name: Set up Python

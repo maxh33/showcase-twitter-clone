@@ -2,6 +2,6 @@
   "buildCommand": false,
   "installCommand": false,
   "devCommand": false,
-  "framework": null,
+  "framework": "create-react-app",
   "outputDirectory": "build"
 } 
