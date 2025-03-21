@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": null,
-  "devCommand": null,
-  "installCommand": null,
+  "buildCommand": false,
+  "devCommand": false,
+  "installCommand": false,
   "outputDirectory": "build",
   "framework": null,
   "rewrites": [
