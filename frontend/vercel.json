@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": null,
+  "buildCommand": false,
   "devCommand": null,
   "installCommand": null,
   "outputDirectory": "build",
