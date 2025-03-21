@@ -1,7 +1,7 @@
 {
-  "buildCommand": false,
-  "installCommand": false,
-  "devCommand": false,
+  "buildCommand": null,
+  "installCommand": null,
+  "devCommand": null,
   "framework": null,
   "outputDirectory": "build"
 } 
