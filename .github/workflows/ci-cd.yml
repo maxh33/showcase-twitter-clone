@@ -373,10 +373,14 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          # Copy only the essential files to the build directory
+          # Copy essential files to build directory
           cp vercel.json build/
-          # Deploy with skip build since we're using pre-built files
-          vercel deploy --prod --token=$VERCEL_TOKEN --yes --cwd ./build
+          cp build-config.json build/
+          cp .vercelignore build/
+          
+          # Deploy using pre-built files
+          cd build
+          vercel deploy --prod --token=$VERCEL_TOKEN --yes
   
   deploy-staging:
     needs: build
@@ -403,10 +407,14 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          # Copy only the essential files to the build directory
+          # Copy essential files to build directory
           cp vercel.json build/
-          # Deploy with skip build since we're using pre-built files
-          vercel deploy --token=$VERCEL_TOKEN --yes --cwd ./build
+          cp build-config.json build/
+          cp .vercelignore build/
+          
+          # Deploy using pre-built files
+          cd build
+          vercel deploy --token=$VERCEL_TOKEN --yes
       
       # Backend deployment steps - Use PythonAnywhere API instead of SSH
       - name: Set up Python
