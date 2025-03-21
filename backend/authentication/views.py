@@ -5,12 +5,14 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
-from rest_framework import status, generics, permissions
+from rest_framework import status, generics, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -32,33 +34,63 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
     
+    @swagger_auto_schema(
+        operation_description="User login endpoint",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'password'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='User email'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='User password'),
+            }
+        ),
+        responses={
+            200: 'Returns access and refresh tokens',
+            400: 'Bad request',
+            401: 'Invalid credentials'
+        }
+    )
     def post(self, request, *args, **kwargs):
-        username = request.data.get('username', '')
+        email = request.data.get('email', '')
         ip_address = self.get_client_ip(request)
         
         # Check if account is locked
-        if FailedLoginAttempt.is_account_locked(username, ip_address):
+        if FailedLoginAttempt.is_account_locked(email):
             return Response(
                 {'error': 'Account locked due to too many failed login attempts. Please try again later.'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         
-        # Attempt to authenticate
-        serializer = self.get_serializer(data=request.data)
-        
         try:
+            # Attempt to authenticate
+            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            
             # If we get here, login was successful
-            FailedLoginAttempt.clear_failed_attempts(username)
+            FailedLoginAttempt.clear_failed_attempts(email)
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
-            # Record failed attempt
-            FailedLoginAttempt.record_failed_attempt(username, ip_address)
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            # Record failed attempt
-            FailedLoginAttempt.record_failed_attempt(username, ip_address)
+            
+        except serializers.ValidationError as e:
+            # Record failed attempt and return appropriate status code
+            FailedLoginAttempt.record_failed_attempt(email, ip_address)
+            
+            # Check if this is an authentication error
+            if getattr(e, 'code', None) == 'authentication_failed':
+                return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+        except (InvalidToken, TokenError) as e:
+            # Record failed attempt for token-related errors
+            FailedLoginAttempt.record_failed_attempt(email, ip_address)
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        except Exception as e:
+            # For any other errors, don't record a failed attempt as it might be a server issue
+            return Response(
+                {'error': 'An unexpected error occurred. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def get_client_ip(self, request):
         """Get client IP address from request"""
@@ -76,6 +108,25 @@ class RegistrationView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthRateThrottle]
     
+    @swagger_auto_schema(
+        operation_description="Register a new user",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['username', 'email', 'password', 'password2'],
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Username'),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email address'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Password'),
+                'password2': openapi.Schema(type=openapi.TYPE_STRING, description='Password confirmation'),
+                'bio': openapi.Schema(type=openapi.TYPE_STRING, description='User bio (optional)'),
+                'location': openapi.Schema(type=openapi.TYPE_STRING, description='User location (optional)'),
+            }
+        ),
+        responses={
+            201: 'User registered successfully',
+            400: 'Bad request - validation errors'
+        }
+    )
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -116,6 +167,21 @@ class EmailVerificationView(APIView):
     serializer_class = EmailVerificationSerializer
     throttle_classes = [AuthRateThrottle]
     
+    @swagger_auto_schema(
+        operation_description="Verify email with token",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['token', 'uidb64'],
+            properties={
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Verification token'),
+                'uidb64': openapi.Schema(type=openapi.TYPE_STRING, description='User ID encoded in base64'),
+            }
+        ),
+        responses={
+            200: 'Email verified successfully',
+            400: 'Invalid token or user ID'
+        }
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -144,6 +210,20 @@ class PasswordResetRequestView(APIView):
     serializer_class = PasswordResetRequestSerializer
     throttle_classes = [AuthRateThrottle]
     
+    @swagger_auto_schema(
+        operation_description="Request password reset email",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='User email'),
+            }
+        ),
+        responses={
+            200: 'Password reset email sent',
+            400: 'Email not found'
+        }
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -177,6 +257,23 @@ class PasswordResetConfirmView(APIView):
     serializer_class = PasswordResetConfirmSerializer
     throttle_classes = [AuthRateThrottle]
     
+    @swagger_auto_schema(
+        operation_description="Confirm password reset with token",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['token', 'uidb64', 'password', 'password2'],
+            properties={
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Reset token'),
+                'uidb64': openapi.Schema(type=openapi.TYPE_STRING, description='User ID encoded in base64'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='New password'),
+                'password2': openapi.Schema(type=openapi.TYPE_STRING, description='New password confirmation'),
+            }
+        ),
+        responses={
+            200: 'Password reset successful',
+            400: 'Invalid input or token'
+        }
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -204,6 +301,20 @@ class LogoutView(APIView):
     serializer_class = LogoutSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_description="Logout and invalidate refresh token",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refresh'],
+            properties={
+                'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='Refresh token to blacklist'),
+            }
+        ),
+        responses={
+            205: 'Logged out successfully',
+            400: 'Invalid token'
+        }
+    )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():

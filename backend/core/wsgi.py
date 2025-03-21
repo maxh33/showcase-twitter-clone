@@ -10,10 +10,15 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/wsgi/
 import sys
 import os
 
-# Add your project directory to the sys.path
-path = '/home/maxh33/showcase-twitter-clone/backend'
-if path not in sys.path:
-    sys.path.append(path)
+# Add all possible project directories to the sys.path
+paths = [
+    '/home/maxh33/showcase-twitter-clone/backend',
+    '/home/maxh33/showcase-twitter-clone'
+]
+
+for path in paths:
+    if path not in sys.path:
+        sys.path.append(path)
 
 # Set environment variables
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')

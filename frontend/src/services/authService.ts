@@ -1,6 +1,24 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Store the original API URL from environment for debugging
+const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+// Try to detect if we're in a deployed environment and use PythonAnywhere API
+// The hostname check helps detect when running on Vercel
+const isDeployed = typeof window !== 'undefined' && 
+                  window.location.hostname !== 'localhost' && 
+                  window.location.hostname !== '127.0.0.1';
+
+// If deployed and still using localhost, force to PythonAnywhere
+const API_URL = isDeployed && ORIGINAL_API_URL.includes('localhost') 
+  ? 'https://maxh33.pythonanywhere.com/api' 
+  : ORIGINAL_API_URL;
+
+// Store the API URL in localStorage for debugging
+if (typeof window !== 'undefined') {
+  localStorage.setItem('debug-api-url', API_URL);
+  console.log('Using API URL:', API_URL);
+}
 
 interface RegisterData {
   username: string;
@@ -12,7 +30,8 @@ interface RegisterData {
 }
 
 interface LoginData {
-  email: string;
+  username?: string;
+  email?: string;
   password: string;
 }
 
@@ -33,12 +52,12 @@ interface ConfirmResetPasswordData {
 }
 
 export const register = async (data: RegisterData) => {
-  const response = await axios.post(`${API_URL}/auth/register/`, data);
+  const response = await axios.post(`${API_URL}/v1/auth/register/`, data);
   return response.data;
 };
 
 export const login = async (data: LoginData) => {
-  const response = await axios.post(`${API_URL}/auth/login/`, data);
+  const response = await axios.post(`${API_URL}/v1/auth/login/`, data);
   if (response.data.access) {
     localStorage.setItem('token', response.data.access);
     localStorage.setItem('refreshToken', response.data.refresh);
@@ -52,7 +71,7 @@ export const logout = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     if (refreshToken) {
       // Send refreshToken to be blacklisted
-      await axios.post(`${API_URL}/auth/logout/`, { refresh: refreshToken });
+      await axios.post(`${API_URL}/v1/auth/logout/`, { refresh: refreshToken });
     }
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
@@ -74,7 +93,7 @@ export const refreshToken = async () => {
       throw new Error('No refresh token available');
     }
     
-    const response = await axios.post(`${API_URL}/auth/token/refresh/`, { refresh: refreshToken });
+    const response = await axios.post(`${API_URL}/v1/auth/token/refresh/`, { refresh: refreshToken });
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
@@ -88,17 +107,17 @@ export const refreshToken = async () => {
 };
 
 export const verifyEmail = async (data: VerifyEmailData) => {
-  const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
+  const response = await axios.post(`${API_URL}/v1/auth/verify-email/`, data);
   return response.data;
 };
 
 export const resetPassword = async (data: ResetPasswordData) => {
-  const response = await axios.post(`${API_URL}/auth/password-reset/`, data);
+  const response = await axios.post(`${API_URL}/v1/auth/password-reset/`, data);
   return response.data;
 };
 
 export const confirmResetPassword = async (data: ConfirmResetPasswordData) => {
-  const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
+  const response = await axios.post(`${API_URL}/v1/auth/password-reset/confirm/`, data);
   return response.data;
 };
 

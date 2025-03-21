@@ -10,5 +10,8 @@
   ],
   "github": {
     "enabled": false
+  },
+  "env": {
+    "REACT_APP_API_URL": "https://maxh33.pythonanywhere.com/api"
   }
 } 

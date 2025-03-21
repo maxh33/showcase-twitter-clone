@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "authentication",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -107,6 +108,20 @@ if os.environ.get("DATABASE_URL"):
             ssl_require=os.environ.get('POSTGRES_SSL', 'false') == 'true'
         )
     }
+# PythonAnywhere MySQL configuration
+elif os.environ.get("PYTHONANYWHERE") and os.environ.get("PYTHONANYWHERE") == 'true':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'maxh33$default',
+            'USER': 'maxh33',
+            'PASSWORD': os.environ.get('MYSQL_PASSWORD', ''),
+            'HOST': 'maxh33.mysql.pythonanywhere-services.com',
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
 else:
     # Local Database With SQLite
     DATABASES = {
@@ -157,11 +172,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'showcase_twitter_clone', 'static')
 
 # Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'showcase_twitter_clone', 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -170,6 +185,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom user model
 AUTH_USER_MODEL = 'users.User'
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -188,7 +208,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day',
-        'auth': '5/minute',  # For authentication endpoints
+        'auth': '60/minute',  # Increased for testing
     },
 }
 

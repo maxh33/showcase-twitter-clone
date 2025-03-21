@@ -1,126 +1,81 @@
-# Testing Documentation
+# Testing Guide
 
-This document outlines how to run the various tests for the Twitter Clone project.
+This document provides guidance for testing the Twitter Clone application.
 
-## Backend Testing
+## Unit Testing
 
-The backend uses pytest along with pytest-cov for coverage reporting.
-
-### Prerequisites
-
-Make sure you have installed all the required packages:
+### Backend
 
 ```bash
 cd backend
-poetry install
+pytest
 ```
 
-### Running the Tests
-
-To run the backend tests with coverage reporting:
-
-```bash
-cd backend
-chmod +x run_tests.sh
-./run_tests.sh
-```
-
-Alternatively, you can run:
-
-```bash
-cd backend
-poetry run python -m pytest --cov=. --cov-report=term-missing --cov-report=html
-```
-
-This will run all the tests and generate a coverage report in both the terminal and as an HTML report in the `htmlcov` directory.
-
-### Test Structure
-
-- The tests are organized by app and functionality
-- Fixtures are used to set up common test data
-- API endpoints are tested with Django REST Framework's test client
-
-## Frontend Testing
-
-The frontend uses Jest for unit and integration tests, and Cypress for end-to-end tests.
-
-### Prerequisites
-
-Make sure you have installed all the required packages:
-
-```bash
-cd frontend
-npm install
-```
-
-### Running Unit/Integration Tests
-
-To run the Jest tests:
+### Frontend
 
 ```bash
 cd frontend
 npm test
 ```
 
-To run with coverage:
+## E2E Testing with Cypress
 
 ```bash
 cd frontend
-npm test -- --coverage
+npx cypress open  # For interactive testing
+npx cypress run   # For headless testing
 ```
 
-### Running End-to-End Tests
+## Testing Environments
 
-To run the Cypress tests in headless mode:
+You can run tests against different environments:
 
+### Local API Testing
 ```bash
 cd frontend
-npx cypress run
+npx cypress run --spec "cypress/e2e/api-endpoints.cy.ts"
 ```
 
-To open the Cypress test runner UI:
-
+### Production API Testing
 ```bash
 cd frontend
-npx cypress open
+npx cypress run --spec "cypress/e2e/api-endpoints.cy.ts" --env API_URL=https://maxh33.pythonanywhere.com/api
 ```
 
-### Test Structure
+## Test Cases
 
-- Unit/Integration tests:
-  - Located in `__tests__` directories alongside the code they're testing
-  - Use Jest and axios-mock-adapter to mock API calls
-  - Focus on testing service methods and component behavior
+### User Authentication
 
-- End-to-End tests:
-  - Located in `cypress/e2e`
-  - Focus on testing complete user flows
-  - Use Cypress fixtures and interceptors to mock API responses
+#### Username Validation
+- Usernames must be 3-30 characters long
+- Allowed characters: letters, numbers, spaces, periods, underscores, and hyphens
+- Cannot be empty or contain non-allowed characters
+- Cannot be already in use
 
-## Authentication Testing
+Valid username examples:
+- `john_doe`
+- `jane.doe`
+- `John Doe`
+- `user-123`
 
-The authentication testing focuses on ensuring that the frontend auth service works correctly with the backend API. Key aspects tested include:
+Invalid username examples:
+- `jo` (too short)
+- `thisusernameiswaytoolongandexceedsthirtycharacters` (too long)
+- `user@name` (contains @ symbol)
+- `admin` (reserved name)
 
-1. User registration
-2. Login/logout
-3. JWT token management
-4. Email verification
-5. Password reset
-6. Token refreshing
+#### Email Validation
+- Must be in valid email format
+- Cannot be already in use
 
-## Running All Tests
+#### Password Validation
+- Must be at least 8 characters
+- Must include uppercase, lowercase, digit, and special character
+- Passwords must match when confirming
 
-To run all tests for the project:
+### Login Testing
+- Users should be able to login with either username or email
+- Invalid credentials should display appropriate error messages
 
-```bash
-# Backend tests
-cd backend
-./run_tests.sh
-
-# Frontend unit/integration tests
-cd ../frontend
-npm test -- --coverage
-
-# Frontend E2E tests
-npx cypress run
-``` 
+### API Testing
+The complete authentication flow can be tested using the provided Cypress tests. 
