@@ -93,9 +93,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
         
         # Check if username contains only allowed characters
         import re
-        if not re.match(r'^[a-zA-Z0-9_.-]+$', value):
+        if not re.match(r'^[a-zA-Z0-9_. -]+$', value):
             raise serializers.ValidationError(
-                "Username can only contain letters, numbers, periods, underscores, and hyphens."
+                "Username can only contain letters, numbers, spaces, periods, underscores, and hyphens."
             )
         
         # Check for offensive terms

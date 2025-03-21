@@ -5,6 +5,8 @@ This is the backend component of the Twitter Clone project, built with Django an
 ## Features
 
 - User authentication with JWT
+  - Username validation: 3-30 characters, allowing letters, numbers, spaces, periods, underscores, and hyphens
+  - Login with either username or email
 - Tweet management
 - User profiles
 - Follow/unfollow functionality

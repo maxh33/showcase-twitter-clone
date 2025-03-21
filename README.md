@@ -6,6 +6,8 @@ This Showcase is a Twitter clone that implements core functionalities such as us
 ## Features
 - User authentication with JWT
 - Registration and login functionality
+  - Username supports letters, numbers, spaces, periods, underscores, and hyphens (3-30 characters)
+  - Login with either username or email address
 - Password reset and email verification
 - Tweet creation, deletion, and interaction
 - Real-time notifications
@@ -46,7 +48,8 @@ The following API endpoints are available:
 
 ### Authentication
 - `/api/v1/auth/register/` - Register a new user
-- `/api/v1/auth/login/` - Login and get JWT tokens
+  - Usernames must be 3-30 characters and can contain letters, numbers, spaces, periods, underscores, and hyphens
+- `/api/v1/auth/login/` - Login with username or email
 - `/api/v1/auth/logout/` - Logout and invalidate tokens
 - `/api/v1/auth/token/refresh/` - Refresh an expired token
 - `/api/v1/auth/password-reset/` - Request password reset
@@ -117,58 +120,3 @@ The application is deployed using a CI/CD pipeline:
      ```bash
      npm install
      ```
-
-4. Run the application:
-   - Start the backend server:
-     ```bash
-     poetry run python manage.py runserver
-     ```
-   - Start the frontend development server:
-     ```bash
-     npm start
-     ```
-
-## API Testing
-The repository includes scripts for testing API endpoints:
-
-1. Install test dependencies:
-   ```bash
-   pip install -r backend/tests/api/requirements.txt
-   ```
-
-2. Run the authentication endpoints test:
-   ```bash
-   python backend/tests/api/auth_endpoints_test.py
-   ```
-
-## Database Configuration
-- **Local Development**: PostgreSQL or SQLite
-- **Production**: MySQL on PythonAnywhere
-  - Host: `maxh33.mysql.pythonanywhere-services.com`
-  - Database name: `maxh33$default`
-  - Configuration is handled automatically by the deployment process
-
-## Environment Variables
-The application uses the following environment variables:
-- `DEBUG`: Set to "True" for development, "False" for production
-- `SECRET_KEY`: Django secret key (auto-generated in development)
-- `DATABASE_URL`: PostgreSQL connection string (local development)
-- `PYTHONANYWHERE`: Set to "true" to use MySQL on PythonAnywhere
-- `MYSQL_PASSWORD`: MySQL password for PythonAnywhere
-- `REACT_APP_API_URL`: Backend API URL for the frontend
-
-## PythonAnywhere Deployment
-For manual deployment to PythonAnywhere:
-1. Clone the repository on PythonAnywhere
-2. Install dependencies using pip
-3. Configure the WSGI file to point to the correct paths
-4. Set up static file mappings in the PythonAnywhere dashboard
-5. Run database migrations
-6. Reload the web app
-
-Refer to `DEPLOYMENT.md` for detailed instructions.
-
-## How to Run
-- Ensure you have Docker installed for local development.
-- Use the provided `.env` files for environment variables.
-- Follow the setup instructions above to run both the backend and frontend servers.
