@@ -61,9 +61,9 @@ const SignupPage: React.FC = () => {
       }
       
       // Check username format - only allow letters, numbers, periods, underscores, and hyphens
-      const usernameRegex = /^[a-zA-Z0-9_.-]+$/;
+      const usernameRegex = /^[a-zA-Z0-9_. -]+$/;
       if (!usernameRegex.test(formData.username)) {
-        newErrors.username = 'Username can only contain letters, numbers, periods, underscores, and hyphens';
+        newErrors.username = 'Username can only contain letters, numbers, spaces, periods, underscores, and hyphens';
       }
     }
     
