@@ -29,7 +29,7 @@ interface LocationState {
 
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '', // This can be either username or email
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,10 +66,8 @@ const LoginPage: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+    if (!formData.identifier.trim()) {
+      newErrors.identifier = 'Username or email is required';
     }
     
     if (!formData.password) {
@@ -86,16 +84,59 @@ const LoginPage: React.FC = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setErrors({});
     
     try {
-      await login(formData);
+      // Determine if identifier is an email or username
+      const isEmail = formData.identifier.includes('@');
+      const loginData = isEmail 
+        ? { email: formData.identifier, password: formData.password }
+        : { username: formData.identifier, password: formData.password };
+      
+      await login(loginData);
       navigate('/'); // Redirect to home page after successful login
     } catch (error: unknown) {
+      console.error('Login error:', error);
+      
       if (error && typeof error === 'object' && 'response' in error && 
           error.response && typeof error.response === 'object' && 'data' in error.response) {
-        setErrors(error.response.data as Record<string, string>);
+        const responseData = error.response.data;
+        
+        if (responseData && typeof responseData === 'object') {
+          // Type assertion to allow property access
+          const errorData = responseData as Record<string, unknown>;
+          
+          // Check for specific error fields
+          if (errorData.email || errorData.username) {
+            setErrors({ 
+              identifier: String(errorData.email || errorData.username) 
+            });
+          } else if (errorData.detail) {
+            setErrors({ general: String(errorData.detail) });
+          } else if (errorData.non_field_errors) {
+            const nonFieldErrors = errorData.non_field_errors;
+            if (Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
+              setErrors({ general: String(nonFieldErrors[0]) });
+            } else {
+              setErrors({ general: String(nonFieldErrors) });
+            }
+          } else {
+            // Convert all values to strings
+            const stringErrors: Record<string, string> = {};
+            Object.entries(errorData).forEach(([key, value]) => {
+              if (Array.isArray(value) && value.length > 0) {
+                stringErrors[key] = String(value[0]);
+              } else {
+                stringErrors[key] = String(value);
+              }
+            });
+            setErrors(stringErrors);
+          }
+        } else {
+          setErrors({ general: 'Invalid credentials. Please try again.' });
+        }
       } else {
-        setErrors({ general: 'Invalid credentials. Please try again.' });
+        setErrors({ general: 'Unable to log in. Please check your credentials and try again.' });
       }
     } finally {
       setIsLoading(false);
@@ -120,16 +161,16 @@ const LoginPage: React.FC = () => {
         
         <Form onSubmit={handleSubmit}>
           <FormGroup>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="identifier">Username or Email</Label>
             <Input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              id="identifier"
+              name="identifier"
+              value={formData.identifier}
               onChange={handleChange}
-              placeholder="Enter your email address"
+              placeholder="Enter your username or email"
             />
-            {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
+            {errors.identifier && <ErrorMessage>{errors.identifier}</ErrorMessage>}
           </FormGroup>
           
           <FormGroup>
