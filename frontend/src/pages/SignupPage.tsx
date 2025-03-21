@@ -52,6 +52,19 @@ const SignupPage: React.FC = () => {
     
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
+    } else {
+      // Check username length
+      if (formData.username.length < 3) {
+        newErrors.username = 'Username must be at least 3 characters long';
+      } else if (formData.username.length > 30) {
+        newErrors.username = 'Username cannot exceed 30 characters';
+      }
+      
+      // Check username format - only allow letters, numbers, periods, underscores, and hyphens
+      const usernameRegex = /^[a-zA-Z0-9_.-]+$/;
+      if (!usernameRegex.test(formData.username)) {
+        newErrors.username = 'Username can only contain letters, numbers, periods, underscores, and hyphens';
+      }
     }
     
     if (!formData.email.trim()) {
