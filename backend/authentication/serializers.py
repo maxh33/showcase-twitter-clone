@@ -19,12 +19,31 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['email'] = serializers.EmailField()
-        self.fields.pop('username', None)
+        # Keep both fields, allowing login with either username or email
+        self.fields['email'] = serializers.EmailField(required=False)
     
     def validate(self, attrs):
-        # Map email to username for authentication
-        attrs['username'] = attrs.pop('email')
+        # Check if email is provided, use it for authentication
+        if 'email' in attrs and attrs['email']:
+            # Find user by email
+            try:
+                user = User.objects.get(email=attrs['email'])
+                attrs['username'] = user.username
+            except User.DoesNotExist:
+                raise serializers.ValidationError(
+                    {'email': 'No user found with this email address.'},
+                    code='authorization'
+                )
+            
+            # Remove email from attrs now that we've set username
+            attrs.pop('email', None)
+        
+        # Only proceed if username exists
+        if not attrs.get('username'):
+            raise serializers.ValidationError(
+                {'username': 'Username or email is required.'},
+                code='authorization'
+            )
         
         try:
             data = super().validate(attrs)
@@ -48,7 +67,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         except serializers.ValidationError as e:
             # Re-raise validation errors with 401 status for invalid credentials
             if 'no active account found with the given credentials' in str(e).lower():
-                raise serializers.ValidationError('Invalid email or password', code='authentication_failed')
+                raise serializers.ValidationError('Invalid username/email or password', code='authentication_failed')
             raise
         except Exception as e:
             # Log unexpected errors but don't expose them to the client
@@ -63,6 +82,32 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'password', 'password2', 'bio', 'location')
+    
+    def validate_username(self, value):
+        """Validate username format and availability"""
+        # Check length
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long.")
+        if len(value) > 30:
+            raise serializers.ValidationError("Username cannot exceed 30 characters.")
+        
+        # Check if username contains only allowed characters
+        import re
+        if not re.match(r'^[a-zA-Z0-9_.-]+$', value):
+            raise serializers.ValidationError(
+                "Username can only contain letters, numbers, periods, underscores, and hyphens."
+            )
+        
+        # Check for offensive terms
+        offensive_terms = ['admin', 'root', 'administrator', 'moderator', 'superuser']
+        if value.lower() in offensive_terms or any(term in value.lower() for term in offensive_terms):
+            raise serializers.ValidationError("This username is not allowed.")
+        
+        # Check if already in use
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        
+        return value
         
     def validate(self, attrs):
         # Check that passwords match
