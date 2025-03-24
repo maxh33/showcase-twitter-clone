@@ -1,15 +1,12 @@
-from django.urls import path
-from django.http import JsonResponse
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TweetViewSet
 
 app_name = 'tweets'
 
-def tweet_api_root(request):
-    """Placeholder for tweets API root"""
-    return JsonResponse({
-        "status": "success",
-        "message": "Tweets API endpoints coming soon",
-    })
+router = DefaultRouter()
+router.register(r'', TweetViewSet, basename='tweet')
 
 urlpatterns = [
-    path('', tweet_api_root, name='tweet-api-root'),
+    path('', include(router.urls)),
 ] 
