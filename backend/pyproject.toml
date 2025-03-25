@@ -20,6 +20,7 @@ pytest-django = "^4.5.2"
 pytest-cov = "^4.1.0"
 drf-yasg = "^1.21.7"  # Swagger/OpenAPI documentation
 mysqlclient = "^2.1.1"  # MySQL database connector
+python-magic = "^0.4.27"
 
 [tool.poetry.dev-dependencies]
 pylint = "^3.3.5"
