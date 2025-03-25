@@ -48,6 +48,7 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+.cursor
 
 # Testing
 .coverage
