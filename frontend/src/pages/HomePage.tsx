@@ -14,6 +14,8 @@ const HomeContainer = styled.div`
   max-width: 1300px;
   margin: 0 auto;
   background-color: white;
+  height: 100vh;
+  overflow: hidden; /* Contain the scrollable area within the Feed component */
 `;
 
 const CURRENT_USER_KEY = 'twitter_clone_current_user';

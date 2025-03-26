@@ -52,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <S.Nav>
           <S.NavItem active={activeItem === 'home'} onClick={() => handleNavClick('/')}>
             🏠
-            <S.NavText>Home</S.NavText>
+            <S.NavText>Feed</S.NavText>
           </S.NavItem>
           
           <S.NavItem active={activeItem === 'explore'} onClick={() => handleNavClick('/explore')}>
