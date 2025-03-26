@@ -1,6 +1,5 @@
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+import axios, { AxiosInstance } from 'axios';
+import { API_URL } from '../utils/apiConfig';
 
 // Define interfaces for tweets
 export interface Tweet {
@@ -18,6 +17,7 @@ export interface Tweet {
   updated_at: string;
   likes_count: number;
   retweet_count: number;
+  comments_count: number;
   media: MediaAttachment[];
 }
 
@@ -38,160 +38,176 @@ export interface FeedResponse {
   results: Tweet[];
 }
 
-// Create axios instance with auth headers
-const createAxiosInstance = () => {
-  const token = localStorage.getItem('token');
+/**
+ * Creates a configured axios instance for tweet-related API calls
+ */
+const createAxiosInstance = (): AxiosInstance => {
   const instance = axios.create({
     baseURL: `${API_URL}/v1/tweets`,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     },
   });
 
-  // Add request interceptor to always use the latest token
-  instance.interceptors.request.use((config) => {
-    const currentToken = localStorage.getItem('token');
-    if (currentToken) {
-      config.headers.Authorization = `Bearer ${currentToken}`;
+  // Add a request interceptor to get the latest token before each request
+  instance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
     }
-    return config;
-  });
+  );
 
   return instance;
 };
 
-// Get tweets for home feed with pagination
-export const getFeed = async (page = 1): Promise<FeedResponse> => {
-  try {
-    const api = createAxiosInstance();
-    const response = await api.get(`/feed/?page=${page}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching tweet feed:', error);
-    throw error;
+/**
+ * Service for tweet-related operations
+ */
+export const tweetService = {
+  /**
+   * Fetches tweets from the API
+   */
+  async getFeed(page = 1): Promise<FeedResponse> {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const response = await axiosInstance.get('/', {
+        params: {
+          page
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tweets:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Creates a new tweet
+   * @param content - The content of the tweet
+   */
+  async createTweet(content: string, media?: File) {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const formData = new FormData();
+      formData.append('content', content);
+      
+      if (media) {
+        formData.append('media', media);
+      }
+      
+      const response = await axiosInstance.post('/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Tweet created successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating tweet:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Likes a tweet
+   * @param tweetId - The ID of the tweet to like
+   */
+  async likeTweet(tweetId: number) {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const response = await axiosInstance.post(`/${tweetId}/like/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error liking tweet ${tweetId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Retweets a tweet
+   * @param tweetId - The ID of the tweet to retweet
+   */
+  async retweetTweet(tweetId: number) {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const response = await axiosInstance.post(`/${tweetId}/retweet/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error retweeting tweet ${tweetId}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Fetches comments for a tweet
+   * @param tweetId - The ID of the tweet to get comments for
+   */
+  async fetchComments(tweetId: number) {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const response = await axiosInstance.get(`/${tweetId}/comments/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching comments for tweet ${tweetId}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Creates a new comment on a tweet
+   * @param tweetId - The ID of the tweet to comment on
+   * @param content - The content of the comment
+   * @param media - Optional media file to attach to the comment
+   */
+  async createComment(tweetId: number, content: string, media?: File) {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const formData = new FormData();
+      formData.append('content', content);
+      
+      if (media) {
+        formData.append('media', media);
+      }
+      
+      const response = await axiosInstance.post(`/${tweetId}/comments/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('Comment created successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error creating comment on tweet ${tweetId}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Deletes a comment
+   * @param tweetId - The ID of the tweet the comment belongs to
+   * @param commentId - The ID of the comment to delete
+   */
+  async deleteComment(tweetId: number, commentId: number) {
+    const axiosInstance = createAxiosInstance();
+    try {
+      const response = await axiosInstance.delete(`/${tweetId}/comments/${commentId}/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting comment ${commentId} from tweet ${tweetId}:`, error);
+      throw error;
+    }
   }
 };
 
-// Create a new tweet
-export const createTweet = async (tweetData: CreateTweetRequest): Promise<Tweet> => {
-  try {
-    const api = createAxiosInstance();
-    const formData = new FormData();
-    formData.append('content', tweetData.content);
-    
-    const response = await api.post('/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error creating tweet:', error);
-    throw error;
-  }
-};
+export const { getFeed, likeTweet, retweetTweet, createTweet, fetchComments, createComment, deleteComment } = tweetService;
 
-// Get a specific tweet by ID
-export const getTweetById = async (id: number): Promise<Tweet> => {
-  try {
-    const api = createAxiosInstance();
-    const response = await api.get(`/${id}/`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching tweet with id ${id}:`, error);
-    throw error;
-  }
-};
-
-// Update a tweet
-export const updateTweet = async (id: number, tweetData: CreateTweetRequest): Promise<Tweet> => {
-  try {
-    const api = createAxiosInstance();
-    const response = await api.patch(`/${id}/`, tweetData);
-    return response.data;
-  } catch (error) {
-    console.error(`Error updating tweet with id ${id}:`, error);
-    throw error;
-  }
-};
-
-// Delete a tweet
-export const deleteTweet = async (id: number): Promise<void> => {
-  try {
-    const api = createAxiosInstance();
-    await api.delete(`/${id}/`);
-  } catch (error) {
-    console.error(`Error deleting tweet with id ${id}:`, error);
-    throw error;
-  }
-};
-
-// Like a tweet
-export const likeTweet = async (id: number): Promise<void> => {
-  try {
-    const api = createAxiosInstance();
-    await api.post(`/${id}/like/`);
-  } catch (error) {
-    console.error(`Error liking tweet with id ${id}:`, error);
-    throw error;
-  }
-};
-
-// Retweet a tweet
-export const retweetTweet = async (id: number): Promise<void> => {
-  try {
-    const api = createAxiosInstance();
-    await api.post(`/${id}/retweet/`);
-  } catch (error) {
-    console.error(`Error retweeting tweet with id ${id}:`, error);
-    throw error;
-  }
-};
-
-// Search tweets
-export const searchTweets = async (query: string, page = 1): Promise<FeedResponse> => {
-  try {
-    const api = createAxiosInstance();
-    const response = await api.get(`/search/?q=${encodeURIComponent(query)}&page=${page}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error searching tweets with query "${query}":`, error);
-    throw error;
-  }
-};
-
-// Get tweets from a specific user
-export const getUserTweets = async (username: string, page = 1): Promise<FeedResponse> => {
-  try {
-    const api = createAxiosInstance();
-    const response = await api.get(`/user_tweets/?username=${encodeURIComponent(username)}&page=${page}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching tweets from user "${username}":`, error);
-    throw error;
-  }
-};
-
-// Upload media attachment for a tweet
-export const uploadMedia = async (tweetId: number, file: File): Promise<MediaAttachment> => {
-  try {
-    const api = createAxiosInstance();
-    
-    // Need to use FormData to upload files
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Need to override the content-type header to undefined so axios sets it correctly with boundary
-    const response = await api.post(`/${tweetId}/add_media/`, formData, {
-      headers: {
-        'Content-Type': undefined,
-      },
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error(`Error uploading media for tweet ${tweetId}:`, error);
-    throw error;
-  }
-};
+export default tweetService;
