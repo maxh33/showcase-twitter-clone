@@ -11,6 +11,8 @@ This Showcase is a Twitter clone that implements core functionalities such as us
   - Login with either username or email address
 - Password reset and email verification
 - Tweet creation, deletion, and interaction
+  - Comment on tweets with text and media
+  - Like and reply to comments
 - Real-time notifications
 - Responsive design
 - API documentation with Swagger/OpenAPI
@@ -61,7 +63,11 @@ The following API endpoints are available:
 - `/api/v1/users/` - User profile endpoints (coming soon)
 
 ### Tweets
-- `/api/v1/tweets/` - Tweet management endpoints (coming soon)
+- `/api/v1/tweets/` - Tweet management endpoints
+  - `GET /api/v1/tweets/{id}/comments/` - Get comments for a tweet
+  - `POST /api/v1/tweets/{id}/comments/` - Add a comment to a tweet
+  - `PUT/PATCH /api/v1/tweets/{id}/comments/{comment_id}/` - Update a comment
+  - `DELETE /api/v1/tweets/{id}/comments/{comment_id}/` - Delete a comment
 
 ### Follows
 - `/api/v1/follows/` - Follow/unfollow management (coming soon)

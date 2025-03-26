@@ -2,6 +2,19 @@
 
 This project is a Twitter clone frontend built with React, TypeScript, and Styled Components.
 
+## Features
+
+- User authentication and profile management
+- Tweet creation and interaction
+  - Create and delete tweets
+  - Like and retweet functionality
+  - Comment on tweets with text and media
+  - Like and reply to comments
+- Media integration
+  - Upload images to tweets and comments
+  - Search and add Unsplash images
+- Responsive design with modern UI/UX
+
 ## External APIs Integration
 
 ### Random User Generation

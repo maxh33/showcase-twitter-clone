@@ -11,6 +11,7 @@ This is the backend component of the Twitter Clone project, built with Django an
   - Create, update, and delete tweets
   - Like and retweet functionality
   - Media attachments
+  - Comments with media support
   - Feed generation
   - Search tweets by content or username
 - User profiles
@@ -40,6 +41,11 @@ This is the backend component of the Twitter Clone project, built with Django an
 - `POST /api/v1/tweets/{id}/like/` - Like a tweet
 - `POST /api/v1/tweets/{id}/retweet/` - Retweet a tweet
 - `POST /api/v1/tweets/{id}/add_media/` - Add media to a tweet
+- `GET /api/v1/tweets/{id}/comments/` - Get comments for a tweet
+- `POST /api/v1/tweets/{id}/comments/` - Create a comment
+- `PUT/PATCH /api/v1/tweets/{id}/comments/{comment_id}/` - Update a comment
+- `DELETE /api/v1/tweets/{id}/comments/{comment_id}/` - Delete a comment
+- `POST /api/v1/tweets/{id}/comments/{comment_id}/add_media/` - Add media to a comment
 
 ## Development
 
