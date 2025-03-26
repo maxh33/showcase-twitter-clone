@@ -11,6 +11,7 @@ interface SidebarProps {
     handle: string;
     avatar: string;
   };
+  onLogout?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -19,7 +20,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     name: 'Current User', 
     handle: 'user', 
     avatar: 'https://via.placeholder.com/50' 
-  }
+  },
+  onLogout
 }) => {
   const navigate = useNavigate();
   
@@ -28,8 +30,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
   
   const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+    try {
+      await logout();
+      if (onLogout) {
+        onLogout();
+      } else {
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
   
   return (
@@ -75,9 +85,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             <S.NavText>Profile</S.NavText>
           </S.NavItem>
           
-          <S.NavItem onClick={() => handleLogout()}>
+          <S.NavItem onClick={handleLogout}>
             •••
-            <S.NavText>More</S.NavText>
+            <S.NavText>Logout</S.NavText>
           </S.NavItem>
           
           <S.TweetButton onClick={() => handleNavClick('/')}>
