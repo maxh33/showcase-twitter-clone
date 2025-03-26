@@ -1,8 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { createTweet, uploadMedia } from '../../../services/tweetService';
+import tweetService from '../../../services/tweetService';
 import { fetchRandomImages, UnsplashImage } from '../../../services/imageService';
 import { IconContext } from 'react-icons';
+import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import * as S from './styles';
+import IconWrapper from '../../common/IconWrapper';
+
+// Simple emoji array for the custom emoji picker
+const EMOJI_LIST = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊',
+  '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛',
+  '😜', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐',
+  '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪',
+  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '❣️', '💕', '💞',
+  '👍', '👎', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✌️', '🤟',
+  '🌍', '🌎', '🌏', '🌐', '🏳️', '🏴', '🏴‍☠️', '🏁', '🚩', '🏳️‍🌈',
+  '👨‍💻', '👩‍💻', '👨‍🎓', '👩‍🎓', '👨‍🏫', '👩‍🏫', '👨‍⚕️', '👩‍⚕️', '👨‍🍳', '👩‍🍳',
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨',
+  '🚀', '🛸', '🚁', '✈️', '🚂', '🚆', '🚇', '🚌', '🚕', '🏎️'
+];
 
 interface TweetComposerProps {
   onTweetCreated?: () => void;
@@ -15,110 +31,45 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
 }) => {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>([]);
-  const [imageSearch, setImageSearch] = useState('');
   const [isLoadingImages, setIsLoadingImages] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [imageSearchQuery, setImageSearchQuery] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
   
-  // Fetch random images when the image picker is shown
+  // Handle clicking outside emoji picker to close it
   useEffect(() => {
-    if (showImagePicker) {
-      fetchUnsplashImages();
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
     }
-  }, [showImagePicker]);
-  
-  const fetchUnsplashImages = async (query = '') => {
-    setIsLoadingImages(true);
-    try {
-      const images = await fetchRandomImages(query, 9);
-      setUnsplashImages(images);
-    } catch (error) {
-      console.error('Error fetching images:', error);
-    } finally {
-      setIsLoadingImages(false);
-    }
-  };
+    
+    // Add event listener
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      // Clean up the event listener
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [emojiPickerRef]);
   
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     // Clear any previous error when user types
     if (errorMessage) setErrorMessage(null);
   };
-  
-  const handleImageSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (imageSearch.trim()) {
-      fetchUnsplashImages(imageSearch);
-    }
-  };
-  
-  const handleImageSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setImageSearch(e.target.value);
-  };
-  
-  const handleSubmit = async () => {
-    if (content.trim() === '' && !selectedFile && !previewUrl) {
-      setErrorMessage('Please enter some content or add an image before tweeting.');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    
-    try {
-      // Create the tweet
-      const tweetData = { content };
-      console.log('Creating tweet with data:', tweetData);
-      const createdTweet = await createTweet(tweetData);
-      console.log('Tweet created successfully:', createdTweet);
-      
-      // If there's a file from local upload, upload it
-      if (selectedFile) {
-        console.log('Uploading selected file for tweet:', createdTweet.id);
-        await uploadMedia(createdTweet.id, selectedFile);
-      }
-      // If there's a URL from Unsplash, upload it
-      else if (previewUrl) {
-        // Here you would typically upload the image to your backend
-        console.log('Uploading Unsplash image for tweet:', createdTweet.id, previewUrl);
-        
-        // Convert URL to File and upload
-        try {
-          const response = await fetch(previewUrl);
-          const blob = await response.blob();
-          const file = new File([blob], 'unsplash-image.jpg', { type: 'image/jpeg' });
-          await uploadMedia(createdTweet.id, file);
-        } catch (error) {
-          console.error('Error uploading Unsplash image:', error);
-        }
-      }
-      
-      // Reset form
-      setContent('');
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      
-      // Notify parent component
-      if (onTweetCreated) {
-        onTweetCreated();
-      }
-    } catch (error) {
-      console.error('Error creating tweet:', error);
-      setErrorMessage('Failed to create tweet. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
+
   const handleFileSelect = () => {
     fileInputRef.current?.click();
   };
-  
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -131,23 +82,12 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       };
       reader.readAsDataURL(file);
       
-      // Close image picker if it's open
-      setShowImagePicker(false);
-      
-      // Clear any previous error
-      if (errorMessage) setErrorMessage(null);
+      // Close image search if it's open
+      setShowImageSearch(false);
+      setShowEmojiPicker(false);
     }
   };
-  
-  const handleUnsplashImageSelect = (image: UnsplashImage) => {
-    setPreviewUrl(image.url);
-    setSelectedFile(null);
-    setShowImagePicker(false);
-    
-    // Clear any previous error
-    if (errorMessage) setErrorMessage(null);
-  };
-  
+
   const handleRemoveFile = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
@@ -155,9 +95,111 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       fileInputRef.current.value = '';
     }
   };
+
+  const toggleImageSearch = async () => {
+    // Close emoji picker if open
+    setShowEmojiPicker(false);
+    
+    const newState = !showImageSearch;
+    setShowImageSearch(newState);
+    
+    if (newState && unsplashImages.length === 0) {
+      await fetchImages();
+    }
+  };
+
+  const fetchImages = async (query = '') => {
+    setIsLoadingImages(true);
+    try {
+      const images = await fetchRandomImages(query || undefined);
+      setUnsplashImages(images);
+    } catch (error) {
+      console.error('Error fetching images:', error);
+    } finally {
+      setIsLoadingImages(false);
+    }
+  };
+
+  const handleImageSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (imageSearchQuery.trim()) {
+      fetchImages(imageSearchQuery);
+    }
+  };
+
+  const handleUnsplashImageSelect = (image: UnsplashImage) => {
+    setPreviewUrl(image.url);
+    setShowImageSearch(false);
+  };
   
-  const toggleImagePicker = () => {
-    setShowImagePicker(!showImagePicker);
+  const toggleEmojiPicker = () => {
+    // Close image search if open
+    setShowImageSearch(false);
+    setShowEmojiPicker(!showEmojiPicker);
+  };
+  
+  const handleEmojiSelect = (emoji: string) => {
+    // Get current cursor position
+    const cursorPosition = textInputRef.current?.selectionStart || content.length;
+    
+    // Insert emoji at cursor position
+    const newContent = 
+      content.substring(0, cursorPosition) + 
+      emoji + 
+      content.substring(cursorPosition);
+    
+    setContent(newContent);
+    
+    // Focus back on text input and set cursor after emoji
+    setTimeout(() => {
+      if (textInputRef.current) {
+        textInputRef.current.focus();
+        const newCursorPosition = cursorPosition + emoji.length;
+        textInputRef.current.selectionStart = newCursorPosition;
+        textInputRef.current.selectionEnd = newCursorPosition;
+      }
+    }, 0);
+  };
+  
+  const handleSubmit = async () => {
+    if (content.trim() === '' && !selectedFile && !previewUrl) {
+      setErrorMessage('Please enter some content or add an image before tweeting.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    
+    try {
+      let createdTweet;
+      
+      // Create the tweet with or without media
+      console.log('Creating tweet with content:', content);
+      if (selectedFile) {
+        createdTweet = await tweetService.createTweet(content, selectedFile);
+      } else {
+        createdTweet = await tweetService.createTweet(content);
+      }
+      
+      console.log('Tweet created successfully:', createdTweet);
+      
+      // Reset form
+      setContent('');
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setShowImageSearch(false);
+      setShowEmojiPicker(false);
+      
+      // Notify parent component
+      if (onTweetCreated) {
+        onTweetCreated();
+      }
+    } catch (error) {
+      console.error('Error creating tweet:', error);
+      setErrorMessage('Failed to create tweet. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -172,12 +214,15 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
               value={content}
               onChange={handleContentChange}
               maxLength={280}
+              ref={textInputRef}
             />
             
             {previewUrl && (
               <S.PreviewContainer>
                 <S.ImagePreview src={previewUrl} alt="Selected media" />
-                <S.RemoveButton onClick={handleRemoveFile}>✕</S.RemoveButton>
+                <S.RemoveButton onClick={handleRemoveFile}>
+                  <IconWrapper icon={FaTimes} />
+                </S.RemoveButton>
               </S.PreviewContainer>
             )}
             
@@ -185,90 +230,98 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
               <S.ErrorMessage>{errorMessage}</S.ErrorMessage>
             )}
             
-            {showImagePicker && (
-              <S.ImagePickerContainer>
-                <S.ImagePickerHeader>
-                  <h3>Select an Image</h3>
-                  <S.CloseButton onClick={toggleImagePicker}>
-                    ✕
-                  </S.CloseButton>
-                </S.ImagePickerHeader>
-                
-                <S.SearchForm onSubmit={handleImageSearch}>
-                  <S.SearchInput 
+            {showImageSearch && (
+              <S.ImageSearchContainer>
+                <S.SearchForm onSubmit={handleImageSearchSubmit}>
+                  <S.SearchInput
                     placeholder="Search for images..."
-                    value={imageSearch}
-                    onChange={handleImageSearchInput}
+                    value={imageSearchQuery}
+                    onChange={(e) => setImageSearchQuery(e.target.value)}
                   />
-                  <S.SearchButton type="submit">
-                    🔍
-                  </S.SearchButton>
+                  <S.SearchButton type="submit">Search</S.SearchButton>
                 </S.SearchForm>
                 
-                {isLoadingImages ? (
-                  <S.LoadingState>Loading images...</S.LoadingState>
-                ) : (
-                  <S.ImageGrid>
-                    {unsplashImages.map(image => (
-                      <S.ImageGridItem 
+                <S.ImageGrid>
+                  {isLoadingImages ? (
+                    <S.LoadingMessage>Loading images...</S.LoadingMessage>
+                  ) : unsplashImages.length > 0 ? (
+                    unsplashImages.map((image) => (
+                      <S.ImageThumbnail
                         key={image.id}
+                        src={image.url}
+                        alt={image.alt_description || 'Unsplash image'}
                         onClick={() => handleUnsplashImageSelect(image)}
-                      >
-                        <img 
-                          src={image.url} 
-                          alt={image.alt_description} 
-                          loading="lazy"
-                        />
-                      </S.ImageGridItem>
-                    ))}
-                  </S.ImageGrid>
-                )}
+                      />
+                    ))
+                  ) : (
+                    <S.NoResultsMessage>No images found. Try a different search.</S.NoResultsMessage>
+                  )}
+                </S.ImageGrid>
                 
-                <S.UnsplashCredit>
+                <div style={{ padding: '8px 16px', fontSize: '12px', color: '#657786', textAlign: 'center' }}>
                   Images provided by <a href="https://unsplash.com/" target="_blank" rel="noopener noreferrer">Unsplash</a>
-                </S.UnsplashCredit>
-              </S.ImagePickerContainer>
+                </div>
+              </S.ImageSearchContainer>
+            )}
+            
+            {showEmojiPicker && (
+              <div ref={emojiPickerRef}>
+                <S.PickerContainer>
+                  <S.EmojiPickerHeader>
+                    <h3>Emojis</h3>
+                    <S.CloseButton onClick={() => setShowEmojiPicker(false)}>✕</S.CloseButton>
+                  </S.EmojiPickerHeader>
+                  <S.EmojiGrid>
+                    {EMOJI_LIST.map((emoji, index) => (
+                      <S.EmojiButton 
+                        key={index} 
+                        onClick={() => {
+                          handleEmojiSelect(emoji);
+                          setShowEmojiPicker(false);
+                        }}
+                      >
+                        {emoji}
+                      </S.EmojiButton>
+                    ))}
+                  </S.EmojiGrid>
+                </S.PickerContainer>
+              </div>
             )}
             
             <S.ComposerActions>
               <S.IconGroup>
-                <S.IconButton onClick={handleFileSelect} title="Upload from device">
-                  📸
+                <S.IconButton onClick={handleFileSelect} title="Upload media">
+                  <IconWrapper icon={FaImage} />
                 </S.IconButton>
-                <S.FileInput 
+                <input 
                   type="file" 
                   ref={fileInputRef} 
-                  onChange={handleFileChange}
-                  accept="image/jpeg,image/png,image/gif,video/mp4" 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  style={{ display: 'none' }}
                 />
                 
-                <S.IconButton onClick={toggleImagePicker} title="Search Unsplash images">
-                  🔍
+                <S.IconButton onClick={toggleImageSearch} title="Search for images">
+                  <IconWrapper icon={FaSearch} />
                 </S.IconButton>
                 
-                <S.IconButton>
-                  🎞️
-                </S.IconButton>
-                
-                <S.IconButton>
-                  🎁
-                </S.IconButton>
-                
-                <S.IconButton>
-                  😊
-                </S.IconButton>
-                
-                <S.IconButton>
-                  🌐
+                <S.IconButton onClick={toggleEmojiPicker} title="Add emoji">
+                  <IconWrapper icon={FaSmile} />
                 </S.IconButton>
               </S.IconGroup>
               
-              <S.TweetButton 
-                onClick={handleSubmit}
-                disabled={isSubmitting || (content.trim() === '' && !selectedFile && !previewUrl)}
-              >
-                {isSubmitting ? 'Posting...' : 'Tweet'}
-              </S.TweetButton>
+              <div>
+                <span style={{ marginRight: '10px', fontSize: '14px', color: content.length > 260 ? '#e0245e' : '#657786' }}>
+                  {content.length}/280
+                </span>
+                
+                <S.TweetButton 
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || (content.trim() === '' && !selectedFile && !previewUrl)}
+                >
+                  {isSubmitting ? 'Posting...' : 'Tweet'}
+                </S.TweetButton>
+              </div>
             </S.ComposerActions>
           </S.ComposerForm>
         </S.ComposerContent>
