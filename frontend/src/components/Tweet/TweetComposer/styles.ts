@@ -41,6 +41,12 @@ export const TextInput = styled.textarea`
   }
 `;
 
+export const ErrorMessage = styled.div`
+  color: #e0245e;
+  padding: 8px 0;
+  font-size: 14px;
+`;
+
 export const ComposerActions = styled.div`
   display: flex;
   justify-content: space-between;
