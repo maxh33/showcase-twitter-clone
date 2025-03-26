@@ -1,17 +1,22 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.throttling import UserRateThrottle
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, F
 from django.core.files.uploadedfile import UploadedFile
 import os
-import magic
-from .models import Tweet, MediaAttachment
-from .serializers import TweetSerializer, MediaAttachmentSerializer
+from .models import Tweet, MediaAttachment, Comment, CommentMediaAttachment
+from .serializers import (
+    TweetSerializer, 
+    MediaAttachmentSerializer, 
+    CommentSerializer,
+    CommentMediaAttachmentSerializer
+)
 from users.models import User
+from django.conf import settings
 
 
 # Custom throttle classes
@@ -36,19 +41,21 @@ class TweetViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling tweet operations
     """
+    queryset = Tweet.objects.filter(is_deleted=False).order_by('-created_at')
     serializer_class = TweetSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     # Maximum file size: 5MB
     MAX_FILE_SIZE = 5 * 1024 * 1024
     
-    # Allowed file types
+    # Dictionary of allowed MIME types to file extensions
     ALLOWED_MIME_TYPES = {
         'image/jpeg': '.jpg',
         'image/png': '.png',
         'image/gif': '.gif',
         'video/mp4': '.mp4',
+        'video/quicktime': '.mov',
     }
     
     def get_throttles(self):
@@ -68,13 +75,13 @@ class TweetViewSet(viewsets.ModelViewSet):
             throttle_classes = []
         return [throttle() for throttle in throttle_classes]
     
-    def get_queryset(self):
-        """Return tweets that aren't deleted"""
-        return Tweet.objects.filter(is_deleted=False)
-    
     def perform_create(self, serializer):
-        """Create a new tweet with the current user as author"""
-        serializer.save(author=self.request.user)
+        tweet = serializer.save(author=self.request.user)
+        
+        # Handle any media files if present
+        if 'media' in self.request.FILES:
+            for file in self.request.FILES.getlist('media'):
+                MediaAttachment.objects.create(tweet=tweet, file=file)
     
     def perform_destroy(self, instance):
         """Soft delete a tweet instead of actually deleting it"""
@@ -160,85 +167,164 @@ class TweetViewSet(viewsets.ModelViewSet):
         
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
-        """Toggle like status for a tweet"""
         tweet = self.get_object()
-        
-        # Implement a more complex like system later with a Like model
-        # For now, just increment the likes count
-        tweet.likes_count += 1
+        tweet.likes_count = F('likes_count') + 1
         tweet.save()
-        
-        return Response({'status': 'tweet liked'}, status=status.HTTP_200_OK)
+        tweet.refresh_from_db()  # Refresh to get the updated likes_count
+        serializer = self.get_serializer(tweet)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def retweet(self, request, pk=None):
-        """Retweet functionality"""
         tweet = self.get_object()
-        
-        # Implement a more complex retweet system later with a Retweet model
-        # For now, just increment the retweet count
-        tweet.retweet_count += 1
+        tweet.retweet_count = F('retweet_count') + 1
         tweet.save()
+        tweet.refresh_from_db()  # Refresh to get the updated retweet_count
+        serializer = self.get_serializer(tweet)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def comments(self, request, pk=None):
+        """Get all comments for a specific tweet"""
+        tweet = self.get_object()
+        comments = Comment.objects.filter(tweet=tweet, is_deleted=False).order_by('-created_at')
+        serializer = CommentSerializer(comments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def add_comment(self, request, pk=None):
+        """Add a comment to a tweet"""
+        tweet = self.get_object()
+        serializer = CommentSerializer(data=request.data, context={'request': request})
         
-        return Response({'status': 'tweet retweeted'}, status=status.HTTP_200_OK)
+        if serializer.is_valid():
+            serializer.save(tweet=tweet, author=request.user)
+            
+            # Update comment count
+            tweet.comments_count = F('comments_count') + 1
+            tweet.save()
+            tweet.refresh_from_db()
+            
+            # Return updated tweet with new comment
+            tweet_serializer = self.get_serializer(tweet)
+            return Response(tweet_serializer.data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
+    def add_media(self, request, tweet_id):
+        """Add media attachment to a tweet"""
+        tweet = get_object_or_404(Tweet, id=tweet_id, author=request.user)
+        
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Ensure media directory exists
+        media_dir = os.path.join(settings.MEDIA_ROOT, 'tweet_media')
+        os.makedirs(media_dir, exist_ok=True)
+        
+        file = request.FILES['file']
+        media = MediaAttachment.objects.create(tweet=tweet, file=file)
+        
+        serializer = MediaAttachmentSerializer(media)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """ViewSet for handling comment operations"""
+    queryset = Comment.objects.filter(is_deleted=False).order_by('-created_at')
+    serializer_class = CommentSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [permissions.IsAuthenticated]
+    
+    # Maximum file size: 5MB
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+    
+    # Dictionary of allowed MIME types to file extensions
+    ALLOWED_MIME_TYPES = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+    }
+    
+    def perform_create(self, serializer):
+        # Get the tweet ID from the URL or request data
+        tweet_id = self.kwargs.get('tweet_pk') or self.request.data.get('tweet_id')
+        if not tweet_id:
+            raise ValueError("Tweet ID is required")
+        
+        tweet = get_object_or_404(Tweet, pk=tweet_id)
+        comment = serializer.save(author=self.request.user, tweet=tweet)
+        
+        # Handle any media files if present
+        if 'media' in self.request.FILES:
+            for file in self.request.FILES.getlist('media'):
+                if file.size > self.MAX_FILE_SIZE:
+                    raise serializers.ValidationError(
+                        f"File size cannot exceed {self.MAX_FILE_SIZE / (1024 * 1024)}MB"
+                    )
+                
+                if file.content_type not in self.ALLOWED_MIME_TYPES:
+                    raise serializers.ValidationError(
+                        f"File type {file.content_type} is not supported"
+                    )
+                
+                CommentMediaAttachment.objects.create(comment=comment, file=file)
+                comment.increment_media_count()
+        
+        # Update comment count on the tweet
+        tweet.comments_count = F('comments_count') + 1
+        tweet.save()
+        tweet.refresh_from_db()
+    
+    def destroy(self, request, *args, **kwargs):
+        comment = self.get_object()
+        tweet = comment.tweet
+        
+        # Soft delete the comment
+        comment.soft_delete()
+        
+        # Update comment count
+        tweet.comments_count = F('comments_count') - 1
+        tweet.save()
+        tweet.refresh_from_db()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'])
     def add_media(self, request, pk=None):
-        """Add media to a tweet with validation and sanitization"""
-        tweet = self.get_object()
+        """Add media attachment to a comment"""
+        comment = self.get_object()
         
-        # Check if the user is the author of the tweet
-        if tweet.author != request.user:
-            return Response({'error': 'You can only add media to your own tweets'},
-                          status=status.HTTP_403_FORBIDDEN)
+        if 'file' not in request.FILES:
+            return Response(
+                {'error': 'No file provided'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
-        # Get the file from request
-        file = request.FILES.get('file')
-        if not file:
-            return Response({'error': 'No file provided'},
-                          status=status.HTTP_400_BAD_REQUEST)
+        file = request.FILES['file']
         
         # Validate file size
         if file.size > self.MAX_FILE_SIZE:
             return Response(
-                {'error': f'File size exceeds the maximum allowed size of {self.MAX_FILE_SIZE // (1024 * 1024)}MB'},
+                {'error': f"File size cannot exceed {self.MAX_FILE_SIZE / (1024 * 1024)}MB"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Validate file type using python-magic for secure MIME type detection
-        try:
-            # Read a portion of the file to detect MIME type
-            file_content = file.read(2048)
-            mime = magic.Magic(mime=True)
-            detected_mime = mime.from_buffer(file_content)
-            
-            # Reset file pointer after reading
-            if hasattr(file, 'seek') and callable(file.seek):
-                file.seek(0)
-                
-            # Validate MIME type
-            if detected_mime not in self.ALLOWED_MIME_TYPES:
-                return Response(
-                    {'error': f'File type {detected_mime} is not allowed. Allowed types: {", ".join(self.ALLOWED_MIME_TYPES.keys())}'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Sanitize filename
-            original_name = file.name
-            extension = self.ALLOWED_MIME_TYPES[detected_mime]
-            base_name = os.path.splitext(original_name)[0]
-            # Remove potentially unsafe characters
-            safe_base_name = ''.join(c for c in base_name if c.isalnum() or c in '._- ')
-            file.name = f"{safe_base_name}{extension}"
-            
-        except Exception as e:
+        # Validate file type
+        if file.content_type not in self.ALLOWED_MIME_TYPES:
             return Response(
-                {'error': f'Error validating file: {str(e)}'},
+                {'error': f"File type {file.content_type} is not supported"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Ensure media directory exists
+        media_dir = os.path.join(settings.MEDIA_ROOT, 'comment_media')
+        os.makedirs(media_dir, exist_ok=True)
         
         # Create media attachment
-        media = MediaAttachment.objects.create(tweet=tweet, file=file)
-        serializer = MediaAttachmentSerializer(media)
+        media = CommentMediaAttachment.objects.create(comment=comment, file=file)
+        comment.increment_media_count()
         
+        serializer = CommentMediaAttachmentSerializer(media)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
