@@ -41,13 +41,24 @@ export interface FeedResponse {
 // Create axios instance with auth headers
 const createAxiosInstance = () => {
   const token = localStorage.getItem('token');
-  return axios.create({
+  const instance = axios.create({
     baseURL: `${API_URL}/v1/tweets`,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     },
   });
+
+  // Add request interceptor to always use the latest token
+  instance.interceptors.request.use((config) => {
+    const currentToken = localStorage.getItem('token');
+    if (currentToken) {
+      config.headers.Authorization = `Bearer ${currentToken}`;
+    }
+    return config;
+  });
+
+  return instance;
 };
 
 // Get tweets for home feed with pagination
@@ -66,7 +77,14 @@ export const getFeed = async (page = 1): Promise<FeedResponse> => {
 export const createTweet = async (tweetData: CreateTweetRequest): Promise<Tweet> => {
   try {
     const api = createAxiosInstance();
-    const response = await api.post('/', tweetData);
+    const formData = new FormData();
+    formData.append('content', tweetData.content);
+    
+    const response = await api.post('/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating tweet:', error);

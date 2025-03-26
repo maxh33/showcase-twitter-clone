@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.throttling import UserRateThrottle
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -38,7 +38,7 @@ class TweetViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TweetSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     # Maximum file size: 5MB
     MAX_FILE_SIZE = 5 * 1024 * 1024
