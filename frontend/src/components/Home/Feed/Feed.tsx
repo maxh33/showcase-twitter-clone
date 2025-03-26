@@ -8,20 +8,25 @@ import * as S from './styles';
 
 // Define a simplified author type to avoid TypeScript errors
 interface SimplifiedAuthor {
-  id: number | string;
+  id: number;
   username: string;
+  email: string;
   profile_picture: string | null;
-  email?: string;
-  bio?: string | null;
-  location?: string | null;
+  bio: string | null;
+  location: string | null;
 }
 
-interface ProcessedTweet extends Omit<TweetType, 'author'> {
+interface ProcessedTweet extends TweetType {
   author: SimplifiedAuthor;
 }
 
 interface FeedProps {
-  currentUser: RandomUser | null;
+  currentUser?: {
+    id: string | number;
+    username: string;
+    profile_picture?: string | null;
+    email?: string;
+  };
 }
 
 const Feed: React.FC<FeedProps> = ({ currentUser }) => {
@@ -31,6 +36,9 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Add state to track liked and retweeted tweets
+  const [likedTweets, setLikedTweets] = useState<number[]>([]);
+  const [retweetedTweets, setRetweetedTweets] = useState<number[]>([]);
   
   // Ref for infinite scrolling
   const observer = useRef<IntersectionObserver | null>(null);
@@ -56,31 +64,31 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
         const response = await getFeed(page);
         
         // Process tweets to ensure they have author information
-        // If backend does not provide complete author info, fill with random data
-        const processedTweets: ProcessedTweet[] = await Promise.all(
-          response.results.map(async (tweet: TweetType) => {
-            if (!tweet.author || !tweet.author.username) {
-              // Use existing stored user or create a new one for missing authors
-              let randomUser = currentUser;
-              if (!randomUser) {
-                randomUser = await fetchRandomUser();
+        const processedTweets: ProcessedTweet[] = response.results.map((tweet: TweetType) => {
+          // If the tweet has a valid author, use it as is
+          if (tweet.author && tweet.author.username) {
+            return {
+              ...tweet,
+              author: {
+                ...tweet.author,
+                profile_picture: tweet.author.profile_picture || 'https://via.placeholder.com/50'
               }
-              
-              return {
-                ...tweet,
-                author: {
-                  id: randomUser?.id || 'unknown',
-                  username: randomUser?.name || 'Unknown User',
-                  profile_picture: randomUser?.avatar || 'https://via.placeholder.com/50',
-                  email: randomUser?.email || '',
-                  bio: null,
-                  location: randomUser?.location || null
-                }
-              };
+            };
+          }
+          
+          // If no author, use current user's data or fallback
+          return {
+            ...tweet,
+            author: {
+              id: Number(currentUser?.id) || 0,
+              username: currentUser?.username || 'Unknown User',
+              email: currentUser?.email || 'unknown@example.com',
+              profile_picture: currentUser?.profile_picture || 'https://via.placeholder.com/50',
+              bio: null,
+              location: null
             }
-            return tweet as ProcessedTweet;
-          })
-        );
+          };
+        });
         
         if (page === 1) {
           setTweets(processedTweets);
@@ -102,14 +110,81 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
     fetchTweets();
   }, [page, currentUser]);
   
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
+    
+    // Reset to page 1 to fetch the latest tweets
     setPage(1);
-  };
+    
+    // If the refresh is triggered by a new tweet being posted,
+    // we don't need to show the loading state because the new tweet
+    // will be fetched and displayed at the top of the feed
+    setLoading(false);
+  }, []);
+  
+  // Called when a new tweet is successfully created
+  const onTweetCreated = useCallback(async () => {
+    try {
+      // Fetch just the latest tweets (page 1)
+      const response = await getFeed(1);
+      
+      // Process tweets to ensure they have author information
+      const processedTweets: ProcessedTweet[] = response.results.map((tweet: TweetType) => {
+        // If the tweet has a valid author, use it as is
+        if (tweet.author && tweet.author.username) {
+          return {
+            ...tweet,
+            author: {
+              ...tweet.author,
+              profile_picture: tweet.author.profile_picture || 'https://via.placeholder.com/50'
+            }
+          };
+        }
+        
+        // If no author, use current user's data or fallback
+        return {
+          ...tweet,
+          author: {
+            id: Number(currentUser?.id) || 0,
+            username: currentUser?.username || 'Unknown User',
+            email: currentUser?.email || 'unknown@example.com',
+            profile_picture: currentUser?.profile_picture || 'https://via.placeholder.com/50',
+            bio: null,
+            location: null
+          }
+        };
+      });
+      
+      // Update tweet list with the newest tweets at the top
+      setTweets(prevTweets => {
+        // Get existing tweet IDs for comparison
+        const existingIds = new Set(prevTweets.map(t => t.id));
+        
+        // Filter out only the new tweets
+        const newTweets = processedTweets.filter(t => !existingIds.has(t.id));
+        
+        // Combine new tweets at the top with existing tweets
+        return [...newTweets, ...prevTweets];
+      });
+      
+    } catch (error) {
+      console.error('Error fetching new tweets:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [currentUser]);
   
   const handleLike = async (id: number) => {
     try {
+      // Check if tweet is already liked
+      if (likedTweets.includes(id)) {
+        return; // Already liked, do nothing
+      }
+      
       await likeTweet(id);
+      
+      // Add to liked tweets set
+      setLikedTweets(prev => [...prev, id]);
       
       // Update local state optimistically
       setTweets(prevTweets => 
@@ -126,7 +201,15 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   
   const handleRetweet = async (id: number) => {
     try {
+      // Check if tweet is already retweeted
+      if (retweetedTweets.includes(id)) {
+        return; // Already retweeted, do nothing
+      }
+      
       await retweetTweet(id);
+      
+      // Add to retweeted tweets set
+      setRetweetedTweets(prev => [...prev, id]);
       
       // Update local state optimistically
       setTweets(prevTweets => 
@@ -153,7 +236,9 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
             <Tweet 
               tweet={tweet} 
               onLike={handleLike} 
-              onRetweet={handleRetweet} 
+              onRetweet={handleRetweet}
+              currentUserLiked={likedTweets.includes(tweet.id)}
+              currentUserRetweeted={retweetedTweets.includes(tweet.id)}
             />
           </div>
         );
@@ -163,7 +248,9 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
             key={tweet.id} 
             tweet={tweet} 
             onLike={handleLike} 
-            onRetweet={handleRetweet} 
+            onRetweet={handleRetweet}
+            currentUserLiked={likedTweets.includes(tweet.id)}
+            currentUserRetweeted={retweetedTweets.includes(tweet.id)}
           />
         );
       }
@@ -186,8 +273,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
         </S.FeedHeader>
         
         <TweetComposer 
-          onTweetCreated={handleRefresh} 
-          userProfilePicture={currentUser?.avatar}
+          onTweetCreated={onTweetCreated} 
+          userProfilePicture={currentUser?.profile_picture || 'https://via.placeholder.com/50'}
         />
         
         {error && <S.EmptyState>{error}</S.EmptyState>}
@@ -197,7 +284,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
         {loading && <S.LoadingSpinner>{renderSpinner()}</S.LoadingSpinner>}
         
         {!loading && hasMore && (
-          <S.LoadMoreButton onClick={handleRefresh}>
+          <S.LoadMoreButton onClick={() => handleRefresh()}>
             Load more
           </S.LoadMoreButton>
         )}

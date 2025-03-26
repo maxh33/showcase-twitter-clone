@@ -56,13 +56,15 @@ const Tweet: React.FC<TweetProps> = ({
   return (
     <IconContext.Provider value={{ className: 'react-icons' }}>
       <S.TweetContainer>
-        <S.Avatar src={tweet.author.profile_picture || 'https://via.placeholder.com/50'} alt={tweet.author.username} />
-        
+        <S.Avatar 
+          src={tweet.author.profile_picture || 'https://via.placeholder.com/50'} 
+          alt={`${tweet.author.username}'s profile picture`} 
+        />
         <div>
           <S.TweetHeader>
             <S.UserInfo>
               <S.Username>{tweet.author.username}</S.Username>
-              <S.Handle>@{tweet.author.username.toLowerCase().replace(/\s/g, '')}</S.Handle>
+              <S.Handle>@{tweet.author.username.toLowerCase().replace(/\s+/g, '')}</S.Handle>
               <S.Timestamp>· {formattedTime}</S.Timestamp>
             </S.UserInfo>
           </S.TweetHeader>
@@ -81,7 +83,7 @@ const Tweet: React.FC<TweetProps> = ({
             <S.ActionsContainer>
               <S.ActionButton onClick={handleReply}>
                 💬
-                {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
+                {/* Comment count should be shown here, but we don't have this data yet */}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleRetweet} $active={currentUserRetweeted}>

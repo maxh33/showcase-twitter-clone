@@ -18,9 +18,18 @@ const HomeContainer = styled.div`
 
 const CURRENT_USER_KEY = 'twitter_clone_current_user';
 
+// Define a type that will convert RandomUser to the structure expected by Feed
+interface FormattedUser {
+  id: string | number;
+  username: string;
+  profile_picture: string | null;
+  email: string;
+}
+
 const HomePage: React.FC = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<RandomUser | null>(null);
+  const [formattedUser, setFormattedUser] = useState<FormattedUser | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
@@ -39,13 +48,28 @@ const HomePage: React.FC = () => {
           
           if (storedUser) {
             // Use the stored user
-            setCurrentUser(JSON.parse(storedUser));
+            const parsedUser = JSON.parse(storedUser);
+            setCurrentUser(parsedUser);
+            // Format user for Feed component
+            setFormattedUser({
+              id: parsedUser.id || '1',
+              username: parsedUser.name || 'User',
+              profile_picture: parsedUser.avatar || null,
+              email: parsedUser.email || 'user@example.com'
+            });
           } else {
             // Fetch a new random user and store it
             const user = await fetchRandomUser();
             if (user) {
               setCurrentUser(user);
               localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+              // Format user for Feed component
+              setFormattedUser({
+                id: user.id || '1',
+                username: user.name || 'User',
+                profile_picture: user.avatar || null,
+                email: user.email || 'user@example.com'
+              });
             }
           }
         } catch (error) {
@@ -80,7 +104,7 @@ const HomePage: React.FC = () => {
         } : undefined}
         onLogout={handleUserLogout}
       />
-      <Feed currentUser={currentUser} />
+      <Feed currentUser={formattedUser} />
       <RightSidebar />
     </HomeContainer>
   );
