@@ -8,6 +8,8 @@ export const RightSidebarContainer = styled.div`
   position: sticky;
   top: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 `;
 
 export const SearchContainer = styled.div`
@@ -24,6 +26,7 @@ export const SearchInput = styled.input`
   background-color: ${Colors.extraLightGray};
   color: ${Colors.black};
   font-size: 15px;
+  box-sizing: border-box;
   
   &:focus {
     outline: none;
@@ -48,6 +51,8 @@ export const Card = styled.div`
   background-color: ${Colors.extraLightGray};
   border-radius: 16px;
   margin-bottom: 16px;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 export const CardHeader = styled.div`
@@ -144,6 +149,8 @@ export const FollowButton = styled.button`
   padding: 8px 16px;
   font-weight: bold;
   cursor: pointer;
+  margin-left: 10px;
+  white-space: nowrap;
   
   &:hover {
     background-color: ${Colors.darkGray};
@@ -180,4 +187,4 @@ export const Copyright = styled.div`
   color: ${Colors.darkGray};
   font-size: 13px;
   margin-top: 8px;
-`; 
+`;
