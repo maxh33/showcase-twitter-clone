@@ -20,28 +20,17 @@ interface ProcessedTweet extends Omit<TweetType, 'author'> {
   author: SimplifiedAuthor;
 }
 
-const Feed: React.FC = () => {
+interface FeedProps {
+  currentUser: RandomUser | null;
+}
+
+const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   const [tweets, setTweets] = useState<ProcessedTweet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentUser, setCurrentUser] = useState<RandomUser | null>(null);
-  
-  // Fetch random user for the current user on mount
-  useEffect(() => {
-    const loadRandomUser = async () => {
-      try {
-        const user = await fetchRandomUser();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error loading random user:', error);
-      }
-    };
-    
-    loadRandomUser();
-  }, []);
   
   // Ref for infinite scrolling
   const observer = useRef<IntersectionObserver | null>(null);
@@ -71,7 +60,12 @@ const Feed: React.FC = () => {
         const processedTweets: ProcessedTweet[] = await Promise.all(
           response.results.map(async (tweet: TweetType) => {
             if (!tweet.author || !tweet.author.username) {
-              const randomUser = await fetchRandomUser();
+              // Use existing stored user or create a new one for missing authors
+              let randomUser = currentUser;
+              if (!randomUser) {
+                randomUser = await fetchRandomUser();
+              }
+              
               return {
                 ...tweet,
                 author: {
@@ -106,7 +100,7 @@ const Feed: React.FC = () => {
     };
     
     fetchTweets();
-  }, [page]);
+  }, [page, currentUser]);
   
   const handleRefresh = () => {
     setRefreshing(true);
