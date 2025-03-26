@@ -141,6 +141,16 @@ export const ImagePickerContainer = styled.div`
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 `;
 
+// Image search container (similar to picker but for search results)
+export const ImageSearchContainer = styled.div`
+  border: 1px solid ${Colors.extraLightGray};
+  border-radius: 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+`;
+
 export const ImagePickerHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -200,7 +210,7 @@ export const SearchButton = styled.button`
   cursor: pointer;
   
   &:hover {
-    background-color: #1a91da;
+    background-color: ${Colors.blue};
   }
 `;
 
@@ -229,7 +239,32 @@ export const ImageGridItem = styled.div`
   }
 `;
 
+export const ImageThumbnail = styled.img`
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+
 export const LoadingState = styled.div`
+  padding: 24px;
+  text-align: center;
+  color: ${Colors.darkGray};
+`;
+
+export const LoadingMessage = styled.div`
+  padding: 24px;
+  text-align: center;
+  color: ${Colors.darkGray};
+`;
+
+export const NoResultsMessage = styled.div`
   padding: 24px;
   text-align: center;
   color: ${Colors.darkGray};
@@ -248,5 +283,67 @@ export const UnsplashCredit = styled.div`
     &:hover {
       text-decoration: underline;
     }
+  }
+`;
+
+// Add these styles for the emoji and GIF pickers
+export const PickerContainer = styled.div`
+  border: 1px solid ${Colors.extraLightGray};
+  border-radius: 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+`;
+
+export const EmojiPickerHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid ${Colors.extraLightGray};
+  
+  h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+`;
+
+export const EmojiGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
+  padding: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+`;
+
+export const EmojiButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 6px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: ${Colors.extraLightGray};
+  }
+`;
+
+export const GifPickerContent = styled.div`
+  padding: 16px;
+  text-align: center;
+  
+  h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+  
+  p {
+    color: ${Colors.darkGray};
+    font-size: 14px;
   }
 `; 

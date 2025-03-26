@@ -8,7 +8,9 @@ export const SidebarContainer = styled.div`
   top: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid ${Colors.extraLightGray};
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 `;
 
 export const Logo = styled.div`

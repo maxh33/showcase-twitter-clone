@@ -110,6 +110,8 @@ export const SuggestedUser = styled.div`
   padding: 12px 16px;
   cursor: pointer;
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  width: 100%;
+  box-sizing: border-box;
   
   &:hover {
     background-color: rgba(0, 0, 0, 0.03);
@@ -125,20 +127,29 @@ export const UserAvatar = styled.img`
   height: 48px;
   border-radius: 50%;
   margin-right: 12px;
+  flex-shrink: 0;
 `;
 
 export const UserInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 `;
 
 export const UserName = styled.div`
   font-weight: bold;
   font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 export const UserHandle = styled.div`
   color: ${Colors.darkGray};
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 export const FollowButton = styled.button`
@@ -151,6 +162,7 @@ export const FollowButton = styled.button`
   cursor: pointer;
   margin-left: 10px;
   white-space: nowrap;
+  flex-shrink: 0;
   
   &:hover {
     background-color: ${Colors.darkGray};
