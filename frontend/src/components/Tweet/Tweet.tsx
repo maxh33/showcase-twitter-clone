@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tweet as TweetType } from '../../services/tweetService';
 import { formatDistanceToNow } from 'date-fns';
-import { IconContext } from 'react-icons';
+import { FaRegComment, FaRetweet, FaRegHeart, FaHeart, FaShareAlt } from 'react-icons/fa';
 import * as S from './styles';
+import IconWrapper from '../common/IconWrapper';
+import CommentModal from '../Comment/CommentModal/CommentModal';
 
 // Allow for flexible author ID type (string or number)
 interface FlexibleTweet extends Omit<TweetType, 'author'> {
@@ -20,7 +22,7 @@ interface TweetProps {
   tweet: FlexibleTweet;
   onLike: (id: number) => void;
   onRetweet: (id: number) => void;
-  onReply?: (id: number) => void;
+  onReply?: (id: number, content: string, media?: File) => void;
   onShare?: (id: number) => void;
   currentUserLiked?: boolean;
   currentUserRetweeted?: boolean;
@@ -35,6 +37,7 @@ const Tweet: React.FC<TweetProps> = ({
   currentUserLiked = false,
   currentUserRetweeted = false
 }) => {
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const formattedTime = formatDistanceToNow(new Date(tweet.created_at), { addSuffix: true });
   
   const handleLike = () => {
@@ -46,21 +49,28 @@ const Tweet: React.FC<TweetProps> = ({
   };
   
   const handleReply = () => {
-    if (onReply) onReply(tweet.id);
+    setIsCommentModalOpen(true);
   };
   
   const handleShare = () => {
     if (onShare) onShare(tweet.id);
   };
+
+  const handleCommentSubmit = (content: string, media?: File) => {
+    if (onReply) {
+      onReply(tweet.id, content, media);
+    }
+    setIsCommentModalOpen(false);
+  };
   
   return (
-    <IconContext.Provider value={{ className: 'react-icons' }}>
+    <>
       <S.TweetContainer>
         <S.Avatar 
           src={tweet.author.profile_picture || 'https://via.placeholder.com/50'} 
           alt={`${tweet.author.username}'s profile picture`} 
         />
-        <div>
+        <S.TweetContent>
           <S.TweetHeader>
             <S.UserInfo>
               <S.Username>{tweet.author.username}</S.Username>
@@ -69,7 +79,7 @@ const Tweet: React.FC<TweetProps> = ({
             </S.UserInfo>
           </S.TweetHeader>
           
-          <S.TweetContent>{tweet.content}</S.TweetContent>
+          <S.TweetText>{tweet.content}</S.TweetText>
           
           {tweet.media && tweet.media.length > 0 && (
             <S.MediaContainer>
@@ -82,28 +92,38 @@ const Tweet: React.FC<TweetProps> = ({
           <S.TweetFooter>
             <S.ActionsContainer>
               <S.ActionButton onClick={handleReply}>
-                💬
-                {/* Comment count should be shown here, but we don't have this data yet */}
+                <IconWrapper icon={FaRegComment} size={20} />
+                {tweet.comments_count > 0 && <span>{tweet.comments_count}</span>}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleRetweet} $active={currentUserRetweeted}>
-                {currentUserRetweeted ? <span style={{color: "#17BF63"}}>🔄</span> : "🔄"}
+                <IconWrapper icon={FaRetweet} size={20} color={currentUserRetweeted ? "#17BF63" : undefined} />
                 {tweet.retweet_count > 0 && <span>{tweet.retweet_count}</span>}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleLike} $active={currentUserLiked}>
-                {currentUserLiked ? <span style={{color: "#E0245E"}}>❤️</span> : "🤍"}
+                {currentUserLiked ? 
+                  <IconWrapper icon={FaHeart} size={20} color="#E0245E" /> : 
+                  <IconWrapper icon={FaRegHeart} size={20} />
+                }
                 {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleShare}>
-                📤
+                <IconWrapper icon={FaShareAlt} size={20} />
               </S.ActionButton>
             </S.ActionsContainer>
           </S.TweetFooter>
-        </div>
+        </S.TweetContent>
       </S.TweetContainer>
-    </IconContext.Provider>
+
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        onSubmit={handleCommentSubmit}
+        replyingTo={tweet}
+      />
+    </>
   );
 };
 
