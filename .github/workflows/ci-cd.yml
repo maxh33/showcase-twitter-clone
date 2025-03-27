@@ -249,6 +249,7 @@ jobs:
           PA_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
         run: |
           # Generate a simple Python script to handle deployment
           cat > deploy.py << 'EOL'
@@ -465,6 +466,7 @@ jobs:
           PA_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
         run: |
           # Create a simple Python script to handle deployment
           cat > deploy_staging.py << 'EOL'
