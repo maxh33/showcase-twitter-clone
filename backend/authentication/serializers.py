@@ -156,13 +156,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
         # Remove password2 field
         validated_data.pop('password2', None)
         
-        # Create user
+        # Create user with is_active=False
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password'],
             bio=validated_data.get('bio', ''),
-            location=validated_data.get('location', '')
+            location=validated_data.get('location', ''),
+            is_active=False
         )
         
         return user

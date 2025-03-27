@@ -22,6 +22,7 @@ drf-yasg = "^1.21.7"  # Swagger/OpenAPI documentation
 mysqlclient = "^2.1.1"  # MySQL database connector
 python-magic = "^0.4.27"
 bleach = "^6.2.0"  # HTML sanitization
+requests = "^2.32.3"
 
 [tool.poetry.dev-dependencies]
 pylint = "^3.3.5"

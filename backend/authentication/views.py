@@ -74,11 +74,8 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             # Record failed attempt and return appropriate status code
             FailedLoginAttempt.record_failed_attempt(email, ip_address)
             
-            # Check if this is an authentication error
-            if getattr(e, 'code', None) == 'authentication_failed':
-                return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-            
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # All authentication failures should return 401
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
             
         except (InvalidToken, TokenError) as e:
             # Record failed attempt for token-related errors
@@ -319,6 +316,6 @@ class LogoutView(APIView):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
+            return Response({'message': 'Logged out successfully'}, status=status.HTTP_205_RESET_CONTENT)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

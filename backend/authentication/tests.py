@@ -38,7 +38,7 @@ def inactive_user():
 class TestRegistration:
     def test_successful_registration(self, api_client):
         """Test that a user can register successfully with valid credentials"""
-        url = reverse('register')
+        url = reverse('auth:register')
         data = {
             'username': 'newuser',
             'email': 'newuser@example.com',
@@ -58,7 +58,7 @@ class TestRegistration:
     
     def test_registration_with_invalid_password(self, api_client):
         """Test that registration fails with weak password"""
-        url = reverse('register')
+        url = reverse('auth:register')
         data = {
             'username': 'newuser',
             'email': 'newuser@example.com',
@@ -72,7 +72,7 @@ class TestRegistration:
     
     def test_registration_with_mismatched_passwords(self, api_client):
         """Test that registration fails when passwords don't match"""
-        url = reverse('register')
+        url = reverse('auth:register')
         data = {
             'username': 'newuser',
             'email': 'newuser@example.com',
@@ -89,7 +89,7 @@ class TestRegistration:
 class TestLogin:
     def test_successful_login(self, api_client, create_user):
         """Test that a user can login with valid credentials"""
-        url = reverse('login')
+        url = reverse('auth:login')
         data = {
             'email': 'test@example.com',
             'password': 'StrongPassword123!',
@@ -103,7 +103,7 @@ class TestLogin:
     
     def test_login_with_invalid_credentials(self, api_client, create_user):
         """Test that login fails with invalid credentials"""
-        url = reverse('login')
+        url = reverse('auth:login')
         data = {
             'email': 'test@example.com',
             'password': 'WrongPassword123!',
@@ -114,7 +114,7 @@ class TestLogin:
     
     def test_login_inactive_user(self, api_client, inactive_user):
         """Test that login fails for inactive users"""
-        url = reverse('login')
+        url = reverse('auth:login')
         data = {
             'email': 'inactive@example.com',
             'password': 'StrongPassword123!',
@@ -128,7 +128,7 @@ class TestLogin:
 class TestEmailVerification:
     def test_successful_verification(self, api_client, inactive_user):
         """Test that a user can verify their email"""
-        url = reverse('verify_email')
+        url = reverse('auth:verify_email')
         
         # Generate verification token
         token = default_token_generator.make_token(inactive_user)
@@ -148,7 +148,7 @@ class TestEmailVerification:
     
     def test_verification_with_invalid_token(self, api_client, inactive_user):
         """Test that verification fails with invalid token"""
-        url = reverse('verify_email')
+        url = reverse('auth:verify_email')
         
         uidb64 = urlsafe_base64_encode(force_bytes(inactive_user.pk))
         
@@ -169,7 +169,7 @@ class TestEmailVerification:
 class TestPasswordReset:
     def test_password_reset_request(self, api_client, create_user):
         """Test that a user can request a password reset"""
-        url = reverse('password_reset_request')
+        url = reverse('auth:password_reset_request')
         data = {
             'email': 'test@example.com',
         }
@@ -183,7 +183,7 @@ class TestPasswordReset:
         token = default_token_generator.make_token(create_user)
         uidb64 = urlsafe_base64_encode(force_bytes(create_user.pk))
         
-        url = reverse('password_reset_confirm')
+        url = reverse('auth:password_reset_confirm')
         data = {
             'token': token,
             'uidb64': uidb64,
@@ -195,7 +195,7 @@ class TestPasswordReset:
         assert response.status_code == status.HTTP_200_OK
         
         # Check that login works with new password
-        login_url = reverse('login')
+        login_url = reverse('auth:login')
         login_data = {
             'email': 'test@example.com',
             'password': 'NewStrongPassword123!',
@@ -210,7 +210,7 @@ class TestLogout:
     def test_successful_logout(self, api_client, create_user):
         """Test that a user can logout successfully"""
         # Login first to get refresh token
-        login_url = reverse('login')
+        login_url = reverse('auth:login')
         login_data = {
             'email': 'test@example.com',
             'password': 'StrongPassword123!',
@@ -224,7 +224,7 @@ class TestLogout:
         api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
         
         # Logout
-        logout_url = reverse('logout')
+        logout_url = reverse('auth:logout')
         logout_data = {
             'refresh': refresh_token,
         }
@@ -233,7 +233,7 @@ class TestLogout:
         assert logout_response.status_code == status.HTTP_205_RESET_CONTENT
         
         # Try to use the refresh token, which should now be invalid
-        refresh_url = reverse('token_refresh')
+        refresh_url = reverse('auth:token_refresh')
         refresh_data = {
             'refresh': refresh_token,
         }
