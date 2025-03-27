@@ -275,7 +275,18 @@ jobs:
           
           # Create console for deployment commands
           print("Creating deployment console...")
-          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && python manage.py collectstatic --noinput"
+          cmd = (
+              "cd ~/ && "
+              "rm -rf showcase-twitter-clone && "
+              "git clone https://github.com/maxh33/showcase-twitter-clone.git && "
+              "cd showcase-twitter-clone/backend && "
+              "pip install --user -r requirements.txt && "
+              "mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "python manage.py collectstatic --noinput --clear"  # Added --clear to ensure clean collection
+          )
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -307,7 +318,14 @@ jobs:
           
           # Run database migrations
           print("Running database migrations...")
-          migration_cmd = "cd ~/showcase-twitter-clone/backend && MYSQL_PASSWORD='" + mysql_password + "' PYTHONANYWHERE=true python manage.py migrate"
+          migration_cmd = (
+              "cd ~/showcase-twitter-clone/backend && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "python manage.py makemigrations --noinput && "
+              "python manage.py migrate --noinput"
+          )
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -316,6 +334,27 @@ jobs:
           
           if r.status_code != 201:
               print(f"Error running migrations: {r.text}")
+              exit(1)
+          
+          # Wait for migrations to complete
+          time.sleep(10)
+          
+          # Verify migrations
+          verify_cmd = (
+              "cd ~/showcase-twitter-clone/backend && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "python manage.py showmigrations"
+          )
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{verify_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error verifying migrations: {r.text}")
               exit(1)
           
           # Reload web app
@@ -452,7 +491,18 @@ jobs:
           
           # Create console for deployment commands
           print("Creating deployment console...")
-          cmd = "cd ~/ && rm -rf showcase-twitter-clone && git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git && cd showcase-twitter-clone/backend && pip install --user -r requirements.txt && mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && python manage.py collectstatic --noinput"
+          cmd = (
+              "cd ~/ && "
+              "rm -rf showcase-twitter-clone && "
+              "git clone -b staging https://github.com/maxh33/showcase-twitter-clone.git && "
+              "cd showcase-twitter-clone/backend && "
+              "pip install --user -r requirements.txt && "
+              "mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "python manage.py collectstatic --noinput --clear"  # Added --clear to ensure clean collection
+          )
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -484,7 +534,14 @@ jobs:
           
           # Run database migrations
           print("Running database migrations...")
-          migration_cmd = "cd ~/showcase-twitter-clone/backend && MYSQL_PASSWORD='" + mysql_password + "' PYTHONANYWHERE=true python manage.py migrate"
+          migration_cmd = (
+              "cd ~/showcase-twitter-clone/backend && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "python manage.py makemigrations --noinput && "
+              "python manage.py migrate --noinput"
+          )
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -493,6 +550,27 @@ jobs:
           
           if r.status_code != 201:
               print(f"Error running migrations: {r.text}")
+              exit(1)
+          
+          # Wait for migrations to complete
+          time.sleep(10)
+          
+          # Verify migrations
+          verify_cmd = (
+              "cd ~/showcase-twitter-clone/backend && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "python manage.py showmigrations"
+          )
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{verify_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error verifying migrations: {r.text}")
               exit(1)
           
           # Reload web app
