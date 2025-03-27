@@ -1,6 +1,8 @@
 # Twitter Clone **[Under Development]**
 
 
+![Demo GIF](frontend/public/TwitterCloneDemo.gif)
+
 ## Overview
 This Showcase is a Twitter clone that implements core functionalities such as user authentication, tweet management, and notifications. The application is built using Django for the backend and React for the frontend, providing a seamless user experience.
 
@@ -82,6 +84,7 @@ The following API endpoints are available:
 - **API Testing**: Standalone scripts to validate endpoint functionality.
 
 ## Project Demo
+
 ![Login Page](frontend/public/login.png)
 #
 ![Signup Page](frontend/public/signup.png)
