@@ -118,4 +118,15 @@ class TestTweetAPI:
         assert len(response.data['results']) >= 1
         
         # First result should contain the search term
-        assert search_term in response.data['results'][0]['content'].lower() 
+        assert search_term in response.data['results'][0]['content'].lower()
+    
+    def test_special_characters_in_tweet(self, api_client):
+        """Test creating a tweet with special characters"""
+        data = {"content": "let's code!"}
+        response = api_client.post("/api/v1/tweets/", data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["content"] == data["content"]
+        
+        # Verify the content is stored correctly
+        tweet = Tweet.objects.get(id=response.data["id"])
+        assert tweet.content == data["content"] 
