@@ -3,6 +3,11 @@ from .models import Tweet, MediaAttachment, Comment, CommentMediaAttachment
 from users.serializers import UserProfileSerializer
 import re
 from django.utils.html import escape
+import bleach
+
+def extract_hashtags(content):
+    """Extract hashtags from content"""
+    return re.findall(r'#(\w+)', content)
 
 class MediaAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,35 +26,45 @@ class CommentMediaAttachmentSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     author = UserProfileSerializer(read_only=True)
     media = CommentMediaAttachmentSerializer(many=True, read_only=True)
+    hashtags = serializers.SerializerMethodField()
     
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'author', 'created_at', 'updated_at', 'media', 'media_count']
-        read_only_fields = ['id', 'author', 'created_at', 'updated_at', 'media_count']
+        fields = ['id', 'content', 'author', 'created_at', 'updated_at', 'media', 'media_count', 'hashtags']
+        read_only_fields = ['id', 'author', 'created_at', 'updated_at', 'media_count', 'hashtags']
+    
+    def get_hashtags(self, obj):
+        """Get hashtags from comment content"""
+        return extract_hashtags(obj.content)
     
     def validate_content(self, value):
         """
         Validate the comment content:
-        - Escape HTML to prevent XSS attacks
+        - Sanitize HTML while preserving hashtags and normal characters
         - Check that content is not empty after stripping
         - Ensure it doesn't exceed 140 characters
         """
-        # Escape HTML to prevent XSS attacks
-        value = escape(value)
+        # Store hashtags before cleaning
+        hashtags = extract_hashtags(value)
+        
+        # Clean the content using bleach, allowing only basic formatting
+        allowed_tags = []  # No HTML tags allowed
+        allowed_attributes = {}  # No attributes allowed
+        cleaned_value = bleach.clean(value, tags=allowed_tags, attributes=allowed_attributes, strip=True)
         
         # Check content is not empty after stripping
-        if not value.strip():
+        if not cleaned_value.strip():
             raise serializers.ValidationError("Comment content cannot be empty")
         
         # Check length limit
-        if len(value) > 140:
+        if len(cleaned_value) > 140:
             raise serializers.ValidationError("Comment content cannot exceed 140 characters")
         
-        # Check for any potentially malicious scripts
-        if re.search(r'<script|javascript:|on\w+\s*=', value, re.IGNORECASE):
+        # Check for any potentially malicious patterns
+        if re.search(r'<script|javascript:|on\w+\s*=', cleaned_value, re.IGNORECASE):
             raise serializers.ValidationError("Content contains potentially unsafe elements")
-            
-        return value
+        
+        return cleaned_value
     
     def create(self, validated_data):
         request = self.context.get('request')
@@ -63,14 +78,19 @@ class TweetSerializer(serializers.ModelSerializer):
     media = MediaAttachmentSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True, source='comments.all')
     comments_preview = serializers.SerializerMethodField()
+    hashtags = serializers.SerializerMethodField()
     
     class Meta:
         model = Tweet
         fields = ['id', 'content', 'author', 'created_at', 'updated_at', 
                   'likes_count', 'retweet_count', 'comments_count', 
-                  'media', 'comments', 'comments_preview']
+                  'media', 'comments', 'comments_preview', 'hashtags']
         read_only_fields = ['id', 'author', 'created_at', 'updated_at', 
-                           'likes_count', 'retweet_count', 'comments_count']
+                           'likes_count', 'retweet_count', 'comments_count', 'hashtags']
+    
+    def get_hashtags(self, obj):
+        """Get hashtags from tweet content"""
+        return extract_hashtags(obj.content)
     
     def get_comments_preview(self, obj):
         """Get the latest 3 comments for preview"""
@@ -80,26 +100,31 @@ class TweetSerializer(serializers.ModelSerializer):
     def validate_content(self, value):
         """
         Validate the tweet content:
-        - Escape HTML to prevent XSS attacks
+        - Sanitize HTML while preserving hashtags and normal characters
         - Check that content is not empty after stripping
         - Ensure it doesn't exceed 280 characters
         """
-        # Escape HTML to prevent XSS attacks
-        value = escape(value)
+        # Store hashtags before cleaning
+        hashtags = extract_hashtags(value)
+        
+        # Clean the content using bleach, allowing only basic formatting
+        allowed_tags = []  # No HTML tags allowed
+        allowed_attributes = {}  # No attributes allowed
+        cleaned_value = bleach.clean(value, tags=allowed_tags, attributes=allowed_attributes, strip=True)
         
         # Check content is not empty after stripping
-        if not value.strip():
+        if not cleaned_value.strip():
             raise serializers.ValidationError("Tweet content cannot be empty")
         
         # Check length limit (280 characters for Twitter-like experience)
-        if len(value) > 280:
+        if len(cleaned_value) > 280:
             raise serializers.ValidationError("Tweet content cannot exceed 280 characters")
         
-        # Check for any potentially malicious scripts
-        if re.search(r'<script|javascript:|on\w+\s*=', value, re.IGNORECASE):
+        # Check for any potentially malicious patterns
+        if re.search(r'<script|javascript:|on\w+\s*=', cleaned_value, re.IGNORECASE):
             raise serializers.ValidationError("Content contains potentially unsafe elements")
             
-        return value
+        return cleaned_value
     
     def create(self, validated_data):
         request = self.context.get('request')

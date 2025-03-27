@@ -140,7 +140,7 @@ class TweetViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def search(self, request):
-        """Search tweets by content or username"""
+        """Search tweets by content, username, or hashtag"""
         query = request.query_params.get('q', '')
         
         if not query:
@@ -149,12 +149,20 @@ class TweetViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Search tweets by content or author username
-        tweets = Tweet.objects.filter(
-            Q(content__icontains=query) | 
-            Q(author__username__icontains=query),
-            is_deleted=False
-        ).order_by('-created_at')
+        # Check if searching for hashtag
+        if query.startswith('#'):
+            hashtag = query[1:]  # Remove the # symbol
+            tweets = Tweet.objects.filter(
+                content__iregex=rf'#\b{hashtag}\b',  # Match exact hashtag
+                is_deleted=False
+            ).order_by('-created_at')
+        else:
+            # Search tweets by content or author username
+            tweets = Tweet.objects.filter(
+                Q(content__icontains=query) | 
+                Q(author__username__icontains=query),
+                is_deleted=False
+            ).order_by('-created_at')
         
         # Apply pagination
         page = self.paginate_queryset(tweets)
