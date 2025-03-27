@@ -250,3 +250,18 @@ DEFAULT_FROM_EMAIL = 'Twitter Clone <noreply@twitterclone.com>'
 
 # Frontend URL for email verification and password reset links
 FRONTEND_URL = 'http://localhost:3000'
+
+# Swagger settings
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+}
+
+# Disable deprecated Swagger renderers
+SWAGGER_USE_COMPAT_RENDERERS = False

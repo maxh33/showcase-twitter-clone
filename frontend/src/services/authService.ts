@@ -97,11 +97,12 @@ export const refreshToken = async () => {
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+      return response.data;
     }
-    return response.data;
+    throw new Error('No access token in refresh response');
   } catch (error) {
     // If refresh fails, force logout
-    logout();
+    await logout();
     throw error;
   }
 };
@@ -139,28 +140,27 @@ axios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // If the error is 401 and not a login request and hasn't been retried
+    // If the error is 401 and not a login/refresh request and hasn't been retried
     if (error.response?.status === 401 && 
         !originalRequest._retry && 
-        !originalRequest.url?.includes('login')) {
+        !originalRequest.url?.includes('login') &&
+        !originalRequest.url?.includes('token/refresh')) {
       
       originalRequest._retry = true;
       
       try {
         // Try to refresh the token
-        await refreshToken();
+        const refreshResponse = await refreshToken();
         
         // Update the authorization header
-        const token = localStorage.getItem('token');
-        if (token) {
-          originalRequest.headers['Authorization'] = `Bearer ${token}`;
-        }
+        originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
         
         // Retry the original request
         return axios(originalRequest);
       } catch (refreshError) {
         // If refresh token fails, redirect to login
-        logout();
+        await logout();
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }

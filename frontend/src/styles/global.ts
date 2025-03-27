@@ -10,6 +10,7 @@ export const Colors = {
     white: '#FFFFFF',
     success: '#17BF63',
     danger: '#E0245E',
+    blue: '#1991DA'
 }
 
 export const GlobalStyles = createGlobalStyle`

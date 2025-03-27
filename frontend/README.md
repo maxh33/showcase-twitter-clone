@@ -1,6 +1,54 @@
-# Getting Started with Create React App
+# Twitter Clone Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project is a Twitter clone frontend built with React, TypeScript, and Styled Components.
+
+## Features
+
+- User authentication and profile management
+- Tweet creation and interaction
+  - Create and delete tweets
+  - Like and retweet functionality
+  - Comment on tweets with text and media
+  - Like and reply to comments
+- Media integration
+  - Upload images to tweets and comments
+  - Search and add Unsplash images
+- Responsive design with modern UI/UX
+
+## External APIs Integration
+
+### Random User Generation
+
+This project uses the [randomuser.me](https://randomuser.me/) API to generate realistic user data for demonstration purposes. The integration:
+
+- Provides random users for the "You might like" section
+- Generates placeholder user information for tweets when backend data is incomplete
+- Creates random user profiles for testing and demonstration
+
+No API key is required for basic usage of randomuser.me.
+
+### Unsplash Images
+
+The application integrates with [Unsplash](https://unsplash.com/) to allow users to search and use high-quality, free images in their tweets. To use this feature:
+
+1. Create an account at [Unsplash Developers](https://unsplash.com/developers)
+2. Create a new application to get an API key
+3. Copy your access key to `.env` file as `REACT_APP_UNSPLASH_ACCESS_KEY`
+
+Only "Public access" permission is required for this integration.
+
+If no API key is provided, the application will fall back to placeholder images.
+
+## GitHub Actions Setup
+
+For CI/CD deployment, add the following secrets to your GitHub repository:
+
+1. `UNSPLASH_ACCESS_KEY`: Your Unsplash API key
+2. `VERCEL_TOKEN`: Your Vercel deployment token
+3. `VERCEL_PROJECT_ID`: Your Vercel project ID
+4. `VERCEL_ORG_ID`: Your Vercel organization ID
+
+These secrets enable automated deployment to Vercel and ensure the Unsplash API works in the deployed environment.
 
 ## Available Scripts
 
@@ -27,17 +75,14 @@ It correctly bundles React in production mode and optimizes the build for the be
 The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Environment Variables
 
-### `npm run eject`
+Copy `.env.example` to `.env` and adjust the values accordingly:
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+```
+REACT_APP_API_URL=http://localhost:8000/api/v1
+REACT_APP_UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+```
 
 ## Learn More
 
