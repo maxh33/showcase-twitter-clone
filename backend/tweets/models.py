@@ -64,3 +64,29 @@ class CommentMediaAttachment(models.Model):
     
     def __str__(self):
         return f"Media for comment {self.comment.id}"
+
+class Like(models.Model):
+    """Model to track tweet likes"""
+    tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='likes')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='liked_tweets')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('tweet', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} liked {self.tweet.id}"
+
+class Retweet(models.Model):
+    """Model to track retweets"""
+    tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name='retweets')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='retweeted_tweets')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('tweet', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} retweeted {self.tweet.id}"

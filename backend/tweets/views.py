@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, F
 from django.core.files.uploadedfile import UploadedFile
 import os
-from .models import Tweet, MediaAttachment, Comment, CommentMediaAttachment
+from .models import Tweet, MediaAttachment, Comment, CommentMediaAttachment, Like, Retweet
 from .serializers import (
     TweetSerializer, 
     MediaAttachmentSerializer, 
@@ -74,6 +74,14 @@ class TweetViewSet(viewsets.ModelViewSet):
         else:
             throttle_classes = []
         return [throttle() for throttle in throttle_classes]
+    
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def perform_create(self, serializer):
         tweet = serializer.save(author=self.request.user)
@@ -176,18 +184,42 @@ class TweetViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
         tweet = self.get_object()
+        user = request.user
+
+        # Check if user has already liked the tweet
+        if Like.objects.filter(tweet=tweet, user=user).exists():
+            return Response(
+                {'error': 'You have already liked this tweet'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create like and increment counter
+        Like.objects.create(tweet=tweet, user=user)
         tweet.likes_count = F('likes_count') + 1
         tweet.save()
-        tweet.refresh_from_db()  # Refresh to get the updated likes_count
+        tweet.refresh_from_db()
+        
         serializer = self.get_serializer(tweet)
         return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def retweet(self, request, pk=None):
         tweet = self.get_object()
+        user = request.user
+
+        # Check if user has already retweeted the tweet
+        if Retweet.objects.filter(tweet=tweet, user=user).exists():
+            return Response(
+                {'error': 'You have already retweeted this tweet'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create retweet and increment counter
+        Retweet.objects.create(tweet=tweet, user=user)
         tweet.retweet_count = F('retweet_count') + 1
         tweet.save()
-        tweet.refresh_from_db()  # Refresh to get the updated retweet_count
+        tweet.refresh_from_db()
+        
         serializer = self.get_serializer(tweet)
         return Response(serializer.data)
     
