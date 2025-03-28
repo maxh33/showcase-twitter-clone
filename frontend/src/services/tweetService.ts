@@ -180,6 +180,8 @@ export const tweetService = {
       const response = await axiosInstance.post(`/${tweetId}/comments/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          Accept: 'application/json',
+          Authorization: axiosInstance.defaults.headers.Authorization,
         },
       });
       
