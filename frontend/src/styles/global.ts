@@ -19,11 +19,17 @@ export const GlobalStyles = createGlobalStyle`
     padding: 0;
     box-sizing: border-box;
     font-family: 'Inter', sans-serif;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    &::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
   }
 
   body {
     background-color: ${Colors.backgroundGray};
     color: ${Colors.black};
+    overflow-x: hidden;
   }
 `;
 

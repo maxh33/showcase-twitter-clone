@@ -10,17 +10,33 @@ def extract_hashtags(content):
     return re.findall(r'#(\w+)', content)
 
 class MediaAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
     class Meta:
         model = MediaAttachment
         fields = ['id', 'file', 'created_at']
         read_only_fields = ['id', 'created_at']
+    
+    def get_file(self, obj):
+        request = self.context.get('request')
+        if request and obj.file:
+            return request.build_absolute_uri(obj.file.url)
+        return None
 
 
 class CommentMediaAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
     class Meta:
         model = CommentMediaAttachment
         fields = ['id', 'file', 'created_at']
         read_only_fields = ['id', 'created_at']
+    
+    def get_file(self, obj):
+        request = self.context.get('request')
+        if request and obj.file:
+            return request.build_absolute_uri(obj.file.url)
+        return None
 
 
 class CommentSerializer(serializers.ModelSerializer):

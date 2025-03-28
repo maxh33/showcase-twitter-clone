@@ -84,7 +84,17 @@ const Tweet: React.FC<TweetProps> = ({
           {tweet.media && tweet.media.length > 0 && (
             <S.MediaContainer>
               {tweet.media.map((media) => (
-                <S.MediaImage key={media.id} src={media.file} alt="Tweet media" />
+                <S.MediaImage 
+                  key={media.id} 
+                  src={media.file} 
+                  alt="Tweet media"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    console.error('Error loading image:', target.src);
+                    target.onerror = null; // Prevent infinite loop
+                    target.src = '/placeholder-image.png'; // Fallback image
+                  }}
+                />
               ))}
             </S.MediaContainer>
           )}

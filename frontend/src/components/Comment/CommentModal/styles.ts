@@ -143,11 +143,13 @@ export const ActionBar = styled.div`
   justify-content: space-between;
   padding-top: 12px;
   border-top: 1px solid ${Colors.extraLightGray};
+  position: relative;
 `;
 
 export const MediaActions = styled.div`
   display: flex;
   gap: 16px;
+  position: relative;
   
   button {
     background: none;
@@ -160,6 +162,11 @@ export const MediaActions = styled.div`
     
     &:hover {
       background-color: ${Colors.extraLightGray};
+    }
+
+    &.active {
+      background-color: ${Colors.extraLightGray};
+      color: ${Colors.blue};
     }
   }
 `;
@@ -281,29 +288,56 @@ export const LoadingText = styled.p`
 
 export const EmojiPicker = styled.div`
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 10px);
   left: 0;
   background: ${Colors.white};
   border: 1px solid ${Colors.extraLightGray};
   border-radius: 8px;
-  padding: 8px;
+  padding: 12px;
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 4px;
-  max-width: 400px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  width: 320px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${Colors.extraLightGray};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${Colors.lightGray};
+    border-radius: 4px;
+  }
 `;
 
 export const EmojiButton = styled.button`
   background: none;
   border: none;
-  font-size: 20px;
-  padding: 4px;
+  font-size: 24px;
+  padding: 8px;
   cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
   
   &:hover {
-    background-color: ${Colors.backgroundGray};
+    background-color: ${Colors.extraLightGray};
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 `; 

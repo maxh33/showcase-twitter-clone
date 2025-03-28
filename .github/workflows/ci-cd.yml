@@ -249,6 +249,7 @@ jobs:
           PA_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
         run: |
           # Generate a simple Python script to handle deployment
           cat > deploy.py << 'EOL'
@@ -282,28 +283,80 @@ jobs:
               "cd showcase-twitter-clone/backend && "
               "pip install --user -r requirements.txt && "
               "mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && "
+              "chmod 755 showcase_twitter_clone/static showcase_twitter_clone/media && "
               "export DJANGO_SETTINGS_MODULE=core.settings && "
               "export PYTHONANYWHERE=true && "
               "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py collectstatic --noinput --clear"  # Added --clear to ensure clean collection
-          )
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
+              "python manage.py makemigrations --noinput && "  # First create any new migrations
+              "python manage.py migrate --noinput && "         # Apply migrations
+              "python manage.py collectstatic --noinput --clear"  # Then collect static files
           )
           
-          if r.status_code != 201:
-              print(f"Error creating console: {r.text}")
-              exit(1)
-              
-          print("Waiting for deployment to complete...")
-          time.sleep(30)
+          # Configure static and media files in PythonAnywhere
+          config_cmd = (
+              "cd ~/ && "
+              "echo 'import os' > configure_static.py && "
+              "echo 'import requests' >> configure_static.py && "
+              "echo 'username = \"maxh33\"' >> configure_static.py && "
+              "echo 'domain = \"maxh33.pythonanywhere.com\"' >> configure_static.py && "
+              "echo 'token = os.environ[\"PA_API_TOKEN\"]' >> configure_static.py && "
+              "echo 'api_url = f\"https://www.pythonanywhere.com/api/v0/user/{username}/webapps/{domain}/static_files/\"' >> configure_static.py && "
+              "echo 'headers = {\"Authorization\": f\"Token {token}\"}' >> configure_static.py && "
+              "echo '' >> configure_static.py && "
+              "echo '# Configure static files' >> configure_static.py && "
+              "echo 'static_response = requests.post(' >> configure_static.py && "
+              "echo '    api_url,' >> configure_static.py && "
+              "echo '    headers=headers,' >> configure_static.py && "
+              "echo '    json={' >> configure_static.py && "
+              "echo '        \"url\": \"/static/\",' >> configure_static.py && "
+              "echo '        \"path\": \"/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone/static\"' >> configure_static.py && "
+              "echo '    }' >> configure_static.py && "
+              "echo ')' >> configure_static.py && "
+              "echo 'print(f\"Static files configuration response: {static_response.status_code}\")' >> configure_static.py && "
+              "echo '' >> configure_static.py && "
+              "echo '# Configure media files' >> configure_static.py && "
+              "echo 'media_response = requests.post(' >> configure_static.py && "
+              "echo '    api_url,' >> configure_static.py && "
+              "echo '    headers=headers,' >> configure_static.py && "
+              "echo '    json={' >> configure_static.py && "
+              "echo '        \"url\": \"/media/\",' >> configure_static.py && "
+              "echo '        \"path\": \"/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone/media\"' >> configure_static.py && "
+              "echo '    }' >> configure_static.py && "
+              "echo ')' >> configure_static.py && "
+              "echo 'print(f\"Media files configuration response: {media_response.status_code}\")' >> configure_static.py && "
+              "python configure_static.py"
+          )
+          
+          # Verify migrations and show status
+          verify_cmd = (
+              "cd ~/showcase-twitter-clone/backend && "
+              "export DJANGO_SETTINGS_MODULE=core.settings && "
+              "export PYTHONANYWHERE=true && "
+              "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              "echo 'Checking migrations status...' && "
+              "python manage.py showmigrations"
+          )
           
           # Create WSGI file content
-          wsgi_content = "import os\nimport sys\n\npaths = ['/home/" + username + "/showcase-twitter-clone/backend', '/home/" + username + "/showcase-twitter-clone/backend/showcase_twitter_clone', '/home/" + username + "/showcase-twitter-clone']\nfor path in paths:\n    if path not in sys.path:\n        sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\nos.environ['PYTHONANYWHERE'] = 'true'\nos.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
+          wsgi_content = (
+              "import os\n"
+              "import sys\n\n"
+              "# Add project directory to Python path\n"
+              "path = '/home/maxh33/showcase-twitter-clone/backend'\n"
+              "if path not in sys.path:\n"
+              "    sys.path.append(path)\n\n"
+              "os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\n"
+              "os.environ['PYTHONANYWHERE'] = 'true'\n"
+              "os.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n"
+              "os.environ['DEBUG'] = 'False'\n"
+              "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
+              "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
+              "os.environ['SECRET_KEY'] = '" + secret_key + "'\n\n"
+              "from django.core.wsgi import get_wsgi_application\n"
+              "application = get_wsgi_application()"
+          )
           
-          # Update WSGI file using files parameter (not json)
+          # Update WSGI file
           print("Updating WSGI file...")
           wsgi_path = f"/var/www/{username}_pythonanywhere_com_wsgi.py"
           r = requests.post(
@@ -316,37 +369,38 @@ jobs:
               print(f"Error updating WSGI file: {r.text}")
               exit(1)
           
-          # Run database migrations
-          print("Running database migrations...")
-          migration_cmd = (
-              "cd ~/showcase-twitter-clone/backend && "
-              "export DJANGO_SETTINGS_MODULE=core.settings && "
-              "export PYTHONANYWHERE=true && "
-              "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py makemigrations --noinput && "
-              "python manage.py migrate --noinput"
-          )
+          # Execute deployment commands
+          print("Running deployment commands...")
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{migration_cmd}'"}
+              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
           )
           
           if r.status_code != 201:
-              print(f"Error running migrations: {r.text}")
+              print(f"Error running deployment commands: {r.text}")
               exit(1)
           
-          # Wait for migrations to complete
+          # Wait for deployment to complete
+          time.sleep(30)
+          
+          # Configure static and media files
+          print("Configuring static and media files...")
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{config_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error configuring static and media files: {r.text}")
+              exit(1)
+          
+          # Wait for configuration to complete
           time.sleep(10)
           
-          # Verify migrations
-          verify_cmd = (
-              "cd ~/showcase-twitter-clone/backend && "
-              "export DJANGO_SETTINGS_MODULE=core.settings && "
-              "export PYTHONANYWHERE=true && "
-              "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py showmigrations"
-          )
+          # Verify migrations status
+          print("Verifying migrations status...")
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
@@ -356,6 +410,9 @@ jobs:
           if r.status_code != 201:
               print(f"Error verifying migrations: {r.text}")
               exit(1)
+          
+          # Wait for verification to complete
+          time.sleep(10)
           
           # Reload web app
           print("Reloading web app...")
@@ -368,21 +425,7 @@ jobs:
               print(f"Error reloading web app: {r.text}")
               exit(1)
           
-          # Debug URL configuration
-          print("Debugging URLs...")
-          debug_cmd = "cd ~/showcase-twitter-clone/backend && PYTHONANYWHERE=true MYSQL_PASSWORD='" + mysql_password + "' python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{debug_cmd}'"}
-          )
-          
-          if r.status_code != 201:
-              print(f"Error creating debug console: {r.text}")
-          else:
-              print(f"Debug console created with ID: {r.json().get('id')}")
-          
-          print("Deployment completed!")
+          print("Deployment completed successfully!")
           EOL
           
           # Run the deployment script
@@ -465,6 +508,7 @@ jobs:
           PA_API_TOKEN: ${{ secrets.PYTHONANYWHERE_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
         run: |
           # Create a simple Python script to handle deployment
           cat > deploy_staging.py << 'EOL'
@@ -498,28 +542,68 @@ jobs:
               "cd showcase-twitter-clone/backend && "
               "pip install --user -r requirements.txt && "
               "mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media && "
+              "chmod 755 showcase_twitter_clone/static showcase_twitter_clone/media && "
               "export DJANGO_SETTINGS_MODULE=core.settings && "
               "export PYTHONANYWHERE=true && "
               "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py collectstatic --noinput --clear"  # Added --clear to ensure clean collection
-          )
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
+              "python manage.py collectstatic --noinput --clear"
           )
           
-          if r.status_code != 201:
-              print(f"Error creating console: {r.text}")
-              exit(1)
-              
-          print("Waiting for deployment to complete...")
-          time.sleep(30)
+          # Configure static and media files in PythonAnywhere
+          config_cmd = (
+              "cd ~/ && "
+              "echo 'import os' > configure_static.py && "
+              "echo 'import requests' >> configure_static.py && "
+              "echo 'username = \"maxh33\"' >> configure_static.py && "
+              "echo 'domain = \"maxh33.pythonanywhere.com\"' >> configure_static.py && "
+              "echo 'token = os.environ[\"PA_API_TOKEN\"]' >> configure_static.py && "
+              "echo 'api_url = f\"https://www.pythonanywhere.com/api/v0/user/{username}/webapps/{domain}/static_files/\"' >> configure_static.py && "
+              "echo 'headers = {\"Authorization\": f\"Token {token}\"}' >> configure_static.py && "
+              "echo '' >> configure_static.py && "
+              "echo '# Configure static files' >> configure_static.py && "
+              "echo 'static_response = requests.post(' >> configure_static.py && "
+              "echo '    api_url,' >> configure_static.py && "
+              "echo '    headers=headers,' >> configure_static.py && "
+              "echo '    json={' >> configure_static.py && "
+              "echo '        \"url\": \"/static/\",' >> configure_static.py && "
+              "echo '        \"path\": \"/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone/static\"' >> configure_static.py && "
+              "echo '    }' >> configure_static.py && "
+              "echo ')' >> configure_static.py && "
+              "echo 'print(f\"Static files configuration response: {static_response.status_code}\")' >> configure_static.py && "
+              "echo '' >> configure_static.py && "
+              "echo '# Configure media files' >> configure_static.py && "
+              "echo 'media_response = requests.post(' >> configure_static.py && "
+              "echo '    api_url,' >> configure_static.py && "
+              "echo '    headers=headers,' >> configure_static.py && "
+              "echo '    json={' >> configure_static.py && "
+              "echo '        \"url\": \"/media/\",' >> configure_static.py && "
+              "echo '        \"path\": \"/home/maxh33/showcase-twitter-clone/backend/showcase_twitter_clone/media\"' >> configure_static.py && "
+              "echo '    }' >> configure_static.py && "
+              "echo ')' >> configure_static.py && "
+              "echo 'print(f\"Media files configuration response: {media_response.status_code}\")' >> configure_static.py && "
+              "python configure_static.py"
+          )
           
           # Create WSGI file content
-          wsgi_content = "import os\nimport sys\n\npaths = ['/home/" + username + "/showcase-twitter-clone/backend', '/home/" + username + "/showcase-twitter-clone/backend/showcase_twitter_clone', '/home/" + username + "/showcase-twitter-clone']\nfor path in paths:\n    if path not in sys.path:\n        sys.path.insert(0, path)\n\nos.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\nos.environ['DEBUG'] = 'False'\nos.environ['ALLOWED_HOSTS'] = '" + username + ".pythonanywhere.com,localhost,127.0.0.1'\nos.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\nos.environ['SECRET_KEY'] = '" + secret_key + "'\nos.environ['PYTHONANYWHERE'] = 'true'\nos.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n\nfrom django.core.wsgi import get_wsgi_application\napplication = get_wsgi_application()"
+          wsgi_content = (
+              "import os\n"
+              "import sys\n\n"
+              "# Add project directory to Python path\n"
+              "path = '/home/maxh33/showcase-twitter-clone/backend'\n"
+              "if path not in sys.path:\n"
+              "    sys.path.append(path)\n\n"
+              "os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings'\n"
+              "os.environ['PYTHONANYWHERE'] = 'true'\n"
+              "os.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n"
+              "os.environ['DEBUG'] = 'False'\n"
+              "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
+              "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
+              "os.environ['SECRET_KEY'] = '" + secret_key + "'\n\n"
+              "from django.core.wsgi import get_wsgi_application\n"
+              "application = get_wsgi_application()"
+          )
           
-          # Update WSGI file using files parameter (not json)
+          # Update WSGI file
           print("Updating WSGI file...")
           wsgi_path = f"/var/www/{username}_pythonanywhere_com_wsgi.py"
           r = requests.post(
@@ -532,46 +616,35 @@ jobs:
               print(f"Error updating WSGI file: {r.text}")
               exit(1)
           
-          # Run database migrations
-          print("Running database migrations...")
-          migration_cmd = (
-              "cd ~/showcase-twitter-clone/backend && "
-              "export DJANGO_SETTINGS_MODULE=core.settings && "
-              "export PYTHONANYWHERE=true && "
-              "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py makemigrations --noinput && "
-              "python manage.py migrate --noinput"
-          )
+          # Execute deployment commands
+          print("Running deployment commands...")
           r = requests.post(
               f"{api_url}/consoles/",
               headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{migration_cmd}'"}
+              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
           )
           
           if r.status_code != 201:
-              print(f"Error running migrations: {r.text}")
+              print(f"Error running deployment commands: {r.text}")
               exit(1)
           
-          # Wait for migrations to complete
+          # Wait for deployment to complete
+          time.sleep(30)
+          
+          # Configure static and media files
+          print("Configuring static and media files...")
+          r = requests.post(
+              f"{api_url}/consoles/",
+              headers=headers,
+              json={"executable": "bash", "arguments": f"-c '{config_cmd}'"}
+          )
+          
+          if r.status_code != 201:
+              print(f"Error configuring static and media files: {r.text}")
+              exit(1)
+          
+          # Wait for configuration to complete
           time.sleep(10)
-          
-          # Verify migrations
-          verify_cmd = (
-              "cd ~/showcase-twitter-clone/backend && "
-              "export DJANGO_SETTINGS_MODULE=core.settings && "
-              "export PYTHONANYWHERE=true && "
-              "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py showmigrations"
-          )
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{verify_cmd}'"}
-          )
-          
-          if r.status_code != 201:
-              print(f"Error verifying migrations: {r.text}")
-              exit(1)
           
           # Reload web app
           print("Reloading web app...")
@@ -583,20 +656,6 @@ jobs:
           if r.status_code != 200:
               print(f"Error reloading web app: {r.text}")
               exit(1)
-          
-          # Debug URL configuration
-          print("Debugging URLs...")
-          debug_cmd = "cd ~/showcase-twitter-clone/backend && PYTHONANYWHERE=true MYSQL_PASSWORD='" + mysql_password + "' python -c \"import os; os.environ['DJANGO_SETTINGS_MODULE']='core.settings'; import django; django.setup(); from django.urls import get_resolver; resolver = get_resolver(); print('URL PATTERNS:'); [print(f'Pattern: {p.pattern}') for p in resolver.url_patterns]\""
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{debug_cmd}'"}
-          )
-          
-          if r.status_code != 201:
-              print(f"Error creating debug console: {r.text}")
-          else:
-              print(f"Debug console created with ID: {r.json().get('id')}")
           
           print("Staging deployment completed!")
           EOL
