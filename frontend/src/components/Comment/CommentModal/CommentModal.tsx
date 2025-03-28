@@ -159,20 +159,21 @@ const CommentModal: React.FC<CommentModalProps> = ({
     setShowImageSearch(false);
   };
   
-  const toggleEmojiPicker = () => {
+  const toggleEmojiPicker = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setShowImageSearch(false);
     setShowEmojiPicker(!showEmojiPicker);
   };
   
   const handleEmojiSelect = (emoji: string) => {
     const cursorPosition = textInputRef.current?.selectionStart || content.length;
-    
     const newContent = 
       content.substring(0, cursorPosition) + 
       emoji + 
       content.substring(cursorPosition);
     
     setContent(newContent);
+    setShowEmojiPicker(false);
     
     setTimeout(() => {
       if (textInputRef.current) {
@@ -183,6 +184,25 @@ const CommentModal: React.FC<CommentModalProps> = ({
       }
     }, 0);
   };
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current && 
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
   
   const handleSubmit = async () => {
     if (content.trim() === '' && !selectedFile && !previewUrl) {
@@ -258,10 +278,27 @@ const CommentModal: React.FC<CommentModalProps> = ({
                   <button onClick={toggleImageSearch}>
                     <IconWrapper icon={FaSearch} />
                   </button>
-                  <button onClick={toggleEmojiPicker}>
+                  <button 
+                    onClick={toggleEmojiPicker}
+                    className={showEmojiPicker ? 'active' : ''}
+                  >
                     <IconWrapper icon={FaSmile} />
                   </button>
                 </IconContext.Provider>
+
+                {showEmojiPicker && (
+                  <S.EmojiPicker ref={emojiPickerRef}>
+                    {EMOJI_LIST.map((emoji, index) => (
+                      <S.EmojiButton
+                        key={index}
+                        onClick={() => handleEmojiSelect(emoji)}
+                        type="button"
+                      >
+                        {emoji}
+                      </S.EmojiButton>
+                    ))}
+                  </S.EmojiPicker>
+                )}
               </S.MediaActions>
               
               <S.CharacterCount warning={content.length > 120}>
@@ -309,19 +346,6 @@ const CommentModal: React.FC<CommentModalProps> = ({
               )}
             </S.ImageGrid>
           </S.ImageSearchContainer>
-        )}
-        
-        {showEmojiPicker && (
-          <S.EmojiPicker ref={emojiPickerRef}>
-            {EMOJI_LIST.map((emoji, index) => (
-              <S.EmojiButton
-                key={index}
-                onClick={() => handleEmojiSelect(emoji)}
-              >
-                {emoji}
-              </S.EmojiButton>
-            ))}
-          </S.EmojiPicker>
         )}
       </S.ModalContent>
     </S.ModalOverlay>

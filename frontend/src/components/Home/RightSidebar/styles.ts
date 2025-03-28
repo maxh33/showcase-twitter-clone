@@ -10,6 +10,11 @@ export const RightSidebarContainer = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 export const SearchContainer = styled.div`

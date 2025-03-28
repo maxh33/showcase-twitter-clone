@@ -7,10 +7,12 @@ export const FeedContainer = styled.div`
   border-right: 1px solid ${Colors.lightGray};
   border-left: 1px solid ${Colors.lightGray};
   width: 100%;
-  height: 100%;
+  height: 100vh;
   max-width: 600px;
   margin: 0 auto;
   overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
   
   /* Responsive styles */
   @media (max-width: 768px) {
