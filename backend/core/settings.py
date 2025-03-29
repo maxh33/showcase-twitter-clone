@@ -208,7 +208,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day',
-        'auth': '60/minute',  # Increased for testing
+        'auth': '5/minute',  # Reduced from 60/minute to prevent abuse while still allowing legitimate attempts
     },
 }
 
@@ -239,17 +239,17 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
-# Email settings for password reset (using console backend for development)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 1025
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
-EMAIL_USE_TLS = False
-DEFAULT_FROM_EMAIL = 'Twitter Clone <noreply@twitterclone.com>'
+# Email settings for password reset
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Twitter Clone <noreply@twitterclone.com>')
 
 # Frontend URL for email verification and password reset links
-FRONTEND_URL = 'http://localhost:3000'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app')
 
 # Swagger settings
 SWAGGER_SETTINGS = {

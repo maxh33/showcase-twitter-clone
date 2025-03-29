@@ -176,6 +176,18 @@ class TestPasswordReset:
         
         response = api_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_200_OK
+        assert 'message' in response.data
+        assert response.data['message'] == 'Password reset email sent'
+    
+    def test_password_reset_request_invalid_email(self, api_client):
+        """Test that password reset fails with invalid email"""
+        url = reverse('auth:password_reset_request')
+        data = {
+            'email': 'nonexistent@example.com',
+        }
+        
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
     
     def test_password_reset_confirm(self, api_client, create_user):
         """Test that a user can confirm a password reset"""
@@ -193,6 +205,8 @@ class TestPasswordReset:
         
         response = api_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_200_OK
+        assert 'message' in response.data
+        assert response.data['message'] == 'Password reset successful'
         
         # Check that login works with new password
         login_url = reverse('auth:login')
@@ -203,6 +217,39 @@ class TestPasswordReset:
         
         login_response = api_client.post(login_url, login_data, format='json')
         assert login_response.status_code == status.HTTP_200_OK
+        assert 'access' in login_response.data
+    
+    def test_password_reset_confirm_invalid_token(self, api_client, create_user):
+        """Test that password reset fails with invalid token"""
+        uidb64 = urlsafe_base64_encode(force_bytes(create_user.pk))
+        
+        url = reverse('auth:password_reset_confirm')
+        data = {
+            'token': 'invalid-token',
+            'uidb64': uidb64,
+            'password': 'NewStrongPassword123!',
+            'password2': 'NewStrongPassword123!',
+        }
+        
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+    
+    def test_password_reset_confirm_passwords_dont_match(self, api_client, create_user):
+        """Test that password reset fails when passwords don't match"""
+        token = default_token_generator.make_token(create_user)
+        uidb64 = urlsafe_base64_encode(force_bytes(create_user.pk))
+        
+        url = reverse('auth:password_reset_confirm')
+        data = {
+            'token': token,
+            'uidb64': uidb64,
+            'password': 'NewStrongPassword123!',
+            'password2': 'DifferentPassword123!',
+        }
+        
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'password' in response.data
 
 
 @pytest.mark.django_db
