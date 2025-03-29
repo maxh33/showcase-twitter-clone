@@ -250,6 +250,13 @@ jobs:
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_USE_TLS: 'True'
+          DEFAULT_FROM_EMAIL: 'Twitter Clone <services@maxhaider.dev>'
+          FRONTEND_URL: 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
         run: |
           # Generate a simple Python script to handle deployment
           cat > deploy.py << 'EOL'
@@ -349,6 +356,16 @@ jobs:
               "os.environ['PYTHONANYWHERE'] = 'true'\n"
               "os.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n"
               "os.environ['DEBUG'] = 'False'\n"
+              "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
+              "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
+              "os.environ['SECRET_KEY'] = '" + secret_key + "'\n"
+              "os.environ['EMAIL_HOST'] = '" + os.environ.get('EMAIL_HOST', 'smtp.office365.com') + "'\n"
+              "os.environ['EMAIL_PORT'] = '" + os.environ.get('EMAIL_PORT', '587') + "'\n"
+              "os.environ['EMAIL_HOST_USER'] = '" + os.environ.get('EMAIL_HOST_USER', '') + "'\n"
+              "os.environ['EMAIL_HOST_PASSWORD'] = '" + os.environ.get('EMAIL_HOST_PASSWORD', '') + "'\n"
+              "os.environ['EMAIL_USE_TLS'] = 'True'\n"
+              "os.environ['DEFAULT_FROM_EMAIL'] = 'Twitter Clone <services@maxhaider.dev>'\n"
+              "os.environ['FRONTEND_URL'] = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'\n"
               "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
               "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
               "os.environ['SECRET_KEY'] = '" + secret_key + "'\n\n"
@@ -509,6 +526,13 @@ jobs:
           PA_USERNAME: ${{ secrets.PYTHONANYWHERE_USERNAME }}
           DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          EMAIL_USE_TLS: 'True'
+          DEFAULT_FROM_EMAIL: 'Twitter Clone <services@maxhaider.dev>'
+          FRONTEND_URL: 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
         run: |
           # Create a simple Python script to handle deployment
           cat > deploy_staging.py << 'EOL'
@@ -596,6 +620,16 @@ jobs:
               "os.environ['PYTHONANYWHERE'] = 'true'\n"
               "os.environ['MYSQL_PASSWORD'] = '" + mysql_password + "'\n"
               "os.environ['DEBUG'] = 'False'\n"
+              "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
+              "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
+              "os.environ['SECRET_KEY'] = '" + secret_key + "'\n"
+              "os.environ['EMAIL_HOST'] = '" + os.environ.get('EMAIL_HOST', 'smtp.office365.com') + "'\n"
+              "os.environ['EMAIL_PORT'] = '" + os.environ.get('EMAIL_PORT', '587') + "'\n"
+              "os.environ['EMAIL_HOST_USER'] = '" + os.environ.get('EMAIL_HOST_USER', '') + "'\n"
+              "os.environ['EMAIL_HOST_PASSWORD'] = '" + os.environ.get('EMAIL_HOST_PASSWORD', '') + "'\n"
+              "os.environ['EMAIL_USE_TLS'] = 'True'\n"
+              "os.environ['DEFAULT_FROM_EMAIL'] = 'Twitter Clone <services@maxhaider.dev>'\n"
+              "os.environ['FRONTEND_URL'] = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'\n"
               "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
               "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
               "os.environ['SECRET_KEY'] = '" + secret_key + "'\n\n"
