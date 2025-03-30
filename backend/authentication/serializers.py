@@ -172,11 +172,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
 class PasswordResetRequestSerializer(serializers.Serializer):
     """Serializer for requesting a password reset"""
     email = serializers.EmailField(required=True)
-    
-    def validate_email(self, value):
-        if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("No user found with this email address.")
-        return value
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):

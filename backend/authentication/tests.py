@@ -1,11 +1,15 @@
 import pytest
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
+from django.core import mail
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.test import override_settings
 
 User = get_user_model()
 
@@ -33,6 +37,13 @@ def inactive_user():
     )
     return user
 
+@pytest.fixture(autouse=True)
+def disable_throttling(settings):
+    print("TESTING flag:", settings.TESTING)  # Debug print
+    settings.REST_FRAMEWORK = {
+        'DEFAULT_THROTTLE_CLASSES': [],
+        'DEFAULT_THROTTLE_RATES': {}
+    }
 
 @pytest.mark.django_db
 class TestRegistration:
@@ -167,8 +178,8 @@ class TestEmailVerification:
 
 @pytest.mark.django_db
 class TestPasswordReset:
-    def test_password_reset_request(self, api_client, create_user):
-        """Test that a user can request a password reset"""
+    def test_password_reset_request_success(self, api_client, create_user):
+        """Test that a user can request a password reset with proper email template"""
         url = reverse('auth:password_reset_request')
         data = {
             'email': 'test@example.com',
@@ -176,20 +187,58 @@ class TestPasswordReset:
         
         response = api_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_200_OK
-        assert 'message' in response.data
         assert response.data['message'] == 'Password reset email sent'
+        
+        # Check that one email was sent
+        assert len(mail.outbox) == 1
+        email = mail.outbox[0]
+        
+        # Verify email properties
+        assert email.subject == 'Reset your password'
+        assert email.to == ['test@example.com']
+        assert email.from_email == f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>'
+        
+        # Verify that the email contains the HTML template
+        assert 'text/html' in email.alternatives[0][1]
+        html_content = email.alternatives[0][0]
+        
+        # Check for key elements from our template
+        assert '<title>Password Reset</title>' in html_content
+        assert '<h1>Password Reset</h1>' in html_content
+        assert 'class="button">Reset My Password</a>' in html_content
+        assert 'Twitter Clone Built by' in html_content
+        
+        # Verify the reset URL is included
+        assert settings.FRONTEND_URL in html_content
+        assert '/reset-password/' in html_content
     
-    def test_password_reset_request_invalid_email(self, api_client):
-        """Test that password reset fails with invalid email"""
+    def test_password_reset_request_nonexistent_email(self, api_client):
+        """Test that password reset request with nonexistent email still returns 200"""
         url = reverse('auth:password_reset_request')
         data = {
             'email': 'nonexistent@example.com',
         }
         
         response = api_client.post(url, data, format='json')
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # Should still return 200 for security reasons
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['message'] == 'Password reset email sent'
+        # No email should be sent
+        assert len(mail.outbox) == 0
     
-    def test_password_reset_confirm(self, api_client, create_user):
+    def test_password_reset_request_invalid_email_format(self, api_client):
+        """Test that password reset request with invalid email format returns 400"""
+        url = reverse('auth:password_reset_request')
+        data = {
+            'email': 'invalid-email',
+        }
+        
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'email' in response.data
+        assert len(mail.outbox) == 0
+    
+    def test_password_reset_confirm_success(self, api_client, create_user):
         """Test that a user can confirm a password reset"""
         # Generate reset token
         token = default_token_generator.make_token(create_user)
@@ -205,10 +254,9 @@ class TestPasswordReset:
         
         response = api_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_200_OK
-        assert 'message' in response.data
         assert response.data['message'] == 'Password reset successful'
         
-        # Check that login works with new password
+        # Verify user can login with new password
         login_url = reverse('auth:login')
         login_data = {
             'email': 'test@example.com',
@@ -233,6 +281,7 @@ class TestPasswordReset:
         
         response = api_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'error' in response.data
     
     def test_password_reset_confirm_passwords_dont_match(self, api_client, create_user):
         """Test that password reset fails when passwords don't match"""
@@ -245,6 +294,23 @@ class TestPasswordReset:
             'uidb64': uidb64,
             'password': 'NewStrongPassword123!',
             'password2': 'DifferentPassword123!',
+        }
+        
+        response = api_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'password' in response.data
+    
+    def test_password_reset_confirm_weak_password(self, api_client, create_user):
+        """Test that password reset fails with weak password"""
+        token = default_token_generator.make_token(create_user)
+        uidb64 = urlsafe_base64_encode(force_bytes(create_user.pk))
+        
+        url = reverse('auth:password_reset_confirm')
+        data = {
+            'token': token,
+            'uidb64': uidb64,
+            'password': 'weak',
+            'password2': 'weak',
         }
         
         response = api_client.post(url, data, format='json')
