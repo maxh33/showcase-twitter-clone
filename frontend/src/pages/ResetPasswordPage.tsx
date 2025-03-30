@@ -55,7 +55,7 @@ const ResetPasswordPage: React.FC = () => {
     
     try {
       await resetPassword({ email });
-      setSuccess('Password reset instructions have been sent to your email address.');
+      setSuccess('Check your email for reset instructions, including spam folder.');
       setEmail(''); // Clear the form
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'response' in error) {

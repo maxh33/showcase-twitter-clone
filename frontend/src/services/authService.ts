@@ -113,8 +113,25 @@ export const verifyEmail = async (data: VerifyEmailData) => {
 };
 
 export const resetPassword = async (data: ResetPasswordData) => {
-  const response = await axios.post(`${API_URL}/v1/auth/password-reset/`, data);
-  return response.data;
+  try {
+    const response = await axios.post(`${API_URL}/api/v1/auth/password-reset/`, data);
+    return response.data;
+  } catch (error: any) {
+    // Handle different types of errors
+    if (error.response) {
+      // The server responded with a status code outside the 2xx range
+      if (error.response.data && typeof error.response.data === 'object') {
+        throw new Error(Object.values(error.response.data)[0] as string);
+      }
+      throw new Error('Password reset request failed. Please try again.');
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new Error('No response from server. Please check your internet connection.');
+    } else {
+      // Something happened in setting up the request
+      throw new Error('An error occurred. Please try again.');
+    }
+  }
 };
 
 export const confirmResetPassword = async (data: ConfirmResetPasswordData) => {
