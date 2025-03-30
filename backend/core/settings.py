@@ -249,7 +249,7 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Twitter Clone <noreply@twitterclone.com>')
 
 # Frontend URL for email verification and password reset links
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app')
+FRONTEND_URL = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
 
 # Swagger settings
 SWAGGER_SETTINGS = {

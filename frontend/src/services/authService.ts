@@ -57,7 +57,7 @@ export const register = async (data: RegisterData) => {
 };
 
 export const login = async (data: LoginData) => {
-  const response = await axios.post(`${API_URL}/v1/auth/login/`, data);
+  const response = await axios.post(`${API_URL}/api/v1/auth/login/`, data);
   if (response.data.access) {
     localStorage.setItem('token', response.data.access);
     localStorage.setItem('refreshToken', response.data.refresh);
