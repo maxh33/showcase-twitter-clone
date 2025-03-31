@@ -15,6 +15,7 @@ interface FeedProps {
 }
 
 const Feed: React.FC<FeedProps> = ({ currentUser }) => {
+  // Initialize tweets as an empty array to prevent undefined errors
   const [tweets, setTweets] = useState<TweetType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,25 +36,33 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       const response = await getFeed(pageNum);
       console.log('Feed component: Got tweets response:', response);
       
+      // Check if response is an array (direct tweets) or an object with results property
+      const results = Array.isArray(response) ? response : (response?.results || []);
+      
       setTweets(prev => 
-        refresh ? response.results : [...prev, ...response.results]
+        refresh ? [...results] : [...(prev || []), ...results]
       );
-      setHasMore(!!response.next);
+      
+      // Update hasMore based on whether there's a next property or if we have more items than requested
+      setHasMore(response && typeof response === 'object' && 'next' in response ? !!response.next : results.length > 0);
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching tweets:', err);
       
       // Check if it's an authentication error
-      if (err.response && err.response.status === 401) {
+      if (err && typeof err === 'object' && 'response' in err && 
+          err.response && typeof err.response === 'object' && 
+          'status' in err.response && err.response.status === 401) {
         try {
           // Try to refresh the token
           await refreshToken();
           // Try the original request again
           const response = await getFeed(pageNum);
+          const results = Array.isArray(response) ? response : (response?.results || []);
           setTweets(prev => 
-            refresh ? response.results : [...prev, ...response.results]
+            refresh ? [...results] : [...(prev || []), ...results]
           );
-          setHasMore(!!response.next);
+          setHasMore(response && typeof response === 'object' && 'next' in response ? !!response.next : results.length > 0);
           setError(null);
           return;
         } catch (refreshError) {
@@ -92,7 +101,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       const updatedTweet = await likeTweet(tweetId);
       
       setTweets(prev => 
-        prev.map(tweet => 
+        (prev || []).map(tweet => 
           tweet.id === tweetId ? updatedTweet : tweet
         )
       );
@@ -113,7 +122,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       const updatedTweet = await retweetTweet(tweetId);
       
       setTweets(prev => 
-        prev.map(tweet => 
+        (prev || []).map(tweet => 
           tweet.id === tweetId ? updatedTweet : tweet
         )
       );
@@ -135,7 +144,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       
       // Update the tweet in the feed with new comment count
       setTweets(prev => 
-        prev.map(tweet => 
+        (prev || []).map(tweet => 
           tweet.id === tweetId 
             ? { ...tweet, comments_count: tweet.comments_count + 1 }
             : tweet
@@ -153,18 +162,20 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   };
   
   const renderTweets = () => {
-    console.log('Feed component: Rendering tweets, count:', tweets.length);
+    // Ensure tweets is always an array
+    const tweetArray = tweets || [];
+    console.log('Feed component: Rendering tweets, count:', tweetArray.length);
     
-    // Check if tweets is undefined or empty
-    if (!tweets || tweets.length === 0) {
+    // Check if tweets is empty
+    if (tweetArray.length === 0) {
       if (!loading) {
         return <S.EmptyState>No tweets to show. Create the first one!</S.EmptyState>;
       }
       return null;
     }
     
-    return tweets.map((tweet, index) => {
-      if (tweets.length === index + 1) {
+    return tweetArray.map((tweet, index) => {
+      if (tweetArray.length === index + 1) {
         return (
           <div ref={lastTweetRef} key={tweet.id}>
             <Tweet 
@@ -201,7 +212,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   );
   
   console.log('Feed component state:', { 
-    tweetsCount: tweets.length, 
+    tweetsCount: tweets?.length || 0, 
     loading, 
     error, 
     hasMore, 

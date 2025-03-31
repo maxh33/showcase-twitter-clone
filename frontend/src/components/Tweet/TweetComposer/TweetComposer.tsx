@@ -185,9 +185,11 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
         } else {
           createdTweet = await tweetService.createTweet(content);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Check if it's an authentication error
-        if (error.response && error.response.status === 401) {
+        if (error && typeof error === 'object' && 'response' in error && 
+            error.response && typeof error.response === 'object' && 
+            'status' in error.response && error.response.status === 401) {
           console.log('TweetComposer: Authentication error, refreshing token...');
           // Try to refresh the token
           await refreshToken();
@@ -215,9 +217,7 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       // Notify parent component
       if (onTweetCreated) {
         console.log('TweetComposer: Calling onTweetCreated callback');
-        setTimeout(() => {
-          onTweetCreated();
-        }, 100); // Small delay to ensure the tweet is registered in the database
+        onTweetCreated();
       } else {
         console.warn('TweetComposer: onTweetCreated callback not provided');
       }
@@ -242,13 +242,14 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
               onChange={handleContentChange}
               maxLength={280}
               ref={textInputRef}
+              disabled={isSubmitting}
             />
             
             {previewUrl && (
               <S.PreviewContainer>
                 <S.ImagePreview src={previewUrl} alt="Selected media" />
-                <S.RemoveButton onClick={handleRemoveFile}>
-                  <IconWrapper icon={FaTimes} asButton={false} />
+                <S.RemoveButton onClick={handleRemoveFile} disabled={isSubmitting}>
+                  ✕
                 </S.RemoveButton>
               </S.PreviewContainer>
             )}
@@ -259,35 +260,39 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
             
             {showImageSearch && (
               <S.ImageSearchContainer>
+                <S.ImagePickerHeader>
+                  <h3>Search for images</h3>
+                  <S.CloseButton onClick={() => setShowImageSearch(false)}>
+                    ✕
+                  </S.CloseButton>
+                </S.ImagePickerHeader>
+                
                 <S.SearchForm onSubmit={handleImageSearchSubmit}>
-                  <S.SearchInput
+                  <S.SearchInput 
+                    type="text"
                     placeholder="Search for images..."
                     value={imageSearchQuery}
                     onChange={(e) => setImageSearchQuery(e.target.value)}
                   />
-                  <S.SearchButton type="submit">Search</S.SearchButton>
+                  <S.SearchButton type="submit">
+                    Search
+                  </S.SearchButton>
                 </S.SearchForm>
                 
                 <S.ImageGrid>
                   {isLoadingImages ? (
                     <S.LoadingMessage>Loading images...</S.LoadingMessage>
-                  ) : unsplashImages.length > 0 ? (
-                    unsplashImages.map((image) => (
-                      <S.ImageThumbnail
-                        key={image.id}
-                        src={image.url}
-                        alt={image.alt_description || 'Unsplash image'}
-                        onClick={() => handleUnsplashImageSelect(image)}
-                      />
-                    ))
                   ) : (
-                    <S.NoResultsMessage>No images found. Try a different search.</S.NoResultsMessage>
+                    unsplashImages.map((image, index) => (
+                      <S.ImageGridItem 
+                        key={index} 
+                        onClick={() => handleUnsplashImageSelect(image)}
+                      >
+                        <img src={image.url} alt={image.alt_description || 'Unsplash image'} />
+                      </S.ImageGridItem>
+                    ))
                   )}
                 </S.ImageGrid>
-                
-                <div style={{ padding: '8px 16px', fontSize: '12px', color: '#657786', textAlign: 'center' }}>
-                  Images provided by <a href="https://unsplash.com/" target="_blank" rel="noopener noreferrer">Unsplash</a>
-                </div>
               </S.ImageSearchContainer>
             )}
             
@@ -295,18 +300,15 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
               <div ref={emojiPickerRef}>
                 <S.PickerContainer>
                   <S.EmojiPickerHeader>
-                    <h3>Emojis</h3>
-                    <S.CloseButton onClick={() => setShowEmojiPicker(false)}>✕</S.CloseButton>
+                    <h3>Choose an emoji</h3>
+                    <S.CloseButton onClick={() => setShowEmojiPicker(false)}>
+                      ✕
+                    </S.CloseButton>
                   </S.EmojiPickerHeader>
+                  
                   <S.EmojiGrid>
                     {EMOJI_LIST.map((emoji, index) => (
-                      <S.EmojiButton 
-                        key={index} 
-                        onClick={() => {
-                          handleEmojiSelect(emoji);
-                          setShowEmojiPicker(false);
-                        }}
-                      >
+                      <S.EmojiButton key={index} onClick={() => handleEmojiSelect(emoji)}>
                         {emoji}
                       </S.EmojiButton>
                     ))}
@@ -314,44 +316,66 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
                 </S.PickerContainer>
               </div>
             )}
-            
-            <S.ComposerActions>
-              <S.IconGroup>
-                <S.IconButton onClick={handleFileSelect} title="Upload media">
-                  <IconWrapper icon={FaImage} asButton={false} />
-                </S.IconButton>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  style={{ display: 'none' }}
-                />
-                
-                <S.IconButton onClick={toggleImageSearch} title="Search for images">
-                  <IconWrapper icon={FaSearch} asButton={false} />
-                </S.IconButton>
-                
-                <S.IconButton onClick={toggleEmojiPicker} title="Add emoji">
-                  <IconWrapper icon={FaSmile} asButton={false} />
-                </S.IconButton>
-              </S.IconGroup>
-              
-              <div>
-                <span style={{ marginRight: '10px', fontSize: '14px', color: content.length > 260 ? '#e0245e' : '#657786' }}>
-                  {content.length}/280
-                </span>
-                
-                <S.TweetButton 
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || (content.trim() === '' && !selectedFile && !previewUrl)}
-                >
-                  {isSubmitting ? 'Posting...' : 'Tweet'}
-                </S.TweetButton>
-              </div>
-            </S.ComposerActions>
           </S.ComposerForm>
         </S.ComposerContent>
+        
+        <S.ComposerActions>
+          <S.IconGroup>
+            <S.IconButton 
+              onClick={handleFileSelect} 
+              title="Upload media" 
+              disabled={isSubmitting}
+              type="button"
+            >
+              📷
+            </S.IconButton>
+            
+            <S.IconButton 
+              onClick={toggleImageSearch} 
+              title="Search for images" 
+              disabled={isSubmitting}
+              type="button"
+            >
+              🔍
+            </S.IconButton>
+            
+            <S.IconButton 
+              onClick={toggleEmojiPicker} 
+              title="Add emoji" 
+              disabled={isSubmitting}
+              type="button"
+            >
+              😊
+            </S.IconButton>
+          </S.IconGroup>
+          
+          <div>
+            <span style={{ 
+              marginRight: '10px', 
+              fontSize: '14px', 
+              color: content.length > 260 ? '#e0245e' : '#657786' 
+            }}>
+              {content.length}/280
+            </span>
+            
+            <S.TweetButton 
+              onClick={handleSubmit}
+              disabled={isSubmitting || (content.trim() === '' && !selectedFile && !previewUrl)}
+              type="button"
+            >
+              {isSubmitting ? 'Posting...' : 'Tweet'}
+            </S.TweetButton>
+          </div>
+        </S.ComposerActions>
+        
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          accept="image/*" 
+          style={{ display: 'none' }}
+          disabled={isSubmitting}
+        />
       </S.ComposerContainer>
     </IconContext.Provider>
   );
