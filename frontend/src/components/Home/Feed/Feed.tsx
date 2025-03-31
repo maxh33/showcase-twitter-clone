@@ -2,19 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tweet from '../../Tweet/Tweet';
 import TweetComposer from '../../Tweet/TweetComposer/TweetComposer';
 import { getFeed, likeTweet, retweetTweet, createComment, Tweet as TweetType } from '../../../services/tweetService';
-import { fetchRandomUser, RandomUser } from '../../../services/userGeneratorService';
 import { IconContext } from 'react-icons';
 import * as S from './styles';
-
-// Define a simplified author type to avoid TypeScript errors
-interface SimplifiedAuthor {
-  id: number;
-  username: string;
-  email: string;
-  profile_picture: string | null;
-  bio: string | null;
-  location: string | null;
-}
+import { refreshToken, setupAuthHeaders } from '../../../services/authService';
 
 interface FeedProps {
   currentUser?: {
@@ -37,17 +27,42 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   const lastTweetRef = useRef<HTMLDivElement>(null);
   
   const fetchTweets = useCallback(async (pageNum = 1, refresh = false) => {
+    console.log('Feed component: Fetching tweets, page:', pageNum, 'refresh:', refresh);
     try {
+      // Ensure auth headers are setup
+      setupAuthHeaders();
+      
       const response = await getFeed(pageNum);
+      console.log('Feed component: Got tweets response:', response);
       
       setTweets(prev => 
         refresh ? response.results : [...prev, ...response.results]
       );
       setHasMore(!!response.next);
       setError(null);
-    } catch (err) {
-      setError('Failed to load tweets. Please try again later.');
+    } catch (err: any) {
       console.error('Error fetching tweets:', err);
+      
+      // Check if it's an authentication error
+      if (err.response && err.response.status === 401) {
+        try {
+          // Try to refresh the token
+          await refreshToken();
+          // Try the original request again
+          const response = await getFeed(pageNum);
+          setTweets(prev => 
+            refresh ? response.results : [...prev, ...response.results]
+          );
+          setHasMore(!!response.next);
+          setError(null);
+          return;
+        } catch (refreshError) {
+          console.error('Error refreshing token:', refreshError);
+          setError('Your session has expired. Please log in again.');
+        }
+      } else {
+        setError('Failed to load tweets. Please try again later.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -55,10 +70,12 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   }, []);
   
   useEffect(() => {
+    console.log('Feed component: Initial load of tweets');
     fetchTweets(1, true);
   }, [fetchTweets]);
   
   const handleRefresh = async () => {
+    console.log('Feed component: Manual refresh triggered');
     setRefreshing(true);
     await fetchTweets(1, true);
   };
@@ -114,7 +131,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
 
   const handleReply = async (tweetId: number, content: string, media?: File) => {
     try {
-      const updatedTweet = await createComment(tweetId, content, media);
+      await createComment(tweetId, content, media);
       
       // Update the tweet in the feed with new comment count
       setTweets(prev => 
@@ -131,12 +148,19 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   };
   
   const onTweetCreated = () => {
+    console.log('Feed component: Tweet created callback triggered');
     handleRefresh();
   };
   
   const renderTweets = () => {
-    if (tweets.length === 0 && !loading) {
-      return <S.EmptyState>No tweets to show. Create the first one!</S.EmptyState>;
+    console.log('Feed component: Rendering tweets, count:', tweets.length);
+    
+    // Check if tweets is undefined or empty
+    if (!tweets || tweets.length === 0) {
+      if (!loading) {
+        return <S.EmptyState>No tweets to show. Create the first one!</S.EmptyState>;
+      }
+      return null;
     }
     
     return tweets.map((tweet, index) => {
@@ -176,6 +200,15 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
     </div>
   );
   
+  console.log('Feed component state:', { 
+    tweetsCount: tweets.length, 
+    loading, 
+    error, 
+    hasMore, 
+    page, 
+    refreshing 
+  });
+  
   return (
     <IconContext.Provider value={{ className: 'react-icons' }}>
       <S.FeedContainer>
@@ -196,7 +229,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
         {loading && <S.LoadingSpinner>{renderSpinner()}</S.LoadingSpinner>}
         
         {!loading && hasMore && (
-          <S.LoadMoreButton onClick={() => handleRefresh()}>
+          <S.LoadMoreButton onClick={() => loadMore()}>
             Load more
           </S.LoadMoreButton>
         )}

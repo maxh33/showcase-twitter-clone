@@ -5,6 +5,7 @@ import { IconContext } from 'react-icons';
 import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../../common/IconWrapper';
+import { refreshToken, setupAuthHeaders } from '../../../services/authService';
 
 // Simple emoji array for the custom emoji picker
 const EMOJI_LIST = [
@@ -171,17 +172,38 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
     setErrorMessage(null);
     
     try {
+      // Ensure auth headers are setup
+      setupAuthHeaders();
+      
       let createdTweet;
       
       // Create the tweet with or without media
-      console.log('Creating tweet with content:', content);
-      if (selectedFile) {
-        createdTweet = await tweetService.createTweet(content, selectedFile);
-      } else {
-        createdTweet = await tweetService.createTweet(content);
+      console.log('TweetComposer: Creating tweet with content:', content);
+      try {
+        if (selectedFile) {
+          createdTweet = await tweetService.createTweet(content, selectedFile);
+        } else {
+          createdTweet = await tweetService.createTweet(content);
+        }
+      } catch (error: any) {
+        // Check if it's an authentication error
+        if (error.response && error.response.status === 401) {
+          console.log('TweetComposer: Authentication error, refreshing token...');
+          // Try to refresh the token
+          await refreshToken();
+          // Try again with the new token
+          console.log('TweetComposer: Retrying tweet creation after token refresh');
+          if (selectedFile) {
+            createdTweet = await tweetService.createTweet(content, selectedFile);
+          } else {
+            createdTweet = await tweetService.createTweet(content);
+          }
+        } else {
+          throw error; // Re-throw if it's not an auth error
+        }
       }
       
-      console.log('Tweet created successfully:', createdTweet);
+      console.log('TweetComposer: Tweet created successfully:', createdTweet);
       
       // Reset form
       setContent('');
@@ -192,10 +214,15 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       
       // Notify parent component
       if (onTweetCreated) {
-        onTweetCreated();
+        console.log('TweetComposer: Calling onTweetCreated callback');
+        setTimeout(() => {
+          onTweetCreated();
+        }, 100); // Small delay to ensure the tweet is registered in the database
+      } else {
+        console.warn('TweetComposer: onTweetCreated callback not provided');
       }
     } catch (error) {
-      console.error('Error creating tweet:', error);
+      console.error('TweetComposer: Error creating tweet:', error);
       setErrorMessage('Failed to create tweet. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -221,7 +248,7 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
               <S.PreviewContainer>
                 <S.ImagePreview src={previewUrl} alt="Selected media" />
                 <S.RemoveButton onClick={handleRemoveFile}>
-                  <IconWrapper icon={FaTimes} />
+                  <IconWrapper icon={FaTimes} asButton={false} />
                 </S.RemoveButton>
               </S.PreviewContainer>
             )}
@@ -291,7 +318,7 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
             <S.ComposerActions>
               <S.IconGroup>
                 <S.IconButton onClick={handleFileSelect} title="Upload media">
-                  <IconWrapper icon={FaImage} />
+                  <IconWrapper icon={FaImage} asButton={false} />
                 </S.IconButton>
                 <input 
                   type="file" 
@@ -302,11 +329,11 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
                 />
                 
                 <S.IconButton onClick={toggleImageSearch} title="Search for images">
-                  <IconWrapper icon={FaSearch} />
+                  <IconWrapper icon={FaSearch} asButton={false} />
                 </S.IconButton>
                 
                 <S.IconButton onClick={toggleEmojiPicker} title="Add emoji">
-                  <IconWrapper icon={FaSmile} />
+                  <IconWrapper icon={FaSmile} asButton={false} />
                 </S.IconButton>
               </S.IconGroup>
               
