@@ -1,5 +1,18 @@
 import axios, { AxiosInstance } from 'axios';
-import { API_URL } from '../utils/apiConfig';
+
+// Store the original API URL from environment for debugging
+const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+// Try to detect if we're in a deployed environment and use PythonAnywhere API
+// The hostname check helps detect when running on Vercel
+const isDeployed = typeof window !== 'undefined' && 
+                  window.location.hostname !== 'localhost' && 
+                  window.location.hostname !== '127.0.0.1';
+
+// If deployed and still using localhost, force to PythonAnywhere
+const API_URL = isDeployed && ORIGINAL_API_URL.includes('localhost') 
+  ? 'https://maxh33.pythonanywhere.com/api' 
+  : ORIGINAL_API_URL;
 
 // Define interfaces for tweets
 export interface Tweet {
@@ -52,7 +65,7 @@ const createAxiosInstance = (): AxiosInstance => {
   // Add a request interceptor to get the latest token before each request
   instance.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -76,11 +89,13 @@ export const tweetService = {
   async getFeed(page = 1): Promise<FeedResponse> {
     const axiosInstance = createAxiosInstance();
     try {
+      console.log(`Fetching tweets page ${page} from ${API_URL}/v1/tweets/`);
       const response = await axiosInstance.get('/', {
         params: {
           page
         }
       });
+      console.log('Feed response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching tweets:', error);
@@ -181,7 +196,6 @@ export const tweetService = {
         headers: {
           'Content-Type': 'multipart/form-data',
           Accept: 'application/json',
-          Authorization: axiosInstance.defaults.headers.Authorization,
         },
       });
       

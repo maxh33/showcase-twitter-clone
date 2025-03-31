@@ -9,6 +9,25 @@ export interface RandomUser {
   location?: string;
 }
 
+interface RandomUserAPIResponse {
+  login: {
+    uuid: string;
+    username: string;
+  };
+  name: {
+    first: string;
+    last: string;
+  };
+  picture: {
+    medium: string;
+  };
+  email: string;
+  location: {
+    city: string;
+    country: string;
+  };
+}
+
 /**
  * Fetches random users from randomuser.me API
  * @param count Number of users to fetch
@@ -16,9 +35,9 @@ export interface RandomUser {
  */
 export const fetchRandomUsers = async (count = 5): Promise<RandomUser[]> => {
   try {
-    const response = await axios.get(`https://randomuser.me/api/?results=${count}`);
+    const response = await axios.get<{ results: RandomUserAPIResponse[] }>(`https://randomuser.me/api/?results=${count}`);
     
-    return response.data.results.map((user: any) => ({
+    return response.data.results.map((user: RandomUserAPIResponse) => ({
       id: user.login.uuid,
       name: `${user.name.first} ${user.name.last}`,
       handle: user.login.username,
@@ -46,4 +65,6 @@ export const fetchRandomUser = async (): Promise<RandomUser | null> => {
   }
 };
 
-export default { fetchRandomUsers, fetchRandomUser }; 
+const userGeneratorService = { fetchRandomUsers, fetchRandomUser };
+
+export default userGeneratorService; 

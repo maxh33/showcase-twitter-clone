@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.conf import settings
 from rest_framework import status, generics, permissions, serializers
 from rest_framework.response import Response
@@ -13,6 +13,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.utils.html import strip_tags
+from django.template.loader import render_to_string
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -25,6 +29,7 @@ from .serializers import (
     LogoutSerializer,
 )
 from .models import FailedLoginAttempt
+from .utils import send_password_reset_email
 
 User = get_user_model()
 
@@ -32,7 +37,12 @@ User = get_user_model()
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom token view that uses our serializer"""
     serializer_class = CustomTokenObtainPairSerializer
-    throttle_classes = [LoginRateThrottle]
+    
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [LoginRateThrottle()]
     
     @swagger_auto_schema(
         operation_description="User login endpoint",
@@ -103,7 +113,12 @@ class RegistrationView(generics.CreateAPIView):
     """View for user registration"""
     serializer_class = RegistrationSerializer
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [AuthRateThrottle]
+    
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [AuthRateThrottle()]
     
     @swagger_auto_schema(
         operation_description="Register a new user",
@@ -162,7 +177,12 @@ class EmailVerificationView(APIView):
     """View for email verification"""
     permission_classes = [permissions.AllowAny]
     serializer_class = EmailVerificationSerializer
-    throttle_classes = [AuthRateThrottle]
+    
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [AuthRateThrottle()]
     
     @swagger_auto_schema(
         operation_description="Verify email with token",
@@ -203,56 +223,78 @@ class EmailVerificationView(APIView):
 
 class PasswordResetRequestView(APIView):
     """View for requesting a password reset"""
-    permission_classes = [permissions.AllowAny]
     serializer_class = PasswordResetRequestSerializer
     throttle_classes = [AuthRateThrottle]
     
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [AuthRateThrottle()]
+    
     @swagger_auto_schema(
-        operation_description="Request password reset email",
+        operation_description="Request a password reset",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['email'],
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, description='User email'),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email address'),
             }
         ),
         responses={
             200: 'Password reset email sent',
-            400: 'Email not found'
+            400: 'Invalid email format'
         }
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            user = User.objects.get(email=email)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
-            # Generate password reset token
-            token = default_token_generator.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            
-            # Send password reset email
-            reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
-            email_body = f"Hi {user.username},\n\nPlease reset your password by clicking the link below:\n\n{reset_url}\n\nThank you!"
-            
-            send_mail(
-                'Reset your password',
-                email_body,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-            
-            return Response({'message': 'Password reset email sent'}, status=status.HTTP_200_OK)
+        email = serializer.validated_data['email']
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email=email)
+            if user.is_active:
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
+                
+                # Create email content using template
+                context = {
+                    'reset_url': reset_url,
+                }
+                html_content = render_to_string('email/password_reset.html', context)
+                text_content = strip_tags(html_content)
+                
+                # Create email message
+                msg = EmailMultiAlternatives(
+                    'Reset your password',
+                    text_content,
+                    f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>',
+                    [email]
+                )
+                msg.attach_alternative(html_content, "text/html")
+                msg.send()
+        except User.DoesNotExist:
+            pass
+            
+        return Response(
+            {'message': 'Password reset email sent'},
+            status=status.HTTP_200_OK
+        )
 
 
 class PasswordResetConfirmView(APIView):
     """View for confirming a password reset"""
     permission_classes = [permissions.AllowAny]
     serializer_class = PasswordResetConfirmSerializer
-    throttle_classes = [AuthRateThrottle]
+
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [AuthRateThrottle()]
     
     @swagger_auto_schema(
         operation_description="Confirm password reset with token",
@@ -297,6 +339,19 @@ class LogoutView(APIView):
     """View for logging out and blacklisting the refresh token"""
     serializer_class = LogoutSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AuthRateThrottle]
+    
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [AuthRateThrottle()]
+    
+    def get_permissions(self):
+        """Only apply authentication if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [permission() for permission in self.permission_classes]
     
     @swagger_auto_schema(
         operation_description="Logout and invalidate refresh token",

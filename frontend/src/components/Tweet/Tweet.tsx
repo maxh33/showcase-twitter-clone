@@ -4,7 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { FaRegComment, FaRetweet, FaRegHeart, FaHeart, FaShareAlt } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../common/IconWrapper';
-import CommentModal from '../Comment/CommentModal/CommentModal';
+import CommentModal from '../Comment/CommentModal';
 
 // Allow for flexible author ID type (string or number)
 interface FlexibleTweet extends Omit<TweetType, 'author'> {
@@ -102,25 +102,25 @@ const Tweet: React.FC<TweetProps> = ({
           <S.TweetFooter>
             <S.ActionsContainer>
               <S.ActionButton onClick={handleReply}>
-                <IconWrapper icon={FaRegComment} size={20} />
+                <IconWrapper icon={FaRegComment} size="medium" />
                 {tweet.comments_count > 0 && <span>{tweet.comments_count}</span>}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleRetweet} $active={currentUserRetweeted}>
-                <IconWrapper icon={FaRetweet} size={20} color={currentUserRetweeted ? "#17BF63" : undefined} />
+                <IconWrapper icon={FaRetweet} size="medium" color={currentUserRetweeted ? "#17BF63" : undefined} />
                 {tweet.retweet_count > 0 && <span>{tweet.retweet_count}</span>}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleLike} $active={currentUserLiked}>
                 {currentUserLiked ? 
-                  <IconWrapper icon={FaHeart} size={20} color="#E0245E" /> : 
-                  <IconWrapper icon={FaRegHeart} size={20} />
+                  <IconWrapper icon={FaHeart} size="medium" color="#E0245E" /> : 
+                  <IconWrapper icon={FaRegHeart} size="medium" />
                 }
                 {tweet.likes_count > 0 && <span>{tweet.likes_count}</span>}
               </S.ActionButton>
               
               <S.ActionButton onClick={handleShare}>
-                <IconWrapper icon={FaShareAlt} size={20} />
+                <IconWrapper icon={FaShareAlt} size="medium" />
               </S.ActionButton>
             </S.ActionsContainer>
           </S.TweetFooter>

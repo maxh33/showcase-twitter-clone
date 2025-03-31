@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import tweetService from '../../../services/tweetService';
 import { fetchRandomImages, UnsplashImage } from '../../../services/imageService';
-import { IconContext } from 'react-icons';
 import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../../common/IconWrapper';
+import { refreshToken, setupAuthHeaders } from '../../../services/authService';
 
 // Simple emoji array for the custom emoji picker
 const EMOJI_LIST = [
@@ -171,17 +171,40 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
     setErrorMessage(null);
     
     try {
+      // Ensure auth headers are setup
+      setupAuthHeaders();
+      
       let createdTweet;
       
       // Create the tweet with or without media
-      console.log('Creating tweet with content:', content);
-      if (selectedFile) {
-        createdTweet = await tweetService.createTweet(content, selectedFile);
-      } else {
-        createdTweet = await tweetService.createTweet(content);
+      console.log('TweetComposer: Creating tweet with content:', content);
+      try {
+        if (selectedFile) {
+          createdTweet = await tweetService.createTweet(content, selectedFile);
+        } else {
+          createdTweet = await tweetService.createTweet(content);
+        }
+      } catch (error: unknown) {
+        // Check if it's an authentication error
+        if (error && typeof error === 'object' && 'response' in error && 
+            error.response && typeof error.response === 'object' && 
+            'status' in error.response && error.response.status === 401) {
+          console.log('TweetComposer: Authentication error, refreshing token...');
+          // Try to refresh the token
+          await refreshToken();
+          // Try again with the new token
+          console.log('TweetComposer: Retrying tweet creation after token refresh');
+          if (selectedFile) {
+            createdTweet = await tweetService.createTweet(content, selectedFile);
+          } else {
+            createdTweet = await tweetService.createTweet(content);
+          }
+        } else {
+          throw error; // Re-throw if it's not an auth error
+        }
       }
       
-      console.log('Tweet created successfully:', createdTweet);
+      console.log('TweetComposer: Tweet created successfully:', createdTweet);
       
       // Reset form
       setContent('');
@@ -192,10 +215,13 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       
       // Notify parent component
       if (onTweetCreated) {
+        console.log('TweetComposer: Calling onTweetCreated callback');
         onTweetCreated();
+      } else {
+        console.warn('TweetComposer: onTweetCreated callback not provided');
       }
     } catch (error) {
-      console.error('Error creating tweet:', error);
+      console.error('TweetComposer: Error creating tweet:', error);
       setErrorMessage('Failed to create tweet. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -203,130 +229,134 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
   };
   
   return (
-    <IconContext.Provider value={{ className: 'react-icons' }}>
-      <S.ComposerContainer>
-        <S.ComposerContent>
-          <S.Avatar src={userProfilePicture} alt="Your profile" />
+    <S.TweetComposerWrapper>
+      <S.ProfileImage src={userProfilePicture} alt="Profile" />
+      <S.ComposerContent>
+        <S.ComposerForm>
+          <S.TextArea
+            ref={textInputRef}
+            value={content}
+            onChange={handleContentChange}
+            placeholder="What's happening?"
+            rows={3}
+          />
           
-          <S.ComposerForm>
-            <S.TextInput 
-              placeholder="What's happening?"
-              value={content}
-              onChange={handleContentChange}
-              maxLength={280}
-              ref={textInputRef}
-            />
-            
-            {previewUrl && (
-              <S.PreviewContainer>
-                <S.ImagePreview src={previewUrl} alt="Selected media" />
-                <S.RemoveButton onClick={handleRemoveFile}>
-                  <IconWrapper icon={FaTimes} />
-                </S.RemoveButton>
-              </S.PreviewContainer>
-            )}
-            
-            {errorMessage && (
-              <S.ErrorMessage>{errorMessage}</S.ErrorMessage>
-            )}
-            
-            {showImageSearch && (
-              <S.ImageSearchContainer>
-                <S.SearchForm onSubmit={handleImageSearchSubmit}>
-                  <S.SearchInput
-                    placeholder="Search for images..."
-                    value={imageSearchQuery}
-                    onChange={(e) => setImageSearchQuery(e.target.value)}
-                  />
-                  <S.SearchButton type="submit">Search</S.SearchButton>
-                </S.SearchForm>
-                
-                <S.ImageGrid>
-                  {isLoadingImages ? (
-                    <S.LoadingMessage>Loading images...</S.LoadingMessage>
-                  ) : unsplashImages.length > 0 ? (
-                    unsplashImages.map((image) => (
-                      <S.ImageThumbnail
-                        key={image.id}
-                        src={image.url}
-                        alt={image.alt_description || 'Unsplash image'}
-                        onClick={() => handleUnsplashImageSelect(image)}
-                      />
-                    ))
-                  ) : (
-                    <S.NoResultsMessage>No images found. Try a different search.</S.NoResultsMessage>
-                  )}
-                </S.ImageGrid>
-                
-                <div style={{ padding: '8px 16px', fontSize: '12px', color: '#657786', textAlign: 'center' }}>
-                  Images provided by <a href="https://unsplash.com/" target="_blank" rel="noopener noreferrer">Unsplash</a>
-                </div>
-              </S.ImageSearchContainer>
-            )}
-            
-            {showEmojiPicker && (
-              <div ref={emojiPickerRef}>
-                <S.PickerContainer>
-                  <S.EmojiPickerHeader>
-                    <h3>Emojis</h3>
-                    <S.CloseButton onClick={() => setShowEmojiPicker(false)}>✕</S.CloseButton>
-                  </S.EmojiPickerHeader>
-                  <S.EmojiGrid>
-                    {EMOJI_LIST.map((emoji, index) => (
-                      <S.EmojiButton 
-                        key={index} 
-                        onClick={() => {
-                          handleEmojiSelect(emoji);
-                          setShowEmojiPicker(false);
-                        }}
-                      >
-                        {emoji}
-                      </S.EmojiButton>
-                    ))}
-                  </S.EmojiGrid>
-                </S.PickerContainer>
-              </div>
-            )}
-            
-            <S.ComposerActions>
-              <S.IconGroup>
-                <S.IconButton onClick={handleFileSelect} title="Upload media">
-                  <IconWrapper icon={FaImage} />
-                </S.IconButton>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  style={{ display: 'none' }}
+          {previewUrl && (
+            <S.PreviewContainer>
+              <S.ImagePreview src={previewUrl} alt="Selected media" />
+              <S.RemoveImageButton
+                icon={FaTimes}
+                onClick={handleRemoveFile}
+                size="small"
+                color="white"
+              />
+            </S.PreviewContainer>
+          )}
+
+          {showImageSearch && (
+            <S.ImageSearchContainer>
+              <S.ImagePickerHeader>
+                <h3>Search Images</h3>
+                <IconWrapper
+                  icon={FaTimes}
+                  onClick={() => setShowImageSearch(false)}
+                  size="small"
                 />
-                
-                <S.IconButton onClick={toggleImageSearch} title="Search for images">
-                  <IconWrapper icon={FaSearch} />
-                </S.IconButton>
-                
-                <S.IconButton onClick={toggleEmojiPicker} title="Add emoji">
-                  <IconWrapper icon={FaSmile} />
-                </S.IconButton>
-              </S.IconGroup>
-              
-              <div>
-                <span style={{ marginRight: '10px', fontSize: '14px', color: content.length > 260 ? '#e0245e' : '#657786' }}>
-                  {content.length}/280
-                </span>
-                
-                <S.TweetButton 
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || (content.trim() === '' && !selectedFile && !previewUrl)}
-                >
-                  {isSubmitting ? 'Posting...' : 'Tweet'}
-                </S.TweetButton>
-              </div>
-            </S.ComposerActions>
-          </S.ComposerForm>
-        </S.ComposerContent>
-      </S.ComposerContainer>
-    </IconContext.Provider>
+              </S.ImagePickerHeader>
+              <S.SearchForm onSubmit={handleImageSearchSubmit}>
+                <S.SearchInput
+                  type="text"
+                  value={imageSearchQuery}
+                  onChange={(e) => setImageSearchQuery(e.target.value)}
+                  placeholder="Search for images..."
+                />
+              </S.SearchForm>
+              <S.ImageGrid>
+                {isLoadingImages ? (
+                  <S.LoadingMessage>Loading images...</S.LoadingMessage>
+                ) : (
+                  unsplashImages.map((image, index) => (
+                    <S.ImageGridItem 
+                      key={index} 
+                      onClick={() => handleUnsplashImageSelect(image)}
+                    >
+                      <img src={image.url} alt={image.alt_description || 'Unsplash image'} />
+                    </S.ImageGridItem>
+                  ))
+                )}
+              </S.ImageGrid>
+              <S.UnsplashCredit>
+                <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer">
+                  Images powered by Unsplash
+                </a>
+              </S.UnsplashCredit>
+            </S.ImageSearchContainer>
+          )}
+
+          {showEmojiPicker && (
+            <div ref={emojiPickerRef}>
+              <S.ImagePickerContainer>
+                <S.ImagePickerHeader>
+                  <h3>Emojis</h3>
+                  <IconWrapper
+                    icon={FaTimes}
+                    onClick={() => setShowEmojiPicker(false)}
+                    size="small"
+                  />
+                </S.ImagePickerHeader>
+                <S.EmojiGrid>
+                  {EMOJI_LIST.map((emoji, index) => (
+                    <S.EmojiButton
+                      key={index}
+                      onClick={() => handleEmojiSelect(emoji)}
+                    >
+                      {emoji}
+                    </S.EmojiButton>
+                  ))}
+                </S.EmojiGrid>
+              </S.ImagePickerContainer>
+            </div>
+          )}
+
+          <S.ComposerActions>
+            <S.IconGroup>
+              <IconWrapper
+                icon={FaImage}
+                onClick={handleFileSelect}
+                size="small"
+                color="primary"
+              />
+              <IconWrapper
+                icon={FaSmile}
+                onClick={toggleEmojiPicker}
+                size="small"
+                color="primary"
+              />
+              <IconWrapper
+                icon={FaSearch}
+                onClick={toggleImageSearch}
+                size="small"
+                color="primary"
+              />
+            </S.IconGroup>
+            <S.TweetButton
+              onClick={handleSubmit}
+              disabled={isSubmitting || (content.trim() === '' && !selectedFile && !previewUrl)}
+            >
+              Tweet
+            </S.TweetButton>
+          </S.ComposerActions>
+        </S.ComposerForm>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          style={{ display: 'none' }}
+        />
+      </S.ComposerContent>
+    </S.TweetComposerWrapper>
   );
 };
 

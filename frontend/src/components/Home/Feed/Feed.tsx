@@ -2,19 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Tweet from '../../Tweet/Tweet';
 import TweetComposer from '../../Tweet/TweetComposer/TweetComposer';
 import { getFeed, likeTweet, retweetTweet, createComment, Tweet as TweetType } from '../../../services/tweetService';
-import { fetchRandomUser, RandomUser } from '../../../services/userGeneratorService';
 import { IconContext } from 'react-icons';
 import * as S from './styles';
-
-// Define a simplified author type to avoid TypeScript errors
-interface SimplifiedAuthor {
-  id: number;
-  username: string;
-  email: string;
-  profile_picture: string | null;
-  bio: string | null;
-  location: string | null;
-}
+import { refreshToken, setupAuthHeaders } from '../../../services/authService';
 
 interface FeedProps {
   currentUser?: {
@@ -25,6 +15,7 @@ interface FeedProps {
 }
 
 const Feed: React.FC<FeedProps> = ({ currentUser }) => {
+  // Initialize tweets as an empty array to prevent undefined errors
   const [tweets, setTweets] = useState<TweetType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,17 +28,50 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   const lastTweetRef = useRef<HTMLDivElement>(null);
   
   const fetchTweets = useCallback(async (pageNum = 1, refresh = false) => {
+    console.log('Feed component: Fetching tweets, page:', pageNum, 'refresh:', refresh);
     try {
+      // Ensure auth headers are setup
+      setupAuthHeaders();
+      
       const response = await getFeed(pageNum);
+      console.log('Feed component: Got tweets response:', response);
+      
+      // Check if response is an array (direct tweets) or an object with results property
+      const results = Array.isArray(response) ? response : (response?.results || []);
       
       setTweets(prev => 
-        refresh ? response.results : [...prev, ...response.results]
+        refresh ? [...results] : [...(prev || []), ...results]
       );
-      setHasMore(!!response.next);
+      
+      // Update hasMore based on whether there's a next property or if we have more items than requested
+      setHasMore(response && typeof response === 'object' && 'next' in response ? !!response.next : results.length > 0);
       setError(null);
-    } catch (err) {
-      setError('Failed to load tweets. Please try again later.');
+    } catch (err: unknown) {
       console.error('Error fetching tweets:', err);
+      
+      // Check if it's an authentication error
+      if (err && typeof err === 'object' && 'response' in err && 
+          err.response && typeof err.response === 'object' && 
+          'status' in err.response && err.response.status === 401) {
+        try {
+          // Try to refresh the token
+          await refreshToken();
+          // Try the original request again
+          const response = await getFeed(pageNum);
+          const results = Array.isArray(response) ? response : (response?.results || []);
+          setTweets(prev => 
+            refresh ? [...results] : [...(prev || []), ...results]
+          );
+          setHasMore(response && typeof response === 'object' && 'next' in response ? !!response.next : results.length > 0);
+          setError(null);
+          return;
+        } catch (refreshError) {
+          console.error('Error refreshing token:', refreshError);
+          setError('Your session has expired. Please log in again.');
+        }
+      } else {
+        setError('Failed to load tweets. Please try again later.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -55,10 +79,12 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   }, []);
   
   useEffect(() => {
+    console.log('Feed component: Initial load of tweets');
     fetchTweets(1, true);
   }, [fetchTweets]);
   
   const handleRefresh = async () => {
+    console.log('Feed component: Manual refresh triggered');
     setRefreshing(true);
     await fetchTweets(1, true);
   };
@@ -75,7 +101,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       const updatedTweet = await likeTweet(tweetId);
       
       setTweets(prev => 
-        prev.map(tweet => 
+        (prev || []).map(tweet => 
           tweet.id === tweetId ? updatedTweet : tweet
         )
       );
@@ -96,7 +122,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       const updatedTweet = await retweetTweet(tweetId);
       
       setTweets(prev => 
-        prev.map(tweet => 
+        (prev || []).map(tweet => 
           tweet.id === tweetId ? updatedTweet : tweet
         )
       );
@@ -114,11 +140,11 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
 
   const handleReply = async (tweetId: number, content: string, media?: File) => {
     try {
-      const updatedTweet = await createComment(tweetId, content, media);
+      await createComment(tweetId, content, media);
       
       // Update the tweet in the feed with new comment count
       setTweets(prev => 
-        prev.map(tweet => 
+        (prev || []).map(tweet => 
           tweet.id === tweetId 
             ? { ...tweet, comments_count: tweet.comments_count + 1 }
             : tweet
@@ -131,16 +157,25 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   };
   
   const onTweetCreated = () => {
+    console.log('Feed component: Tweet created callback triggered');
     handleRefresh();
   };
   
   const renderTweets = () => {
-    if (tweets.length === 0 && !loading) {
-      return <S.EmptyState>No tweets to show. Create the first one!</S.EmptyState>;
+    // Ensure tweets is always an array
+    const tweetArray = tweets || [];
+    console.log('Feed component: Rendering tweets, count:', tweetArray.length);
+    
+    // Check if tweets is empty
+    if (tweetArray.length === 0) {
+      if (!loading) {
+        return <S.EmptyState>No tweets to show. Create the first one!</S.EmptyState>;
+      }
+      return null;
     }
     
-    return tweets.map((tweet, index) => {
-      if (tweets.length === index + 1) {
+    return tweetArray.map((tweet, index) => {
+      if (tweetArray.length === index + 1) {
         return (
           <div ref={lastTweetRef} key={tweet.id}>
             <Tweet 
@@ -176,6 +211,15 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
     </div>
   );
   
+  console.log('Feed component state:', { 
+    tweetsCount: tweets?.length || 0, 
+    loading, 
+    error, 
+    hasMore, 
+    page, 
+    refreshing 
+  });
+  
   return (
     <IconContext.Provider value={{ className: 'react-icons' }}>
       <S.FeedContainer>
@@ -196,7 +240,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
         {loading && <S.LoadingSpinner>{renderSpinner()}</S.LoadingSpinner>}
         
         {!loading && hasMore && (
-          <S.LoadMoreButton onClick={() => handleRefresh()}>
+          <S.LoadMoreButton onClick={() => loadMore()}>
             Load more
           </S.LoadMoreButton>
         )}

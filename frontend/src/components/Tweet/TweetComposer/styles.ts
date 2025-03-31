@@ -1,5 +1,47 @@
 import styled from 'styled-components';
 import { Colors } from '../../../styles/global';
+import IconWrapper from '../../common/IconWrapper';
+
+export const TweetComposerWrapper = styled.div`
+  padding: 12px 16px;
+  border-bottom: 8px solid ${Colors.extraLightGray};
+  display: flex;
+  width: 100%;
+`;
+
+export const ProfileImage = styled.img`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+`;
+
+export const TextArea = styled.textarea`
+  width: 100%;
+  padding: 10px 0;
+  min-height: 80px;
+  border: none;
+  resize: none;
+  font-size: 19px;
+  font-family: 'Inter', sans-serif;
+  color: ${Colors.black};
+  
+  &:focus {
+    outline: none;
+  }
+  
+  &::placeholder {
+    color: ${Colors.darkGray};
+  }
+`;
+
+export const ActionButtons = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+`;
 
 export const ComposerContainer = styled.div`
   padding: 12px 16px;
@@ -8,6 +50,9 @@ export const ComposerContainer = styled.div`
 
 export const ComposerContent = styled.div`
   display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  width: 100%;
 `;
 
 export const Avatar = styled.img`
@@ -20,6 +65,7 @@ export const Avatar = styled.img`
 
 export const ComposerForm = styled.div`
   flex: 1;
+  width: 100%;
 `;
 
 export const TextInput = styled.textarea`
@@ -42,7 +88,7 @@ export const TextInput = styled.textarea`
 `;
 
 export const ErrorMessage = styled.div`
-  color: #e0245e;
+  color: ${Colors.red};
   padding: 8px 0;
   font-size: 14px;
 `;
@@ -53,6 +99,7 @@ export const ComposerActions = styled.div`
   align-items: center;
   padding-top: 12px;
   border-top: 1px solid ${Colors.extraLightGray};
+  width: 100%;
 `;
 
 export const IconGroup = styled.div`
@@ -323,8 +370,8 @@ export const EmojiButton = styled.button`
   border: none;
   font-size: 20px;
   cursor: pointer;
-  border-radius: 4px;
-  padding: 6px;
+  padding: 8px;
+  border-radius: 8px;
   transition: background-color 0.2s;
   
   &:hover {
@@ -345,5 +392,16 @@ export const GifPickerContent = styled.div`
   p {
     color: ${Colors.darkGray};
     font-size: 14px;
+  }
+`;
+
+export const RemoveImageButton = styled(IconWrapper)`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
   }
 `; 
