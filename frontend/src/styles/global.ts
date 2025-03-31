@@ -10,6 +10,8 @@ export const Colors = {
     white: '#FFFFFF',
     success: '#17BF63',
     danger: '#E0245E',
+    blue: '#1991DA',
+    red: '#e0245e'
 }
 
 export const GlobalStyles = createGlobalStyle`
@@ -18,11 +20,17 @@ export const GlobalStyles = createGlobalStyle`
     padding: 0;
     box-sizing: border-box;
     font-family: 'Inter', sans-serif;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    &::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
   }
 
   body {
     background-color: ${Colors.backgroundGray};
     color: ${Colors.black};
+    overflow-x: hidden;
   }
 `;
 

@@ -1,15 +1,22 @@
-from django.urls import path
-from django.http import JsonResponse
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TweetViewSet, CommentViewSet
 
 app_name = 'tweets'
 
-def tweet_api_root(request):
-    """Placeholder for tweets API root"""
-    return JsonResponse({
-        "status": "success",
-        "message": "Tweets API endpoints coming soon",
-    })
+router = DefaultRouter()
+router.register(r'', TweetViewSet, basename='tweet')
 
 urlpatterns = [
-    path('', tweet_api_root, name='tweet-api-root'),
+    path('', include(router.urls)),
+    path('<int:tweet_pk>/comments/', CommentViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='tweet-comments'),
+    path('<int:tweet_pk>/comments/<int:pk>/', CommentViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='tweet-comment-detail'),
 ] 

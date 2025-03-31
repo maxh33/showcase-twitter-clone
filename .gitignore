@@ -48,6 +48,7 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+.cursor
 
 # Testing
 .coverage
@@ -69,12 +70,14 @@ backend/.venv/
 backend/venv/
 .venv/
 venv/
+backend_logs.txt
 
 # Frontend build and dependencies
 frontend/build/
 frontend/node_modules/
 frontend/.pnp
 frontend/.pnp.js
+buildlog.txt
 
 # Dependency directories
 jspm_packages/
