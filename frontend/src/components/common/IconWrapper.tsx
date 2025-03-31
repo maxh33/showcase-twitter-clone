@@ -93,8 +93,17 @@ function getIconSize(size?: 'small' | 'medium' | 'large'): number {
   }
 }
 
-// Using any to bypass TypeScript limitations for now
-const IconWrapper = React.forwardRef<HTMLElement, IconWrapperProps>(({ 
+// Type for our refs to avoid 'any'
+type IconWrapperRefType = HTMLButtonElement | HTMLSpanElement;
+
+// Properly typed rest props by extending React's HTMLAttributes
+type ButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof IconWrapperProps>;
+type SpanProps = Omit<React.HTMLAttributes<HTMLSpanElement>, keyof IconWrapperProps>;
+
+// Union type to correctly type the spreading of props
+type IconWrapperRestProps = ButtonProps | SpanProps;
+
+const IconWrapper = React.forwardRef<IconWrapperRefType, IconWrapperProps & IconWrapperRestProps>(({ 
   icon,
   disabled,
   active,
@@ -104,38 +113,36 @@ const IconWrapper = React.forwardRef<HTMLElement, IconWrapperProps>(({
   ...props 
 }, ref) => {
   const iconSize = getIconSize(size);
-  
-  // Using 'as any' to make TypeScript happy - this works at runtime
-  const IconComponent = icon as any;
+  const Icon = icon;
   
   // Determine which component to use based on asButton prop
   if (asButton) {
     return (
       <IconWrapperButton
-        ref={ref as any}
+        ref={ref as React.RefObject<HTMLButtonElement>}
         $disabled={disabled}
         $active={active}
         $size={size}
         $color={color}
         $asButton={asButton}
-        {...props}
+        {...props as ButtonProps}
       >
-        <IconComponent size={iconSize} color={color || 'currentColor'} />
+        <Icon size={iconSize} color={color || 'currentColor'} />
       </IconWrapperButton>
     );
   }
   
   return (
     <IconWrapperStyled
-      ref={ref as any}
+      ref={ref as React.RefObject<HTMLSpanElement>}
       $disabled={disabled}
       $active={active}
       $size={size}
       $color={color}
       $asButton={asButton}
-      {...props}
+      {...props as SpanProps}
     >
-      <IconComponent size={iconSize} color={color || 'currentColor'} />
+      <Icon size={iconSize} color={color || 'currentColor'} />
     </IconWrapperStyled>
   );
 });
