@@ -23,7 +23,7 @@ export const ModalOverlay = styled.div<{ isOpen: boolean }>`
   z-index: 1000;
 `;
 
-export const ModalContent = styled.div`
+export const ModalContainer = styled.div`
   background: ${Colors.white};
   border-radius: 16px;
   width: 100%;
@@ -31,7 +31,6 @@ export const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  ${hideScrollbar}
 `;
 
 export const ModalHeader = styled.div`
@@ -39,42 +38,77 @@ export const ModalHeader = styled.div`
   border-bottom: 1px solid ${Colors.extraLightGray};
   display: flex;
   justify-content: flex-start;
+  align-items: center;
+`;
+
+export const ModalContent = styled.div`
+  padding: 16px;
+`;
+
+export const CloseButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
   
-  button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-    
-    &:hover {
-      background-color: ${Colors.extraLightGray};
-    }
+  &:hover {
+    background-color: ${Colors.extraLightGray};
   }
 `;
 
-export const ModalBody = styled.div`
-  padding: 16px;
+export const ReplyingToSection = styled.div`
   display: flex;
-  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid ${Colors.extraLightGray};
 `;
 
-export const UserAvatar = styled.img`
+export const ReplyingToAvatar = styled.img`
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  object-fit: cover;
+  margin-right: 12px;
 `;
 
-export const CommentForm = styled.div`
+export const ReplyingToInfo = styled.div`
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 `;
 
-export const TextArea = styled.textarea`
+export const ReplyingToName = styled.div`
+  font-weight: bold;
+`;
+
+export const ReplyingToUsername = styled.div`
+  color: ${Colors.darkGray};
+  font-size: 14px;
+  margin-bottom: 4px;
+`;
+
+export const ReplyingToContent = styled.div`
+  margin-top: 8px;
+`;
+
+export const ComposerSection = styled.div`
+  display: flex;
+  margin-bottom: 16px;
+`;
+
+export const ComposerAvatar = styled.img`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 12px;
+`;
+
+export const ComposerInputContainer = styled.div`
+  flex: 1;
+  position: relative;
+`;
+
+export const ComposerTextarea = styled.textarea`
   width: 100%;
   min-height: 100px;
   padding: 12px;
@@ -82,8 +116,6 @@ export const TextArea = styled.textarea`
   resize: none;
   font-size: 16px;
   font-family: inherit;
-  overflow-y: auto;
-  ${hideScrollbar}
   
   &:focus {
     outline: none;
@@ -94,29 +126,20 @@ export const TextArea = styled.textarea`
   }
 `;
 
-export const ImagePreviewContainer = styled.div`
+export const PreviewContainer = styled.div`
   position: relative;
   margin-top: 12px;
   border-radius: 16px;
   overflow: hidden;
   max-height: 300px;
-  width: 100%;
-  aspect-ratio: 16/9;
-  background-color: ${Colors.extraLightGray};
 `;
 
 export const ImagePreview = styled.img`
   width: 100%;
-  height: 100%;
   object-fit: cover;
-  transition: transform 0.2s ease;
-  
-  &:hover {
-    transform: scale(1.02);
-  }
 `;
 
-export const RemoveImageButton = styled.button`
+export const RemoveButton = styled.button`
   position: absolute;
   top: 8px;
   right: 8px;
@@ -130,64 +153,149 @@ export const RemoveImageButton = styled.button`
   justify-content: center;
   cursor: pointer;
   color: ${Colors.white};
-  transition: background-color 0.2s ease;
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.9);
-  }
 `;
 
-export const ActionBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px solid ${Colors.extraLightGray};
-  position: relative;
-`;
-
-export const MediaActions = styled.div`
-  display: flex;
-  gap: 16px;
-  position: relative;
-  
-  button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: ${Colors.primary};
-    padding: 8px;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-    
-    &:hover {
-      background-color: ${Colors.extraLightGray};
-    }
-
-    &.active {
-      background-color: ${Colors.extraLightGray};
-      color: ${Colors.blue};
-    }
-  }
-`;
-
-export const CharacterCount = styled.span<{ warning: boolean }>`
-  color: ${({ warning }) => (warning ? Colors.danger : Colors.darkGray)};
+export const ErrorMessage = styled.div`
+  color: ${Colors.danger};
+  margin-top: 8px;
   font-size: 14px;
 `;
 
-export const SubmitButton = styled.button`
-  background-color: ${Colors.primary};
+export const ImageSearchContainer = styled.div`
+  margin-top: 16px;
+  border: 1px solid ${Colors.extraLightGray};
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+export const ImagePickerHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid ${Colors.extraLightGray};
+`;
+
+export const SearchForm = styled.form`
+  display: flex;
+  padding: 12px;
+  gap: 8px;
+`;
+
+export const SearchInput = styled.input`
+  flex: 1;
+  padding: 8px;
+  border: 1px solid ${Colors.extraLightGray};
+  border-radius: 4px;
+`;
+
+export const SearchButton = styled.button`
+  background: ${Colors.primary};
   color: ${Colors.white};
   border: none;
-  border-radius: 9999px;
-  padding: 8px 16px;
-  font-weight: bold;
+  border-radius: 4px;
+  padding: 0 16px;
   cursor: pointer;
-  transition: background-color 0.2s;
   
   &:hover {
-    background-color: ${Colors.blue};
+    background: ${Colors.blue};
+  }
+`;
+
+export const ImageGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  ${hideScrollbar}
+`;
+
+export const ImageGridItem = styled.div`
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+export const LoadingMessage = styled.div`
+  padding: 16px;
+  text-align: center;
+  color: ${Colors.darkGray};
+`;
+
+export const EmojiPickerContainer = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 300px;
+  background: ${Colors.white};
+  border: 1px solid ${Colors.extraLightGray};
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+`;
+
+export const EmojiPickerHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid ${Colors.extraLightGray};
+`;
+
+export const EmojiGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  ${hideScrollbar}
+`;
+
+export const EmojiButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 20px;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  
+  &:hover {
+    background: ${Colors.extraLightGray};
+  }
+`;
+
+export const ComposerActions = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid ${Colors.extraLightGray};
+`;
+
+export const IconGroup = styled.div`
+  display: flex;
+  gap: 16px;
+`;
+
+export const IconButton = styled.button`
+  background: none;
+  border: none;
+  color: ${Colors.primary};
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  
+  &:hover {
+    background: rgba(29, 161, 242, 0.1);
   }
   
   &:disabled {
@@ -196,148 +304,21 @@ export const SubmitButton = styled.button`
   }
 `;
 
-export const ErrorMessage = styled.p`
-  color: ${Colors.danger};
-  font-size: 14px;
-  margin-top: 8px;
-`;
-
-export const ImageSearchContainer = styled.div`
-  padding: 16px;
-  border-top: 1px solid ${Colors.extraLightGray};
-  background-color: ${Colors.white};
-`;
-
-export const SearchForm = styled.form`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  width: 100%;
-`;
-
-export const SearchInput = styled.input`
-  flex: 1;
-  padding: 8px 16px;
-  border: 1px solid ${Colors.extraLightGray};
-  border-radius: 9999px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
-  
-  &:focus {
-    outline: none;
-    border-color: ${Colors.primary};
-  }
-  
-  &::placeholder {
-    color: ${Colors.darkGray};
-  }
-`;
-
-export const SearchButton = styled.button`
-  background-color: ${Colors.primary};
+export const ReplyButton = styled.button`
+  background: ${Colors.primary};
   color: ${Colors.white};
   border: none;
   border-radius: 9999px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 8px 16px;
+  font-weight: bold;
   cursor: pointer;
   
   &:hover {
-    background-color: ${Colors.blue};
-  }
-`;
-
-export const ImageGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 4px;
-  ${hideScrollbar}
-`;
-
-export const ImageGridItem = styled.div`
-  cursor: pointer;
-  border-radius: 12px;
-  overflow: hidden;
-  aspect-ratio: 1;
-  background-color: ${Colors.extraLightGray};
-  transition: transform 0.2s ease;
-  
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    background: ${Colors.blue};
   }
   
-  &:hover {
-    transform: scale(1.05);
-  }
-`;
-
-export const LoadingText = styled.p`
-  text-align: center;
-  color: ${Colors.darkGray};
-  padding: 16px;
-  font-size: 14px;
-`;
-
-export const EmojiPicker = styled.div`
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 0;
-  background: ${Colors.white};
-  border: 1px solid ${Colors.extraLightGray};
-  border-radius: 8px;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
-  width: 320px;
-  max-height: 300px;
-  overflow-y: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: ${Colors.extraLightGray};
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${Colors.lightGray};
-    border-radius: 4px;
-  }
-`;
-
-export const EmojiButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  padding: 8px;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  aspect-ratio: 1;
-  
-  &:hover {
-    background-color: ${Colors.extraLightGray};
-    transform: scale(1.1);
-  }
-
-  &:active {
-    transform: scale(0.95);
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `; 
