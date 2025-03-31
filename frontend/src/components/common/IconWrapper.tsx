@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { IconType } from 'react-icons';
 import { Colors } from '../../styles/global';
 
+
 interface IconWrapperStyleProps {
   $disabled?: boolean;
   $active?: boolean;
@@ -93,60 +94,47 @@ function getIconSize(size?: 'small' | 'medium' | 'large'): number {
   }
 }
 
-// Type for our refs to avoid 'any'
-type IconWrapperRefType = HTMLButtonElement | HTMLSpanElement;
-
-// Properly typed rest props by extending React's HTMLAttributes
-type ButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof IconWrapperProps>;
-type SpanProps = Omit<React.HTMLAttributes<HTMLSpanElement>, keyof IconWrapperProps>;
-
-// Union type to correctly type the spreading of props
-type IconWrapperRestProps = ButtonProps | SpanProps;
-
-const IconWrapper = React.forwardRef<IconWrapperRefType, IconWrapperProps & IconWrapperRestProps>(({ 
-  icon,
+const IconWrapper: React.FC<IconWrapperProps> = ({
+  icon: Icon,
   disabled,
   active,
   size,
   color,
   asButton = true,
   ...props 
-}, ref) => {
+}) => {
   const iconSize = getIconSize(size);
-  const Icon = icon;
   
-  // Determine which component to use based on asButton prop
+  const IconComponent = Icon as React.ComponentType<{ size?: number; color?: string }>;
+  
   if (asButton) {
     return (
       <IconWrapperButton
-        ref={ref as React.RefObject<HTMLButtonElement>}
         $disabled={disabled}
         $active={active}
         $size={size}
         $color={color}
         $asButton={asButton}
-        {...props as ButtonProps}
+        disabled={disabled}
+        {...props}
       >
-        <Icon size={iconSize} color={color || 'currentColor'} />
+        <IconComponent size={iconSize} color={color || 'currentColor'} />
       </IconWrapperButton>
     );
   }
   
   return (
     <IconWrapperStyled
-      ref={ref as React.RefObject<HTMLSpanElement>}
       $disabled={disabled}
       $active={active}
       $size={size}
       $color={color}
       $asButton={asButton}
-      {...props as SpanProps}
+      {...props}
     >
-      <Icon size={iconSize} color={color || 'currentColor'} />
+      <IconComponent size={iconSize} color={color || 'currentColor'} />
     </IconWrapperStyled>
   );
-});
-
-IconWrapper.displayName = 'IconWrapper';
+};
 
 export default IconWrapper; 

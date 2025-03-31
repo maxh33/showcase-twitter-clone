@@ -1,6 +1,45 @@
 import styled from 'styled-components';
 import { Colors } from '../../../styles/global';
 
+export const TweetComposerWrapper = styled.div`
+  padding: 12px 16px;
+  border-bottom: 8px solid ${Colors.extraLightGray};
+  display: flex;
+`;
+
+export const ProfileImage = styled.img`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: cover;
+`;
+
+export const TextArea = styled.textarea`
+  width: 100%;
+  padding: 10px 0;
+  min-height: 80px;
+  border: none;
+  resize: none;
+  font-size: 19px;
+  font-family: 'Inter', sans-serif;
+  color: ${Colors.black};
+  
+  &:focus {
+    outline: none;
+  }
+  
+  &::placeholder {
+    color: ${Colors.darkGray};
+  }
+`;
+
+export const ActionButtons = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+`;
+
 export const ComposerContainer = styled.div`
   padding: 12px 16px;
   border-bottom: 8px solid ${Colors.extraLightGray};
