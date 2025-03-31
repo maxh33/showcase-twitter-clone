@@ -6,7 +6,7 @@ import CommentsContainer from './Comments';
 import tweetService from '../../services/tweetService';
 import IconWrapper from '../common/IconWrapper';
 
-interface Tweet {
+interface TweetData {
   id: number;
   content: string;
   author: {
@@ -27,8 +27,8 @@ interface Tweet {
 }
 
 interface TweetProps {
-  tweet: Tweet;
-  onTweetUpdated?: (updatedTweet: Tweet) => void;
+  tweet: TweetData;
+  onTweetUpdated?: (updatedTweet: TweetData) => void;
 }
 
 const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
@@ -37,7 +37,7 @@ const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
     like: false,
     retweet: false,
   });
-  const [localTweet, setLocalTweet] = useState<Tweet>(tweet);
+  const [localTweet, setLocalTweet] = useState<TweetData>(tweet);
 
   const handleLike = async () => {
     if (loading.like) return;
@@ -112,19 +112,19 @@ const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
           <S.TweetFooter>
             <S.ActionsContainer>
               <S.ActionButton onClick={toggleComments}>
-                <IconWrapper icon={FaRegComment} size={20} />
+                <IconWrapper icon={FaRegComment} size="medium" />
                 {localTweet.comments_count > 0 && localTweet.comments_count}
               </S.ActionButton>
               <S.ActionButton onClick={handleRetweet}>
-                <IconWrapper icon={FaRetweet} size={20} />
+                <IconWrapper icon={FaRetweet} size="medium" />
                 {localTweet.retweet_count > 0 && localTweet.retweet_count}
               </S.ActionButton>
               <S.ActionButton onClick={handleLike}>
-                <IconWrapper icon={FaRegHeart} size={20} />
+                <IconWrapper icon={FaRegHeart} size="medium" />
                 {localTweet.likes_count > 0 && localTweet.likes_count}
               </S.ActionButton>
               <S.ActionButton>
-                <IconWrapper icon={FaShareAlt} size={20} />
+                <IconWrapper icon={FaShareAlt} size="medium" />
               </S.ActionButton>
             </S.ActionsContainer>
           </S.TweetFooter>

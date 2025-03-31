@@ -76,6 +76,7 @@ frontend/build/
 frontend/node_modules/
 frontend/.pnp
 frontend/.pnp.js
+buildlog.txt
 
 # Dependency directories
 jspm_packages/

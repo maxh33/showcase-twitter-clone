@@ -1,5 +1,23 @@
 import axios from 'axios';
 
+interface UnsplashResponse {
+  id: string;
+  urls: {
+    regular: string;
+  };
+  alt_description: string;
+  user: {
+    name: string;
+    username: string;
+  };
+  width: number;
+  height: number;
+}
+
+interface UnsplashSearchResponse {
+  results: UnsplashResponse[];
+}
+
 export interface UnsplashImage {
   id: string;
   url: string;
@@ -33,15 +51,17 @@ export const fetchRandomImages = async (query = '', count = 10): Promise<Unsplas
       ? `https://api.unsplash.com/search/photos?query=${query}&per_page=${count}`
       : `https://api.unsplash.com/photos/random?count=${count}`;
     
-    const response = await axios.get(endpoint, {
+    const response = await axios.get<UnsplashSearchResponse | UnsplashResponse[]>(endpoint, {
       headers: {
         Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`
       }
     });
     
-    const results = query ? response.data.results : response.data;
+    const results = query 
+      ? (response.data as UnsplashSearchResponse).results 
+      : (response.data as UnsplashResponse[]);
     
-    return results.map((img: any) => ({
+    return results.map((img) => ({
       id: img.id,
       url: img.urls.regular,
       alt_description: img.alt_description || 'Unsplash image',
@@ -77,4 +97,6 @@ const generatePlaceholderImages = (count: number): UnsplashImage[] => {
   }));
 };
 
-export default { fetchRandomImages }; 
+const imageService = { fetchRandomImages };
+
+export default imageService; 

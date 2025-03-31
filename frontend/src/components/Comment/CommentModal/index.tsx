@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { IconContext } from 'react-icons';
 import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import IconWrapper from '../../common/IconWrapper';
+import * as S from './styles';
 import { EMOJI_LIST } from '../../common/constants';
 import { fetchRandomImages, UnsplashImage } from '../../../services/imageService';
-import tweetService, { Tweet } from '../../../services/tweetService';
-import * as S from './styles';
+import { Tweet } from '../../../services/tweetService';
 
 // Allow for flexible author ID type (string or number)
 interface FlexibleTweet extends Omit<Tweet, 'author'> {
@@ -238,7 +237,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
       <S.ModalContent ref={modalRef}>
         <S.ModalHeader>
           <button onClick={onClose}>
-            <IconWrapper icon={FaTimes} />
+            <IconWrapper icon={FaTimes} size="medium" />
           </button>
         </S.ModalHeader>
         
@@ -257,7 +256,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
               <S.ImagePreviewContainer>
                 <S.ImagePreview src={previewUrl} alt="Selected media" />
                 <S.RemoveImageButton onClick={handleRemoveFile}>
-                  <IconWrapper icon={FaTimes} />
+                  <IconWrapper icon={FaTimes} size="small" />
                 </S.RemoveImageButton>
               </S.ImagePreviewContainer>
             )}
@@ -271,20 +270,18 @@ const CommentModal: React.FC<CommentModalProps> = ({
                   accept="image/*"
                   style={{ display: 'none' }}
                 />
-                <IconContext.Provider value={{ size: '20px' }}>
-                  <button onClick={handleFileSelect}>
-                    <IconWrapper icon={FaImage} />
-                  </button>
-                  <button onClick={toggleImageSearch}>
-                    <IconWrapper icon={FaSearch} />
-                  </button>
-                  <button 
-                    onClick={toggleEmojiPicker}
-                    className={showEmojiPicker ? 'active' : ''}
-                  >
-                    <IconWrapper icon={FaSmile} />
-                  </button>
-                </IconContext.Provider>
+                <button onClick={handleFileSelect}>
+                  <IconWrapper icon={FaImage} size="medium" />
+                </button>
+                <button onClick={toggleImageSearch}>
+                  <IconWrapper icon={FaSearch} size="medium" />
+                </button>
+                <button 
+                  onClick={toggleEmojiPicker}
+                  className={showEmojiPicker ? 'active' : ''}
+                >
+                  <IconWrapper icon={FaSmile} size="medium" />
+                </button>
 
                 {showEmojiPicker && (
                   <S.EmojiPicker ref={emojiPickerRef}>
@@ -327,7 +324,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 placeholder="Search for images..."
               />
               <S.SearchButton type="submit">
-                <IconWrapper icon={FaSearch} />
+                <IconWrapper icon={FaSearch} size="small" />
               </S.SearchButton>
             </S.SearchForm>
             

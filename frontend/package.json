@@ -10,6 +10,7 @@
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@mui/icons-material": "^7.0.0",
     "@mui/material": "^7.0.0",
+    "@react-icons/all-files": "^4.1.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
@@ -32,8 +33,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --transformIgnorePatterns \"node_modules/(?!axios)/\"",
+    "build": "set GENERATE_SOURCEMAP=false && react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject",
     "tailwind": "tailwindcss -i ./src/index.css -o ./src/output.css --watch",
     "tailwind:init": "tailwindcss init",
@@ -47,7 +48,10 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "@typescript-eslint/ban-ts-comment": "off"
+    }
   },
   "browserslist": {
     "production": [
