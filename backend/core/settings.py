@@ -68,7 +68,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     "https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app",  # Vercel preview
-    "https://showcase-twitter-clone.vercel.app/",  # Vercel production
+    "https://showcase-twitter-clone.vercel.app",  # Vercel production
     "https://showcase-twitter-clone-git-staging-maxh33s-projects.vercel.app",  # Vercel staging
 ]
 
