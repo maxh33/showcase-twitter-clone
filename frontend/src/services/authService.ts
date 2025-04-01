@@ -98,7 +98,9 @@ export const login = async (data: LoginData) => {
   };
 
   try {
-    console.log('Sending login data:', loginData); // Debug log
+    // Debug log with masked password
+    const safeData = { ...loginData, password: '********' };
+    console.log('Sending login data:', safeData);
     
     const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
     if (response.data.access) {
@@ -143,6 +145,7 @@ export const login = async (data: LoginData) => {
 export const silentLogout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('isDemoUser');
   delete axios.defaults.headers.common['Authorization'];
   return { success: true };
 };
@@ -324,3 +327,42 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Add demo login function
+export const demoLogin = async () => {
+  try {
+    console.log('Attempting demo login...'); // Safe debug log (no credentials)
+    
+    const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
+    if (response.data.access) {
+      localStorage.setItem('token', response.data.access);
+      localStorage.setItem('refreshToken', response.data.refresh);
+      localStorage.setItem('isDemoUser', 'true');
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+      // Reset refresh attempts counter on successful login
+      refreshAttempts = 0;
+    }
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      if (axiosError.response?.data) {
+        const errorData = axiosError.response.data;
+        if (typeof errorData === 'object') {
+          const firstError = Object.values(errorData)[0];
+          throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+        }
+      }
+      throw new Error('Demo login failed. Please try again later.');
+    } else if (error instanceof Error) {
+      throw new Error(error.message || 'An error occurred during demo login.');
+    } else {
+      throw new Error('An unexpected error occurred. Please try again.');
+    }
+  }
+};
+
+// Add function to check if current user is demo user
+export const isDemoUser = () => {
+  return localStorage.getItem('isDemoUser') === 'true';
+};
