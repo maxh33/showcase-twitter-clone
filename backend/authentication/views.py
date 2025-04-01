@@ -425,7 +425,7 @@ class DemoUserLoginView(CustomTokenObtainPairView):
             # Create a data dict with demo user credentials
             demo_data = {
                 'email': 'demo@twitterclone.com',
-                'username': 'demo@twitterclone.com',  # Include both to ensure compatibility
+                'username': 'demo_user',  # Match the username from setup_demo_user
                 'password': 'Demo@123'
             }
             
