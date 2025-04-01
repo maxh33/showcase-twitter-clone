@@ -86,7 +86,7 @@ export const fetchRandomImages = async (query = '', count = 10): Promise<Unsplas
 const generatePlaceholderImages = (count: number): UnsplashImage[] => {
   return Array(count).fill(0).map((_, index) => ({
     id: `placeholder-${index}`,
-    url: `https://via.placeholder.com/800x600?text=Placeholder+Image+${index + 1}`,
+    url: `https://placehold.co/800x600/random/text=Image+${index + 1}`,
     alt_description: `Placeholder image ${index + 1}`,
     user: {
       name: 'Placeholder',
