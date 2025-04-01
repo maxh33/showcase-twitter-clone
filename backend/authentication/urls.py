@@ -11,6 +11,7 @@ from .views import (
     PasswordResetRequestView,
     PasswordResetConfirmView,
     LogoutView,
+    DemoUserLoginView,
 )
 
 def auth_api_root(request):
@@ -21,6 +22,7 @@ def auth_api_root(request):
         "endpoints": {
             "register": "register/",
             "login": "login/",
+            "demo_login": "demo-login/",
             "logout": "logout/",
             "token_refresh": "token/refresh/",
             "verify_email": "verify-email/",
@@ -35,6 +37,7 @@ urlpatterns = [
     # Authentication endpoints
     path('register/', RegistrationView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
+    path('demo-login/', DemoUserLoginView.as_view(), name='demo_login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
-import { login } from '../services/authService';
+import { login, demoLogin } from '../services/authService';
 import {
   AuthContainer,
   BannerContainer,
@@ -143,6 +143,26 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    setErrors({});
+    
+    try {
+      await demoLogin();
+      navigate('/'); // Redirect to home page after successful demo login
+    } catch (error: unknown) {
+      console.error('Demo login error:', error);
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        setErrors({ general: String(error.message) });
+      } else {
+        setErrors({ general: 'An error occurred during demo login. Please try again later.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContainer>
       <BannerContainer>
@@ -197,6 +217,18 @@ const LoginPage: React.FC = () => {
             </Button>
           </ButtonContainer>
         </Form>
+
+        <ButtonContainer style={{ marginTop: '16px' }}>
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            onClick={handleDemoLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Try Demo Account'}
+          </Button>
+        </ButtonContainer>
         
         <LinkContainer>
           <LinkText>
