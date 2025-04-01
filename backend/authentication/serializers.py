@@ -31,6 +31,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         logger.debug("CustomTokenObtainPairSerializer initialized with username field")
     
     def validate(self, attrs):
+        # Log the incoming data
         logger.debug(f"Login attempt with attrs: {attrs}")
         
         # Make a copy of the attributes to avoid modifying the original
@@ -53,11 +54,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     code='authorization'
                 )
         
-        # Only proceed if email exists
+        # Check if email exists
         if not attrs_copy.get('email'):
             logger.warning("Neither username nor email was provided")
             raise serializers.ValidationError(
                 {'email': 'Email or username is required.'},
+                code='authorization'
+            )
+        
+        # Check if password exists
+        if not attrs_copy.get('password'):
+            logger.warning("Password was not provided")
+            raise serializers.ValidationError(
+                {'password': 'Password is required.'},
                 code='authorization'
             )
         

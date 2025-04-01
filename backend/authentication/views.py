@@ -64,6 +64,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         email = request.data.get('email', '')
         ip_address = self.get_client_ip(request)
         
+        # Log request data for debugging
+        print(f"Login attempt - Request data: {request.data}")
+        
         # Check if account is locked
         if FailedLoginAttempt.is_account_locked(email):
             return Response(
@@ -72,27 +75,38 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             )
         
         try:
+            # Log serializer data
+            print(f"Attempting to validate with serializer data: {request.data}")
+            
             # Attempt to authenticate
             serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            
+            # Log validation errors if any
+            if not serializer.is_valid():
+                print(f"Serializer validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
             # If we get here, login was successful
             FailedLoginAttempt.clear_failed_attempts(email)
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
             
         except serializers.ValidationError as e:
+            # Log validation error details
+            print(f"Validation error during login: {str(e)}")
             # Record failed attempt and return appropriate status code
             FailedLoginAttempt.record_failed_attempt(email, ip_address)
-            
-            # All authentication failures should return 401
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
             
         except (InvalidToken, TokenError) as e:
+            # Log token error details
+            print(f"Token error during login: {str(e)}")
             # Record failed attempt for token-related errors
             FailedLoginAttempt.record_failed_attempt(email, ip_address)
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
             
         except Exception as e:
+            # Log unexpected error details
+            print(f"Unexpected error during login: {str(e)}")
             # For any other errors, don't record a failed attempt as it might be a server issue
             return Response(
                 {'error': 'An unexpected error occurred. Please try again later.'},

@@ -91,7 +91,15 @@ export const register = async (data: RegisterData, retryCount = 0, maxRetries = 
 };
 
 export const login = async (data: LoginData) => {
-  const response = await axios.post(`${API_URL}/v1/auth/login/`, data);
+  // Format the data to match backend expectations
+  const loginData = {
+    email: data.email || data.username, // Use email if provided, otherwise use username
+    password: data.password
+  };
+
+  console.log('Sending login data:', loginData); // Debug log
+  
+  const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
   if (response.data.access) {
     localStorage.setItem('token', response.data.access);
     localStorage.setItem('refreshToken', response.data.refresh);
