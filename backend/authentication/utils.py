@@ -2,6 +2,10 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.contrib.auth import get_user_model
+import os
+import random
+import string
+from datetime import datetime
 
 def send_password_reset_email(user_email, reset_url):
     """
@@ -26,38 +30,64 @@ def send_password_reset_email(user_email, reset_url):
     msg.attach_alternative(html_content, "text/html")
     msg.send(fail_silently=False)
 
-def setup_demo_user():
+def setup_demo_user(session_id=None):
     """
-    Creates or updates the demo user account.
+    Creates or returns a unique demo user account.
     
-    This function creates a demo user with predefined credentials
-    or updates an existing demo user to ensure it has the correct
-    properties and is active.
+    If a session_id is provided, tries to create a unique demo account for that session.
+    Otherwise, returns the default demo account.
     
+    Args:
+        session_id (str, optional): A unique identifier for the user session
+        
     Returns:
         tuple: (user, created) - The user object and a boolean indicating if created
     """
     User = get_user_model()
-    demo_email = 'demo@twitterclone.com'
-    demo_username = 'demo_user'
-    demo_password = 'Demo@123'  # This is just for demo purposes
     
-    created = False
+    # Base demo user credentials (from env or fallbacks)
+    base_email = os.environ.get('DEMO_USER_EMAIL', 'demo@twitterclone.com')
+    base_username = os.environ.get('DEMO_USER_USERNAME', 'demo_user')
+    demo_password = os.environ.get('DEMO_USER_PASSWORD', 'Demo@123')
+    
+    # If no session_id is provided, use the default demo account
+    if not session_id:
+        try:
+            user = User.objects.get(email=base_email)
+            return user, False
+        except User.DoesNotExist:
+            user = User.objects.create_user(
+                username=base_username,
+                email=base_email,
+                password=demo_password,
+                is_active=True,
+                bio='👋 This is a demo account. Some actions are restricted. Sign up to get full access!',
+                location='Demo World 🌍'
+            )
+            return user, True
+    
+    # Create a unique suffix based on session_id
+    # Generate a random suffix even with session_id to prevent username guessing
+    random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    timestamp = datetime.now().strftime('%m%d%H%M')
+    unique_suffix = f"{timestamp}_{random_suffix}"
+    
+    # Create unique credentials for this session
+    email = base_email.replace('@', f"+{unique_suffix}@")
+    username = f"{base_username}_{unique_suffix}"
+    
+    # Check if this unique demo user already exists
     try:
-        user = User.objects.get(email=demo_email)
-        user.username = demo_username
-        user.set_password(demo_password)
-        user.is_active = True
-        user.save()
+        user = User.objects.get(email=email)
+        return user, False
     except User.DoesNotExist:
+        # Create a new unique demo user
         user = User.objects.create_user(
-            username=demo_username,
-            email=demo_email,
+            username=username,
+            email=email,
             password=demo_password,
             is_active=True,
-            bio='👋 This is a demo account. Some actions are restricted. Sign up to get full access!',
+            bio=f'👋 This is a unique demo account (#{unique_suffix}). Some actions are restricted. Sign up to get full access!',
             location='Demo World 🌍'
         )
-        created = True
-    
-    return user, created 
+        return user, True 

@@ -18,6 +18,8 @@ from django.core.validators import validate_email
 from django.utils.html import strip_tags
 from django.template.loader import render_to_string
 import traceback
+import os
+import uuid
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -418,19 +420,27 @@ class DemoUserLoginView(CustomTokenObtainPairView):
     )
     def post(self, request, *args, **kwargs):
         try:
-            # Check if demo user exists, create if not
-            demo_user, status_msg = setup_demo_user()
-            print(f"Demo user status: {status_msg}")
+            # Generate a unique session ID from request data
+            # Use client IP, user agent, and a random component to create a unique session ID
+            client_ip = self.get_client_ip(request)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            random_component = str(uuid.uuid4())
+            session_id = f"{client_ip}_{random_component}"
             
-            # Create a data dict with demo user credentials
+            # Create or get a unique demo user for this session
+            demo_user, status_msg = setup_demo_user(session_id)
+            print(f"Demo user created: {demo_user.username}")
+            
+            # Create data dict with the unique demo credentials
             demo_data = {
-                'email': 'demo@twitterclone.com',
-                'username': 'demo@twitterclone.com',  # Include both to ensure compatibility
-                'password': 'Demo@123'
+                'email': demo_user.email,
+                'username': demo_user.username,
+                'password': os.environ.get('DEMO_USER_PASSWORD', 'Demo@123')
             }
             
             # Safe logging (with masked password)
-            print(f"Demo login attempt with email: demo@twitterclone.com")
+            masked_data = {**demo_data, 'password': '********'}
+            print(f"Demo login attempt with credentials: {masked_data}")
             
             # Use the serializer directly
             serializer = self.get_serializer(data=demo_data)
@@ -443,12 +453,16 @@ class DemoUserLoginView(CustomTokenObtainPairView):
             # If valid, get response data
             response_data = serializer.validated_data
             
-            # Add demo user flag
+            # Add demo user flag and credentials for client reference
             response_data['is_demo_user'] = True
-            response_data['demo_message'] = 'Some actions are restricted in demo mode. Sign up to get full access!'
+            response_data['demo_credentials'] = {
+                'email': demo_user.email,
+                'username': demo_user.username
+            }
+            response_data['demo_message'] = 'This is a unique demo account created just for your session. Some actions are restricted. Sign up to get full access!'
             
             # Record successful login
-            FailedLoginAttempt.clear_failed_attempts('demo@twitterclone.com')
+            FailedLoginAttempt.clear_failed_attempts(demo_user.email)
             
             return Response(response_data, status=status.HTTP_200_OK)
             

@@ -147,6 +147,7 @@ export const silentLogout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('isDemoUser');
+  localStorage.removeItem('demoCredentials');
   delete axios.defaults.headers.common['Authorization'];
   return { success: true };
 };
@@ -334,24 +335,28 @@ export const demoLogin = async () => {
   try {
     console.log('Attempting demo login...'); // Safe debug log (no credentials)
     
-    // Include both email and username in the request for compatibility
-    const demoData = {
-      email: 'demo@twitterclone.com',
-      username: 'demo@twitterclone.com'
-    };
-    
-    // Try with demo-login endpoint
+    // Try with demo-login endpoint which creates a unique demo account
     try {
-      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, demoData);
+      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
       handleSuccessfulLogin(response);
+      
+      // Store the unique demo credentials if provided
+      if (response.data.demo_credentials) {
+        localStorage.setItem('demoCredentials', JSON.stringify(response.data.demo_credentials));
+      }
+      
       return response.data;
     } catch (demoEndpointError) {
-      console.log('Demo endpoint failed, trying regular login with demo credentials');
-      // Fallback to regular login with demo credentials if demo endpoint fails
+      console.log('Demo endpoint failed, trying fallback method');
+      
+      // Fallback to regular login with generic demo credentials if demo endpoint fails
+      // This is only a last resort fallback to ensure demo mode works even if the special endpoint fails
       const response = await axios.post(`${API_URL}/v1/auth/login/`, {
-        ...demoData,
+        email: 'demo@twitterclone.com',
+        username: 'demo_user',
         password: 'Demo@123'
       });
+      
       handleSuccessfulLogin(response);
       return response.data;
     }
