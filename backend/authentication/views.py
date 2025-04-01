@@ -17,6 +17,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils.html import strip_tags
 from django.template.loader import render_to_string
+import traceback
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -29,7 +30,7 @@ from .serializers import (
     LogoutSerializer,
 )
 from .models import FailedLoginAttempt
-from .utils import send_password_reset_email
+from .utils import send_password_reset_email, setup_demo_user
 
 User = get_user_model()
 
@@ -411,12 +412,17 @@ class DemoUserLoginView(CustomTokenObtainPairView):
         responses={
             200: 'Returns access and refresh tokens for demo user',
             400: 'Bad request',
-            429: 'Too many requests'
+            429: 'Too many requests',
+            500: 'Internal Server Error'
         }
     )
     def post(self, request, *args, **kwargs):
         try:
-            # Create a new request with demo user credentials
+            # Check if demo user exists, create if not
+            demo_user, status_msg = setup_demo_user()
+            print(f"Demo user status: {status_msg}")
+            
+            # Create a data dict with demo user credentials
             demo_data = {
                 'email': 'demo@twitterclone.com',
                 'username': 'demo@twitterclone.com',  # Include both to ensure compatibility
@@ -448,6 +454,7 @@ class DemoUserLoginView(CustomTokenObtainPairView):
             
         except Exception as e:
             print(f"Unexpected error during demo login: {str(e)}")
+            print(f"Exception traceback: {traceback.format_exc()}")
             return Response(
                 {'error': f'Demo login failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

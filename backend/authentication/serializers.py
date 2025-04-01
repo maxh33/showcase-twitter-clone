@@ -42,7 +42,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         # Check if username is provided, convert it to email for authentication
         if 'username' in attrs_copy and attrs_copy['username'] and not attrs_copy.get('email'):
-            logger.debug(f"Login attempt with username provided")
+            logger.debug(f"Login attempt with username only")
             # Find user by username
             try:
                 user = User.objects.get(username=attrs_copy['username'])
@@ -59,6 +59,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             # For backward compatibility, set username to email if only email is provided
             attrs_copy['username'] = attrs_copy['email']
             logger.debug(f"Setting username equal to email for compatibility")
+        
+        # IMPORTANT: super().validate() is using the username_field which we set to 'email'
+        # The parent class needs the authentication field to be populated
+        # For SimpleJWT this should be 'email' since we set username_field = 'email'
         
         # Check if email exists
         if not attrs_copy.get('email'):
@@ -78,9 +82,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         try:
             logger.debug(f"Attempting to validate with provided credentials")
-            # Use the parent class validate method with email and password
-            auth_attrs = {'email': attrs_copy['email'], 'password': attrs_copy['password']}
-            
+            # Use the parent class validate method - it will use username_field which is 'email'
             try:
                 # Check if user exists first
                 user = User.objects.filter(email=attrs_copy['email']).first()
@@ -97,7 +99,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                         code='authorization'
                     )
                 
-                data = super().validate(auth_attrs)
+                # We need to make sure the auth_attrs has the username_field ('email') populated
+                data = super().validate(attrs_copy)
                 logger.debug("Authentication successful")
             except Exception as e:
                 logger.error(f"Authentication failed: {str(e)}")

@@ -94,6 +94,7 @@ export const login = async (data: LoginData) => {
   // Format the data to match backend expectations
   const loginData = {
     email: data.email || data.username, // Use email if provided, otherwise use username
+    username: data.email || data.username, // Include username field with same value for compatibility
     password: data.password
   };
 
@@ -333,16 +334,27 @@ export const demoLogin = async () => {
   try {
     console.log('Attempting demo login...'); // Safe debug log (no credentials)
     
-    const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
-    if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      localStorage.setItem('isDemoUser', 'true');
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      // Reset refresh attempts counter on successful login
-      refreshAttempts = 0;
+    // Include both email and username in the request for compatibility
+    const demoData = {
+      email: 'demo@twitterclone.com',
+      username: 'demo@twitterclone.com'
+    };
+    
+    // Try with demo-login endpoint
+    try {
+      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, demoData);
+      handleSuccessfulLogin(response);
+      return response.data;
+    } catch (demoEndpointError) {
+      console.log('Demo endpoint failed, trying regular login with demo credentials');
+      // Fallback to regular login with demo credentials if demo endpoint fails
+      const response = await axios.post(`${API_URL}/v1/auth/login/`, {
+        ...demoData,
+        password: 'Demo@123'
+      });
+      handleSuccessfulLogin(response);
+      return response.data;
     }
-    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
@@ -359,6 +371,18 @@ export const demoLogin = async () => {
     } else {
       throw new Error('An unexpected error occurred. Please try again.');
     }
+  }
+};
+
+// Helper function to handle successful login
+const handleSuccessfulLogin = (response: any) => {
+  if (response?.data?.access) {
+    localStorage.setItem('token', response.data.access);
+    localStorage.setItem('refreshToken', response.data.refresh);
+    localStorage.setItem('isDemoUser', 'true');
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+    // Reset refresh attempts counter on successful login
+    refreshAttempts = 0;
   }
 };
 
