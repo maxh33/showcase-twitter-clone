@@ -31,28 +31,34 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         logger.debug("CustomTokenObtainPairSerializer initialized with username field")
     
     def validate(self, attrs):
-        # Log the incoming data
-        logger.debug(f"Login attempt with attrs: {attrs}")
+        # Create a safe copy for logging (without password)
+        safe_attrs = attrs.copy()
+        if 'password' in safe_attrs:
+            safe_attrs['password'] = '********'
+        logger.debug(f"Login attempt with attrs: {safe_attrs}")
         
         # Make a copy of the attributes to avoid modifying the original
         attrs_copy = attrs.copy()
-        logger.debug(f"Created attrs_copy: {attrs_copy}")
         
         # Check if username is provided, convert it to email for authentication
         if 'username' in attrs_copy and attrs_copy['username'] and not attrs_copy.get('email'):
-            logger.debug(f"Login attempt with username: {attrs_copy['username']}")
+            logger.debug(f"Login attempt with username provided")
             # Find user by username
             try:
                 user = User.objects.get(username=attrs_copy['username'])
-                logger.debug(f"Found user by username: {user.email}")
+                logger.debug(f"Found user by username")
                 attrs_copy['email'] = user.email
-                logger.debug(f"Updated attrs_copy with email: {attrs_copy}")
             except User.DoesNotExist:
-                logger.warning(f"No user found with username: {attrs_copy['username']}")
+                logger.warning(f"No user found with provided username")
                 raise serializers.ValidationError(
                     {'username': 'No user found with this username.'},
                     code='authorization'
                 )
+        # Support email-only authentication (frontend sends email in email field)
+        elif 'email' in attrs_copy and attrs_copy['email'] and not attrs_copy.get('username'):
+            # For backward compatibility, set username to email if only email is provided
+            attrs_copy['username'] = attrs_copy['email']
+            logger.debug(f"Setting username equal to email for compatibility")
         
         # Check if email exists
         if not attrs_copy.get('email'):
@@ -71,10 +77,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
         
         try:
-            logger.debug(f"Attempting to validate with email: {attrs_copy.get('email')}")
+            logger.debug(f"Attempting to validate with provided credentials")
             # Use the parent class validate method with email and password
             auth_attrs = {'email': attrs_copy['email'], 'password': attrs_copy['password']}
-            logger.debug(f"Created auth_attrs for super().validate: {auth_attrs}")
             
             try:
                 # Check if user exists first
@@ -93,9 +98,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     )
                 
                 data = super().validate(auth_attrs)
-                logger.debug("super().validate succeeded")
+                logger.debug("Authentication successful")
             except Exception as e:
-                logger.error(f"super().validate failed with exception: {str(e)}")
+                logger.error(f"Authentication failed: {str(e)}")
                 logger.error(f"Exception traceback: {traceback.format_exc()}")
                 raise
             

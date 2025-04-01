@@ -64,8 +64,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         email = request.data.get('email', '')
         ip_address = self.get_client_ip(request)
         
-        # Log request data for debugging
-        print(f"Login attempt - Request data: {request.data}")
+        # Log request data for debugging without exposing passwords
+        safe_data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if 'password' in safe_data:
+            safe_data['password'] = '********'
+        print(f"Login attempt - Request data: {safe_data}")
         
         # Check if account is locked
         if FailedLoginAttempt.is_account_locked(email):
@@ -75,11 +78,21 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             )
         
         try:
-            # Log serializer data
-            print(f"Attempting to validate with serializer data: {request.data}")
+            # Handle both email and username login formats
+            request_data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            
+            # If email is provided but username is not, use email as username
+            if 'email' in request_data and 'username' not in request_data:
+                request_data['username'] = request_data['email']
+            
+            # Log sanitized data
+            safe_data = request_data.copy() if hasattr(request_data, 'copy') else dict(request_data)
+            if 'password' in safe_data:
+                safe_data['password'] = '********'
+            print(f"Attempting to validate with serializer data: {safe_data}")
             
             # Attempt to authenticate
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=request_data)
             
             # Log validation errors if any
             if not serializer.is_valid():
@@ -388,3 +401,54 @@ class LogoutView(APIView):
             return Response({'message': 'Logged out successfully'}, status=status.HTTP_205_RESET_CONTENT)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DemoUserLoginView(CustomTokenObtainPairView):
+    """View for demo user login"""
+    
+    @swagger_auto_schema(
+        operation_description="Demo user login endpoint",
+        responses={
+            200: 'Returns access and refresh tokens for demo user',
+            400: 'Bad request',
+            429: 'Too many requests'
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        try:
+            # Create a new request with demo user credentials
+            demo_data = {
+                'email': 'demo@twitterclone.com',
+                'username': 'demo@twitterclone.com',  # Include both to ensure compatibility
+                'password': 'Demo@123'
+            }
+            
+            # Safe logging (with masked password)
+            print(f"Demo login attempt with email: demo@twitterclone.com")
+            
+            # Use the serializer directly
+            serializer = self.get_serializer(data=demo_data)
+            
+            # Log validation errors if any
+            if not serializer.is_valid():
+                print(f"Demo login - Serializer validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            # If valid, get response data
+            response_data = serializer.validated_data
+            
+            # Add demo user flag
+            response_data['is_demo_user'] = True
+            response_data['demo_message'] = 'Some actions are restricted in demo mode. Sign up to get full access!'
+            
+            # Record successful login
+            FailedLoginAttempt.clear_failed_attempts('demo@twitterclone.com')
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Unexpected error during demo login: {str(e)}")
+            return Response(
+                {'error': f'Demo login failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
