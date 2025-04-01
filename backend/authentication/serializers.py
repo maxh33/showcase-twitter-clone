@@ -77,6 +77,21 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             logger.debug(f"Created auth_attrs for super().validate: {auth_attrs}")
             
             try:
+                # Check if user exists first
+                user = User.objects.filter(email=attrs_copy['email']).first()
+                if not user:
+                    raise serializers.ValidationError(
+                        {'email': 'No account found with this email address.'},
+                        code='authorization'
+                    )
+                
+                # Check if user is active
+                if not user.is_active:
+                    raise serializers.ValidationError(
+                        {'email': 'This account is not active. Please verify your email.'},
+                        code='authorization'
+                    )
+                
                 data = super().validate(auth_attrs)
                 logger.debug("super().validate succeeded")
             except Exception as e:
@@ -105,13 +120,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             logger.error(f"Validation error: {e}")
             # Re-raise validation errors with 401 status for invalid credentials
             if 'no active account found with the given credentials' in str(e).lower():
-                raise serializers.ValidationError('Invalid username/email or password', code='authentication_failed')
+                raise serializers.ValidationError(
+                    {'password': 'Invalid password.'},
+                    code='authentication_failed'
+                )
             raise
         except Exception as e:
             logger.error(f"Unexpected error during authentication: {str(e)}")
             logger.error(f"Exception traceback: {traceback.format_exc()}")
             # Log unexpected errors but don't expose them to the client
-            raise serializers.ValidationError('An error occurred during authentication')
+            raise serializers.ValidationError(
+                {'error': 'An error occurred during authentication. Please try again.'},
+                code='authentication_failed'
+            )
 
 
 class RegistrationSerializer(serializers.ModelSerializer):

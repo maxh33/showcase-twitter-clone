@@ -97,17 +97,47 @@ export const login = async (data: LoginData) => {
     password: data.password
   };
 
-  console.log('Sending login data:', loginData); // Debug log
-  
-  const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
-  if (response.data.access) {
-    localStorage.setItem('token', response.data.access);
-    localStorage.setItem('refreshToken', response.data.refresh);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-    // Reset refresh attempts counter on successful login
-    refreshAttempts = 0;
+  try {
+    console.log('Sending login data:', loginData); // Debug log
+    
+    const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
+    if (response.data.access) {
+      localStorage.setItem('token', response.data.access);
+      localStorage.setItem('refreshToken', response.data.refresh);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+      // Reset refresh attempts counter on successful login
+      refreshAttempts = 0;
+    }
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      // The server responded with a status code outside the 2xx range
+      if (axiosError.response?.data) {
+        const errorData = axiosError.response.data;
+        if (typeof errorData === 'object') {
+          // Check for specific error fields
+          if (errorData.email) {
+            throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+          }
+          if (errorData.password) {
+            throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
+          }
+          if (errorData.error) {
+            throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+          }
+          // If no specific field error, get the first error message
+          const firstError = Object.values(errorData)[0];
+          throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+        }
+      }
+      throw new Error('Login failed. Please check your credentials and try again.');
+    } else if (error instanceof Error) {
+      throw new Error(error.message || 'An error occurred during login.');
+    } else {
+      throw new Error('An unexpected error occurred. Please try again.');
+    }
   }
-  return response.data;
 };
 
 export const silentLogout = () => {
