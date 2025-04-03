@@ -43,6 +43,7 @@
     "prepare": "husky",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
+    "test:e2e": "cypress run",
     "vercel-build": "echo 'Using pre-built files'"
   },
   "eslintConfig": {
@@ -67,9 +68,11 @@
     ]
   },
   "devDependencies": {
-    "@types/chai": "^5.2.0",
+    "@types/chai": "^5.2.1",
+    "@types/chai-string": "^1.4.5",
     "@types/cypress": "^0.1.6",
     "@types/jest": "^29.5.14",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^22.13.10",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",

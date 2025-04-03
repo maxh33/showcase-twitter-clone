@@ -56,9 +56,20 @@ Cypress.Commands.add('ensureAuthenticated', (testUser: { email: string; password
 
 declare global {
   namespace Cypress {
-    interface Chainable {
-      login(email: string, password: string): Chainable<LoginResponse | null>
-      ensureAuthenticated(testUser: { email: string; password: string }): Chainable<void>
+    interface Chainable<Subject = any> {
+      login(email: string, password: string): Chainable<LoginResponse | null>;
+      ensureAuthenticated(testUser: { email: string; password: string }): Chainable<void>;
+      intercept(method: string, url: string, response: any): Chainable<null>;
+      wait(alias: string): Chainable<null>;
+      request(options: any): Chainable<any>;
+      exec(command: string): Chainable<{ stdout: string; stderr: string; code: number }>;
+      url(): Chainable<string>;
+      contains(content: string): Chainable<JQuery<HTMLElement>>;
+      get(selector: string): Chainable<JQuery<HTMLElement>>;
+      clearLocalStorage(): Chainable<void>;
+      clearCookies(): Chainable<void>;
+      visit(url: string): Chainable<void>;
+      log(message: string): void;
     }
   }
 } 
