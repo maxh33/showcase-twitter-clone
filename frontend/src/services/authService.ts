@@ -55,6 +55,10 @@ interface ResetPasswordData {
   email: string;
 }
 
+interface ResendVerificationData {
+  email: string;
+}
+
 interface ConfirmResetPasswordData {
   token: string;
   uidb64: string;
@@ -250,25 +254,39 @@ export const verifyEmail = async (data: VerifyEmailData) => {
 
 export const resetPassword = async (data: ResetPasswordData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/password-reset/`, data);
+    const response = await axios.post(`${API_URL}/auth/reset-password/`, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const resendVerification = async (data: ResendVerificationData) => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/resend-verification/`, data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
-      // The server responded with a status code outside the 2xx range
       if (axiosError.response?.data) {
         const errorData = axiosError.response.data;
         if (typeof errorData === 'object') {
+          // Check for specific error fields
+          if (errorData.email) {
+            throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+          }
+          if (errorData.error) {
+            throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+          }
+          // If no specific field error, get the first error message
           const firstError = Object.values(errorData)[0];
           throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
         }
       }
-      throw new Error('Password reset request failed. Please try again.');
+      throw new Error('Failed to resend verification email. Please try again.');
     } else if (error instanceof Error) {
-      // Something happened in setting up the request
-      throw new Error(error.message || 'An error occurred. Please try again.');
+      throw new Error(error.message || 'An error occurred while resending verification email.');
     } else {
-      // Fallback error
       throw new Error('An unexpected error occurred. Please try again.');
     }
   }

@@ -56,7 +56,7 @@ export interface FeedResponse {
  */
 const createAxiosInstance = (): AxiosInstance => {
   const instance = axios.create({
-    baseURL: `${API_URL}/v1/tweets`,
+    baseURL: `${API_URL}/tweets`,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -89,7 +89,7 @@ export const tweetService = {
   async getFeed(page = 1): Promise<FeedResponse> {
     const axiosInstance = createAxiosInstance();
     try {
-      console.log(`Fetching tweets page ${page} from ${API_URL}/v1/tweets/`);
+      console.log(`Fetching tweets page ${page} from ${API_URL}/tweets/`);
       const response = await axiosInstance.get('/', {
         params: {
           page

@@ -18,7 +18,8 @@ import {
   LinkContainer,
   LinkText,
   ErrorMessage,
-  SuccessMessage
+  SuccessMessage,
+  InfoMessage
 } from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
@@ -28,11 +29,15 @@ const ResetPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     setError(null);
+    setInfo(null);
+    setSuccess(null);
   };
 
   const validateForm = () => {
@@ -52,6 +57,10 @@ const ResetPasswordPage: React.FC = () => {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+    setInfo(null);
+    setRequiresVerification(false);
     
     try {
       await requestPasswordReset(email);
@@ -59,8 +68,11 @@ const ResetPasswordPage: React.FC = () => {
       setEmail(''); // Clear the form
     } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as AxiosError<{ message?: string }>;
-        if (axiosError.response?.data && 'message' in axiosError.response.data) {
+        const axiosError = error as AxiosError<any>;
+        if (axiosError.response?.status === 403 && axiosError.response.data?.requires_verification) {
+          setInfo(axiosError.response.data.message || 'Your account needs to be verified. Please check your email for verification instructions.');
+          setRequiresVerification(true);
+        } else if (axiosError.response?.data && 'message' in axiosError.response.data) {
           setError(axiosError.response.data.message || 'Failed to send reset email');
         } else {
           setError('Failed to process your request. Please try again later.');
@@ -88,6 +100,7 @@ const ResetPasswordPage: React.FC = () => {
         
         {error && <ErrorMessage>{error}</ErrorMessage>}
         {success && <SuccessMessage>{success}</SuccessMessage>}
+        {info && <InfoMessage>{info}</InfoMessage>}
         
         <Form onSubmit={handleSubmit}>
           <FormGroup>
@@ -110,7 +123,7 @@ const ResetPasswordPage: React.FC = () => {
               fullWidth
               disabled={isLoading || !!success}
             >
-              {isLoading ? 'Sending...' : 'Reset Password'}
+              {isLoading ? 'Sending...' : requiresVerification ? 'Resend Verification Email' : 'Reset Password'}
             </Button>
           </ButtonContainer>
         </Form>

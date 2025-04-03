@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
-import { login, demoLogin } from '../services/authService';
+import { login, demoLogin, resendVerification } from '../services/authService';
 import {
   AuthContainer,
   BannerContainer,
@@ -35,6 +35,9 @@ const LoginPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUnverified, setIsUnverified] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -85,10 +88,13 @@ const LoginPage: React.FC = () => {
     
     setIsLoading(true);
     setErrors({});
+    setIsUnverified(false);
+    setUnverifiedEmail(null);
+    
+    // Determine if identifier is an email or username
+    const isEmail = formData.identifier.includes('@');
     
     try {
-      // Determine if identifier is an email or username
-      const isEmail = formData.identifier.includes('@');
       const loginData = isEmail 
         ? { email: formData.identifier, password: formData.password }
         : { username: formData.identifier, password: formData.password };
@@ -106,31 +112,46 @@ const LoginPage: React.FC = () => {
           // Type assertion to allow property access
           const errorData = responseData as Record<string, unknown>;
           
-          // Check for specific error fields
-          if (errorData.email || errorData.username) {
-            setErrors({ 
-              identifier: String(errorData.email || errorData.username) 
-            });
-          } else if (errorData.detail) {
-            setErrors({ general: String(errorData.detail) });
-          } else if (errorData.non_field_errors) {
-            const nonFieldErrors = errorData.non_field_errors;
-            if (Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
-              setErrors({ general: String(nonFieldErrors[0]) });
-            } else {
-              setErrors({ general: String(nonFieldErrors) });
+          // Check for unverified account error
+          if (errorData.detail === 'Email not verified.' || 
+              (typeof errorData.non_field_errors === 'string' && errorData.non_field_errors.includes('not verified')) ||
+              (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors[0]?.includes('not verified'))) {
+            setIsUnverified(true);
+            // If we have the email from the login attempt, store it
+            if (isEmail) {
+              setUnverifiedEmail(formData.identifier);
             }
-          } else {
-            // Convert all values to strings
-            const stringErrors: Record<string, string> = {};
-            Object.entries(errorData).forEach(([key, value]) => {
-              if (Array.isArray(value) && value.length > 0) {
-                stringErrors[key] = String(value[0]);
-              } else {
-                stringErrors[key] = String(value);
-              }
+            setErrors({ 
+              general: '📧 Your account needs to be verified. We have sent a new verification link to your email address. Please check your inbox (and spam folder) and click the verification link to activate your account.' 
             });
-            setErrors(stringErrors);
+            setSuccessMessage('A new verification email has been sent. Please check your inbox.');
+          } else {
+            // Handle other errors as before
+            if (errorData.email || errorData.username) {
+              setErrors({ 
+                identifier: String(errorData.email || errorData.username) 
+              });
+            } else if (errorData.detail) {
+              setErrors({ general: String(errorData.detail) });
+            } else if (errorData.non_field_errors) {
+              const nonFieldErrors = errorData.non_field_errors;
+              if (Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
+                setErrors({ general: String(nonFieldErrors[0]) });
+              } else {
+                setErrors({ general: String(nonFieldErrors) });
+              }
+            } else {
+              // Convert all values to strings
+              const stringErrors: Record<string, string> = {};
+              Object.entries(errorData).forEach(([key, value]) => {
+                if (Array.isArray(value) && value.length > 0) {
+                  stringErrors[key] = String(value[0]);
+                } else {
+                  stringErrors[key] = String(value);
+                }
+              });
+              setErrors(stringErrors);
+            }
           }
         } else {
           setErrors({ general: 'Invalid credentials. Please try again.' });
@@ -161,6 +182,30 @@ const LoginPage: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) {
+      setErrors({ general: 'Please enter your email address to resend verification.' });
+      return;
+    }
+
+    setIsResendingVerification(true);
+    setErrors({});
+    setSuccessMessage(null);
+
+    try {
+      await resendVerification({ email: unverifiedEmail });
+      setSuccessMessage('Verification email has been resent. Please check your inbox.');
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrors({ general: error.message });
+      } else {
+        setErrors({ general: 'Failed to resend verification email. Please try again.' });
+      }
+    } finally {
+      setIsResendingVerification(false);
     }
   };
 
@@ -215,6 +260,30 @@ const LoginPage: React.FC = () => {
               disabled={isLoading}
             >
               {isLoading ? 'Logging in...' : 'Log in'}
+            </Button>
+
+            {isUnverified && (
+              <Button
+                type="button"
+                variant="secondary"
+                fullWidth
+                onClick={handleResendVerification}
+                disabled={isResendingVerification || !unverifiedEmail}
+                style={{ marginTop: '10px' }}
+              >
+                {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={handleDemoLogin}
+              disabled={isLoading}
+              style={{ marginTop: '10px' }}
+            >
+              Try Demo Account
             </Button>
           </ButtonContainer>
         </Form>
