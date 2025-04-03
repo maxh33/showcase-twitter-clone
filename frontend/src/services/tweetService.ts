@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
 // Store the original API URL from environment for debugging
-const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 // Try to detect if we're in a deployed environment and use PythonAnywhere API
 // The hostname check helps detect when running on Vercel

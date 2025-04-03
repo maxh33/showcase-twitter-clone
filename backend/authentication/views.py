@@ -17,6 +17,10 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.utils.html import strip_tags
 from django.template.loader import render_to_string
+import traceback
+import os
+import uuid
+import logging
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -32,6 +36,7 @@ from .models import FailedLoginAttempt
 from .utils import send_password_reset_email
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -74,7 +79,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         try:
             # Attempt to authenticate
             serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            
+            # Log validation errors if any
+            if not serializer.is_valid():
+                print(f"Serializer validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
             
             # If we get here, login was successful
             FailedLoginAttempt.clear_failed_attempts(email)
@@ -150,15 +159,23 @@ class RegistrationView(generics.CreateAPIView):
             
             # Send verification email
             verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
-            email_body = f"Hi {user.username},\n\nPlease verify your email by clicking the link below:\n\n{verification_url}\n\nThank you!"
             
-            send_mail(
+            # Render email template
+            html_content = render_to_string('email/email_verification.html', {
+                'verification_url': verification_url,
+                'username': user.username
+            })
+            text_content = strip_tags(html_content)
+            
+            # Create email message
+            email = EmailMultiAlternatives(
                 'Verify your email address',
-                email_body,
+                text_content,
                 settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
+                [user.email]
             )
+            email.attach_alternative(html_content, "text/html")
+            email.send(fail_silently=False)
             
             # Generate tokens
             refresh = RefreshToken.for_user(user)
@@ -243,44 +260,51 @@ class PasswordResetRequestView(APIView):
         ),
         responses={
             200: 'Password reset email sent',
-            400: 'Invalid email format'
+            400: 'Invalid email format',
+            500: 'Email sending failed'
         }
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
+            logger.error(f"Invalid serializer data: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         email = serializer.validated_data['email']
+        logger.debug(f"Processing password reset request for email: {email}")
         
         try:
             user = User.objects.get(email=email)
+            logger.debug(f"Found user with email {email}")
+            
             if user.is_active:
+                logger.debug("User is active, generating reset token")
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
+                reset_url = f"{settings.FRONTEND_URL}/reset-password/confirm/{uid}/{token}"
+                logger.debug(f"Generated reset URL: {reset_url}")
                 
-                # Create email content using template
-                context = {
-                    'reset_url': reset_url,
-                }
-                html_content = render_to_string('email/password_reset.html', context)
-                text_content = strip_tags(html_content)
-                
-                # Create email message
-                msg = EmailMultiAlternatives(
-                    'Reset your password',
-                    text_content,
-                    f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>',
-                    [email]
-                )
-                msg.attach_alternative(html_content, "text/html")
-                msg.send()
+                try:
+                    # Send password reset email
+                    logger.debug("Attempting to send password reset email")
+                    send_password_reset_email(email, reset_url)
+                    logger.info(f"Successfully sent password reset email to {email}")
+                except Exception as e:
+                    logger.error(f"Failed to send password reset email: {str(e)}")
+                    logger.error(f"Exception traceback: {traceback.format_exc()}")
+                    return Response(
+                        {'error': 'Failed to send password reset email. Please try again later.'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+            else:
+                logger.debug(f"User {email} is not active")
         except User.DoesNotExist:
+            logger.debug(f"No user found with email {email}")
+            # For security reasons, we don't want to reveal whether a user exists
             pass
             
         return Response(
-            {'message': 'Password reset email sent'},
+            {'message': 'If an account exists with this email, a password reset link has been sent.'},
             status=status.HTTP_200_OK
         )
 
@@ -374,3 +398,86 @@ class LogoutView(APIView):
             return Response({'message': 'Logged out successfully'}, status=status.HTTP_205_RESET_CONTENT)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DemoUserLoginView(CustomTokenObtainPairView):
+    """View for demo user login"""
+    
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [LoginRateThrottle()]
+    
+    @swagger_auto_schema(
+        operation_description="Demo user login endpoint",
+        responses={
+            200: 'Returns access and refresh tokens for demo user',
+            400: 'Bad request',
+            429: 'Too many requests',
+            500: 'Internal Server Error'
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        try:
+            # Check rate limit first
+            throttle_classes = self.get_throttles()
+            for throttle in throttle_classes:
+                if not throttle.allow_request(request, self):
+                    return Response(
+                        {'error': 'Too many demo login attempts. Please try again later.'},
+                        status=status.HTTP_429_TOO_MANY_REQUESTS
+                    )
+            
+            # Generate a unique session ID from request data
+            client_ip = self.get_client_ip(request)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            random_component = str(uuid.uuid4())
+            session_id = f"{client_ip}_{random_component}"
+            
+            # Create or get a unique demo user for this session
+            demo_user, status_msg = setup_demo_user(session_id)
+            print(f"Demo user created: {demo_user.username}")
+            
+            # Create data dict with the unique demo credentials
+            demo_data = {
+                'email': demo_user.email,
+                'username': demo_user.username,
+                'password': os.environ.get('DEMO_USER_PASSWORD', 'Demo@123')
+            }
+            
+            # Safe logging (with masked password)
+            masked_data = {**demo_data, 'password': '********'}
+            print(f"Demo login attempt with credentials: {masked_data}")
+            
+            # Use the serializer directly
+            serializer = self.get_serializer(data=demo_data)
+            
+            # Log validation errors if any
+            if not serializer.is_valid():
+                print(f"Demo login - Serializer validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # If valid, get response data
+            response_data = serializer.validated_data
+            
+            # Add demo user flag and credentials for client reference
+            response_data['is_demo_user'] = True
+            response_data['demo_credentials'] = {
+                'email': demo_user.email,
+                'username': demo_user.username
+            }
+            response_data['demo_message'] = 'This is a unique demo account created just for your session. Some actions are restricted. Sign up to get full access!'
+            
+            # Record successful login
+            FailedLoginAttempt.clear_failed_attempts(demo_user.email)
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"Unexpected error during demo login: {str(e)}")
+            print(f"Exception traceback: {traceback.format_exc()}")
+            return Response(
+                {'error': f'Demo login failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

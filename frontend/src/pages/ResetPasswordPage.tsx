@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
-import { resetPassword } from '../services/authService';
+import { requestPasswordReset } from '../services/verificationService';
 import {
   AuthContainer,
   BannerContainer,
@@ -54,10 +54,10 @@ const ResetPasswordPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      await resetPassword({ email });
+      await requestPasswordReset(email);
       setSuccess('Check your email for reset instructions, including spam folder.');
       setEmail(''); // Clear the form
-    } catch (error: unknown) {
+    } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as AxiosError<{ message?: string }>;
         if (axiosError.response?.data && 'message' in axiosError.response.data) {

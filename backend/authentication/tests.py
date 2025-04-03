@@ -353,3 +353,60 @@ class TestLogout:
         
         refresh_response = api_client.post(refresh_url, refresh_data, format='json')
         assert refresh_response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestDemoLogin:
+    def test_demo_login_success(self, api_client):
+        """Test that demo login creates a unique demo user and returns tokens"""
+        url = reverse('auth:demo_login')
+        response = api_client.post(url, {}, format='json')
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert 'access' in response.data
+        assert 'refresh' in response.data
+        assert 'demo_credentials' in response.data
+        assert 'is_demo_user' in response.data
+        assert response.data['is_demo_user'] is True
+        
+        # Verify demo user was created
+        User = get_user_model()
+        demo_user = User.objects.get(email=response.data['demo_credentials']['email'])
+        assert demo_user.is_active
+        assert demo_user.username.startswith('demo_user_')
+        
+    def test_demo_login_reuse_session(self, api_client):
+        """Test that demo login returns the same user for the same session"""
+        url = reverse('auth:demo_login')
+        
+        # First login
+        response1 = api_client.post(url, {}, format='json')
+        assert response1.status_code == status.HTTP_200_OK
+        user1_email = response1.data['demo_credentials']['email']
+        
+        # Second login with same client (simulating same session)
+        response2 = api_client.post(url, {}, format='json')
+        assert response2.status_code == status.HTTP_200_OK
+        user2_email = response2.data['demo_credentials']['email']
+        
+        # Different sessions should get different users
+        assert user1_email != user2_email
+        
+    def test_demo_login_with_rate_limit(self, api_client):
+        """Test that demo login respects rate limiting"""
+        url = reverse('auth:demo_login')
+        
+        # Temporarily disable TESTING flag
+        original_testing = settings.TESTING
+        settings.TESTING = False
+        
+        try:
+            # Make multiple requests to trigger rate limit
+            for _ in range(6):  # Rate limit is 5/hour
+                response = api_client.post(url, {}, format='json')
+            
+            # The 6th request should be rate limited
+            assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+        finally:
+            # Restore TESTING flag
+            settings.TESTING = original_testing

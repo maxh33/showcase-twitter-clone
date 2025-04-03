@@ -16,11 +16,11 @@ interface LoginResponse {
 
 // -- This is a parent command --
 Cypress.Commands.add('login', (email: string, password: string) => {
-  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api';
+  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api/v1';
   
   return cy.request({
     method: 'POST',
-    url: `${API_URL}/v1/auth/login/`,
+    url: `${API_URL}/auth/login/`,
     body: { email, password },
     failOnStatusCode: false
   }).then((response) => {

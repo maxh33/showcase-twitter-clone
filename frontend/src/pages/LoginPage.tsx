@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
-import { login } from '../services/authService';
+import { login, demoLogin } from '../services/authService';
 import {
   AuthContainer,
   BannerContainer,
@@ -137,6 +137,27 @@ const LoginPage: React.FC = () => {
         }
       } else {
         setErrors({ general: 'Unable to log in. Please check your credentials and try again.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    setErrors({});
+    
+    try {
+      const response = await demoLogin();
+      console.log('Demo login successful:', response); // Debug log
+      navigate('/'); // Redirect to home page after successful demo login
+    } catch (error: unknown) {
+      console.error('Demo login error:', error);
+      
+      if (error instanceof Error) {
+        setErrors({ general: error.message });
+      } else {
+        setErrors({ general: 'An error occurred during demo login. Please try again later.' });
       }
     } finally {
       setIsLoading(false);

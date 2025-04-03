@@ -1,6 +1,14 @@
 /// <reference types="cypress" />
 
-describe('API Configuration Test', () => {
+describe('API Configuration', () => {
+  it('should have correct API URL', () => {
+    expect(Cypress.env('API_URL')).to.equal('https://maxh33.pythonanywhere.com/api/v1');
+  });
+
+  it('should have correct login endpoint', () => {
+    expect(`${Cypress.env('API_URL')}/auth/login/`).to.equal('https://maxh33.pythonanywhere.com/api/v1/auth/login/');
+  });
+
   it('should use PythonAnywhere API in production', () => {
     // Test the API endpoint directly without basic auth
     cy.request({

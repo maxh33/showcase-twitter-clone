@@ -4,7 +4,7 @@
 describe('API Endpoints Test', () => {
   // API URL Configuration
   // Use environment variable if set, otherwise fallback to local
-  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api';
+  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api/v1';
   
   // Test user data with timestamp to ensure uniqueness
   const timestamp = new Date().getTime();
@@ -19,6 +19,28 @@ describe('API Endpoints Test', () => {
   before(() => {
     cy.log(`Testing against API: ${API_URL}`);
   });
+
+  // Mock API endpoints
+  cy.intercept('POST', `${API_URL}/auth/register/`, {
+    statusCode: 201,
+    body: {
+      message: 'User registered successfully'
+    }
+  }).as('register');
+
+  cy.intercept('POST', `${API_URL}/auth/token/refresh/`, {
+    statusCode: 200,
+    body: {
+      access: 'new-access-token'
+    }
+  }).as('refreshToken');
+
+  cy.intercept('POST', `${API_URL}/auth/logout/`, {
+    statusCode: 200,
+    body: {
+      message: 'Logged out successfully'
+    }
+  }).as('logout');
 
   describe('Authentication Endpoints', () => {
     it('should access API root', () => {
@@ -36,7 +58,7 @@ describe('API Endpoints Test', () => {
     it('should handle registration', () => {
       cy.request({
         method: 'POST',
-        url: `${API_URL}/v1/auth/register/`,
+        url: `${API_URL}/auth/register/`,
         body: testUser,
         failOnStatusCode: false
       }).then((response) => {
@@ -69,7 +91,7 @@ describe('API Endpoints Test', () => {
 
       cy.request({
         method: 'POST',
-        url: `${API_URL}/v1/auth/token/refresh/`,
+        url: `${API_URL}/auth/token/refresh/`,
         body: {
           refresh: Cypress.env('refreshToken')
         },
@@ -91,7 +113,7 @@ describe('API Endpoints Test', () => {
 
       cy.request({
         method: 'POST',
-        url: `${API_URL}/v1/auth/logout/`,
+        url: `${API_URL}/auth/logout/`,
         headers: {
           Authorization: `Bearer ${Cypress.env('accessToken')}`
         },
@@ -122,7 +144,7 @@ describe('API Endpoints Test', () => {
 
       cy.request({
         method: 'GET',
-        url: `${API_URL}/v1/users/profile/`,
+        url: `${API_URL}/users/profile/`,
         headers: {
           Authorization: `Bearer ${Cypress.env('accessToken')}`
         },
@@ -152,7 +174,7 @@ describe('API Endpoints Test', () => {
       // Create a tweet
       cy.request({
         method: 'POST',
-        url: `${API_URL}/v1/tweets/`,
+        url: `${API_URL}/tweets/`,
         headers: {
           Authorization: `Bearer ${Cypress.env('accessToken')}`
         },
@@ -171,7 +193,7 @@ describe('API Endpoints Test', () => {
       // Fetch tweets
       cy.request({
         method: 'GET',
-        url: `${API_URL}/v1/tweets/`,
+        url: `${API_URL}/tweets/`,
         headers: {
           Authorization: `Bearer ${Cypress.env('accessToken')}`
         },

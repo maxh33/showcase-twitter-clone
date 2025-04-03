@@ -1,110 +1,45 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { verifyEmail } from '../services/authService';
-import {
-  AuthContainer,
-  BannerContainer,
-  BannerImage,
-  FormContainer,
-  LogoContainer,
-  Logo,
-  FormTitle,
-  ButtonContainer,
-  LinkContainer,
-  LinkText,
-  ErrorMessage,
-  SuccessMessage
-} from '../components/Auth/styles';
-import Button from '../components/Button';
-import signupBanner from '../assets/images/signupBanner.png';
-import blackLogo from '../assets/icons/blackIcon.png';
-import { AxiosError } from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
+import { handleEmailVerification } from '../services/verificationService';
 
 const VerifyEmailPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { uid, token } = useParams<{ uid: string; token: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    const verifyUserEmail = async () => {
-      // Get token from URL query parameters
-      const queryParams = new URLSearchParams(location.search);
-      const token = queryParams.get('token');
-
-      if (!token) {
-        setError('Invalid verification link. Please request a new one.');
-        setIsLoading(false);
-        return;
-      }
-
+    const verifyEmail = async () => {
       try {
-        await verifyEmail({ token, uidb64: '' });
-        setSuccess('Email verified successfully! You can now login to your account.');
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as AxiosError<{ message?: string }>;
-          if (axiosError.response?.data && 'message' in axiosError.response.data) {
-            setError(axiosError.response.data.message || 'Email verification failed');
-          } else {
-            setError('Failed to verify email. Please try again or contact support.');
-          }
-        } else {
-          setError('Failed to verify email. Please try again or contact support.');
+        if (!uid || !token) {
+          throw new Error('Missing verification parameters');
         }
+        
+        await handleEmailVerification({
+          uidb64: uid,
+          token: token
+        });
+        
+        navigate('/login');
+      } catch (error) {
+        console.error('Email verification failed:', error);
+        navigate('/login');
       } finally {
-        setIsLoading(false);
+        setIsVerifying(false);
       }
     };
 
-    verifyUserEmail();
-  }, [location.search]);
-
-  const handleGoToLogin = () => {
-    navigate('/login');
-  };
+    verifyEmail();
+  }, [uid, token, navigate]);
 
   return (
-    <AuthContainer>
-      <BannerContainer>
-        <BannerImage src={signupBanner} alt="Email Verification" />
-      </BannerContainer>
-      
-      <FormContainer>
-        <LogoContainer>
-          <Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </LogoContainer>
-        
-        <FormTitle>Email Verification</FormTitle>
-        
-        {isLoading ? (
-          <p>Verifying your email...</p>
-        ) : (
-          <>
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-            {success && <SuccessMessage>{success}</SuccessMessage>}
-            
-            <ButtonContainer>
-              <Button
-                type="button"
-                variant="primary"
-                fullWidth
-                onClick={handleGoToLogin}
-              >
-                Go to Login
-              </Button>
-            </ButtonContainer>
-            
-            <LinkContainer>
-              <LinkText>
-                Having trouble? Contact our support team.
-              </LinkText>
-            </LinkContainer>
-          </>
-        )}
-      </FormContainer>
-    </AuthContainer>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      {isVerifying ? (
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-700">Verifying your email...</h2>
+        </div>
+      ) : null}
+    </div>
   );
 };
 
