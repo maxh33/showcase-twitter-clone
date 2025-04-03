@@ -7,6 +7,8 @@ import random
 import string
 from datetime import datetime
 import logging
+from django.utils.html import strip_tags
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,41 @@ def send_password_reset_email(user_email, reset_url):
         return True
     except Exception as e:
         logger.error(f"Failed to send password reset email to {user_email}. Error: {str(e)}")
+        raise e
+
+def send_verification_email(user_email, verification_url):
+    """
+    Send email verification with HTML template
+    """
+    try:
+        subject = 'Verify your email address'
+        from_email = f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>'
+        to_email = [user_email]
+        
+        # Render HTML content
+        html_content = render_to_string('email/email_verification.html', {
+            'verification_url': verification_url
+        })
+        
+        # Create email message
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body='',  # Plain text version - empty as we're using HTML
+            from_email=from_email,
+            to=to_email
+        )
+        msg.attach_alternative(html_content, "text/html")
+        
+        # Log email attempt
+        logger.info(f"Attempting to send verification email to {user_email}")
+        logger.debug(f"SMTP Settings - Host: {settings.EMAIL_HOST}, Port: {settings.EMAIL_PORT}, User: {settings.EMAIL_HOST_USER}")
+        
+        # Send email with error handling
+        msg.send(fail_silently=False)
+        logger.info(f"Successfully sent verification email to {user_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {user_email}. Error: {str(e)}")
         raise e
 
 def setup_demo_user(session_id=None):
@@ -106,3 +143,47 @@ def setup_demo_user(session_id=None):
             location='Demo World 🌍'
         )
         return user, True
+
+def send_password_reset_success_email(email, login_url):
+    """Send a password reset success notification email."""
+    try:
+        html_content = render_to_string('email/password_reset_success.html', {
+            'login_url': login_url
+        })
+        text_content = strip_tags(html_content)
+        
+        email_message = EmailMultiAlternatives(
+            'Password Reset Successful',
+            text_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [email]
+        )
+        email_message.attach_alternative(html_content, "text/html")
+        email_message.send(fail_silently=False)
+        logger.info(f"Password reset success email sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send password reset success email: {str(e)}")
+        logger.error(f"Exception traceback: {traceback.format_exc()}")
+        raise e
+
+def send_account_activation_success_email(email, login_url):
+    """Send an account activation success notification email."""
+    try:
+        html_content = render_to_string('email/account_activation_success.html', {
+            'login_url': login_url
+        })
+        text_content = strip_tags(html_content)
+        
+        email_message = EmailMultiAlternatives(
+            'Welcome to Twitter Clone - Account Activated!',
+            text_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [email]
+        )
+        email_message.attach_alternative(html_content, "text/html")
+        email_message.send(fail_silently=False)
+        logger.info(f"Account activation success email sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send account activation success email: {str(e)}")
+        logger.error(f"Exception traceback: {traceback.format_exc()}")
+        raise e

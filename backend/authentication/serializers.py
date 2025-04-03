@@ -193,6 +193,20 @@ class EmailVerificationSerializer(serializers.Serializer):
     uidb64 = serializers.CharField(required=True)
 
 
+class ResendVerificationSerializer(serializers.Serializer):
+    """Serializer for resending verification email"""
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value)
+            if user.is_active:
+                raise serializers.ValidationError("This email is already verified.")
+            return value
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No user found with this email address.")
+
+
 class LogoutSerializer(serializers.Serializer):
     """Serializer for logging out and blacklisting the refresh token"""
     refresh = serializers.CharField(required=True)

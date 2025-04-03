@@ -21,6 +21,7 @@ import traceback
 import os
 import uuid
 import logging
+from django.urls import reverse
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -31,9 +32,10 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     EmailVerificationSerializer,
     LogoutSerializer,
+    ResendVerificationSerializer
 )
 from .models import FailedLoginAttempt
-from .utils import send_password_reset_email
+from .utils import send_password_reset_email, send_verification_email, setup_demo_user, send_password_reset_success_email, send_account_activation_success_email
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -62,11 +64,13 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         responses={
             200: 'Returns access and refresh tokens',
             400: 'Bad request',
-            401: 'Invalid credentials'
+            401: 'Invalid credentials',
+            403: 'Email not verified'
         }
     )
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '')
+        username = request.data.get('username', '')
         ip_address = self.get_client_ip(request)
         
         # Check if account is locked
@@ -77,6 +81,56 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             )
         
         try:
+            # Try to get the user first to check verification status
+            try:
+                if email:
+                    user = User.objects.get(email=email)
+                elif username:
+                    user = User.objects.get(username=username)
+                else:
+                    raise User.DoesNotExist()
+                
+                # Check if email is verified
+                if not user.is_active:
+                    # Generate verification token
+                    token = default_token_generator.make_token(user)
+                    uid = urlsafe_base64_encode(force_bytes(user.pk))
+                    verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+                    
+                    try:
+                        # Send new verification email
+                        html_content = render_to_string('email/email_verification.html', {
+                            'verification_url': verification_url,
+                            'username': user.username
+                        })
+                        text_content = strip_tags(html_content)
+                        
+                        email = EmailMultiAlternatives(
+                            'Verify your email address',
+                            text_content,
+                            settings.DEFAULT_FROM_EMAIL,
+                            [user.email]
+                        )
+                        email.attach_alternative(html_content, "text/html")
+                        email.send(fail_silently=False)
+                        
+                        return Response({
+                            'error': 'Email not verified',
+                            'message': 'Your account is not verified. A new verification email has been sent to your inbox.',
+                            'requires_verification': True
+                        }, status=status.HTTP_403_FORBIDDEN)
+                    except Exception as e:
+                        logger.error(f"Failed to send verification email: {str(e)}")
+                        return Response({
+                            'error': 'Email not verified',
+                            'message': 'Your account is not verified. Please check your email for the verification link or contact support.',
+                            'requires_verification': True
+                        }, status=status.HTTP_403_FORBIDDEN)
+            
+            except User.DoesNotExist:
+                # Continue with normal authentication flow
+                pass
+            
             # Attempt to authenticate
             serializer = self.get_serializer(data=request.data)
             
@@ -228,6 +282,14 @@ class EmailVerificationView(APIView):
                     user.is_active = True
                     user.save()
                     
+                    # Send success email
+                    login_url = f"{settings.FRONTEND_URL}/login"
+                    try:
+                        send_account_activation_success_email(user.email, login_url)
+                    except Exception as e:
+                        logger.error(f"Failed to send account activation success email: {str(e)}")
+                        # Continue with the response even if email fails
+                    
                     return Response({'message': 'Email verified successfully'}, status=status.HTTP_200_OK)
                 
                 return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
@@ -261,6 +323,7 @@ class PasswordResetRequestView(APIView):
         responses={
             200: 'Password reset email sent',
             400: 'Invalid email format',
+            403: 'Account not activated',
             500: 'Email sending failed'
         }
     )
@@ -289,6 +352,10 @@ class PasswordResetRequestView(APIView):
                     logger.debug("Attempting to send password reset email")
                     send_password_reset_email(email, reset_url)
                     logger.info(f"Successfully sent password reset email to {email}")
+                    return Response(
+                        {'message': 'Password reset instructions have been sent to your email.'},
+                        status=status.HTTP_200_OK
+                    )
                 except Exception as e:
                     logger.error(f"Failed to send password reset email: {str(e)}")
                     logger.error(f"Exception traceback: {traceback.format_exc()}")
@@ -298,15 +365,34 @@ class PasswordResetRequestView(APIView):
                     )
             else:
                 logger.debug(f"User {email} is not active")
+                # Generate verification token for inactive user
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}"
+                
+                try:
+                    # Send verification email
+                    send_verification_email(email, verification_url)
+                    return Response({
+                        'error': 'Account not activated',
+                        'message': 'Your account is not activated. A new verification email has been sent to your inbox.',
+                        'requires_verification': True
+                    }, status=status.HTTP_403_FORBIDDEN)
+                except Exception as e:
+                    logger.error(f"Failed to send verification email: {str(e)}")
+                    return Response({
+                        'error': 'Account not activated',
+                        'message': 'Your account is not activated. Please verify your email before resetting your password.',
+                        'requires_verification': True
+                    }, status=status.HTTP_403_FORBIDDEN)
+                
         except User.DoesNotExist:
             logger.debug(f"No user found with email {email}")
             # For security reasons, we don't want to reveal whether a user exists
-            pass
-            
-        return Response(
-            {'message': 'If an account exists with this email, a password reset link has been sent.'},
-            status=status.HTTP_200_OK
-        )
+            return Response(
+                {'message': 'If an account exists with this email, a password reset link has been sent.'},
+                status=status.HTTP_200_OK
+            )
 
 
 class PasswordResetConfirmView(APIView):
@@ -349,12 +435,96 @@ class PasswordResetConfirmView(APIView):
                     user.set_password(serializer.validated_data['password'])
                     user.save()
                     
+                    # Send success email
+                    login_url = f"{settings.FRONTEND_URL}/login"
+                    try:
+                        send_password_reset_success_email(user.email, login_url)
+                    except Exception as e:
+                        logger.error(f"Failed to send password reset success email: {str(e)}")
+                        # Continue with the response even if email fails
+                    
                     return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
                 
                 return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
             
             except (TypeError, ValueError, OverflowError, User.DoesNotExist):
                 return Response({'error': 'Invalid user ID'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResendVerificationView(APIView):
+    """View for resending verification email"""
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ResendVerificationSerializer
+    throttle_classes = [AuthRateThrottle]
+    
+    def get_throttles(self):
+        """Only apply throttling if not in test mode"""
+        if settings.TESTING:
+            return []
+        return [AuthRateThrottle()]
+    
+    @swagger_auto_schema(
+        operation_description="Resend verification email",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email address'),
+            }
+        ),
+        responses={
+            200: 'Verification email sent successfully',
+            400: 'Invalid email or already verified',
+            500: 'Email sending failed'
+        }
+    )
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            
+            try:
+                user = User.objects.get(email=email)
+                
+                # Generate verification token
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+                
+                # Send verification email
+                html_content = render_to_string('email/email_verification.html', {
+                    'verification_url': verification_url,
+                    'username': user.username
+                })
+                text_content = strip_tags(html_content)
+                
+                email = EmailMultiAlternatives(
+                    'Verify your email address',
+                    text_content,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email]
+                )
+                email.attach_alternative(html_content, "text/html")
+                email.send(fail_silently=False)
+                
+                return Response(
+                    {'message': 'Verification email has been sent.'},
+                    status=status.HTTP_200_OK
+                )
+                
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'No user found with this email address.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except Exception as e:
+                logger.error(f"Failed to send verification email: {str(e)}")
+                return Response(
+                    {'error': 'Failed to send verification email. Please try again later.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -429,11 +599,23 @@ class DemoUserLoginView(CustomTokenObtainPairView):
                         status=status.HTTP_429_TOO_MANY_REQUESTS
                     )
             
-            # Generate a unique session ID from request data
+            # Generate a unique session ID from request data with timestamp
+            from datetime import datetime
             client_ip = self.get_client_ip(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             random_component = str(uuid.uuid4())
-            session_id = f"{client_ip}_{random_component}"
+            session_id = f"{client_ip}_{timestamp}_{random_component}"
+            
+            # Cleanup old demo accounts (older than 24 hours)
+            from django.utils import timezone
+            from datetime import timedelta
+            User = get_user_model()
+            cleanup_threshold = timezone.now() - timedelta(hours=24)
+            User.objects.filter(
+                username__startswith='demo_user_',
+                date_joined__lt=cleanup_threshold
+            ).delete()
             
             # Create or get a unique demo user for this session
             demo_user, status_msg = setup_demo_user(session_id)
@@ -481,3 +663,4 @@ class DemoUserLoginView(CustomTokenObtainPairView):
                 {'error': f'Demo login failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
