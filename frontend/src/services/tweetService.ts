@@ -90,7 +90,7 @@ export const tweetService = {
     const axiosInstance = createAxiosInstance();
     try {
       console.log(`Fetching tweets page ${page} from ${API_URL}/tweets/`);
-      const response = await axiosInstance.get('/', {
+      const response = await axiosInstance.get('/tweets/', {
         params: {
           page
         }
@@ -117,7 +117,7 @@ export const tweetService = {
         formData.append('media', media);
       }
       
-      const response = await axiosInstance.post('/', formData, {
+      const response = await axiosInstance.post('/tweets/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -138,7 +138,7 @@ export const tweetService = {
   async likeTweet(tweetId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.post(`/${tweetId}/like/`);
+      const response = await axiosInstance.post(`/tweets/${tweetId}/like/`);
       return response.data;
     } catch (error) {
       console.error(`Error liking tweet ${tweetId}:`, error);
@@ -153,7 +153,7 @@ export const tweetService = {
   async retweetTweet(tweetId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.post(`/${tweetId}/retweet/`);
+      const response = await axiosInstance.post(`/tweets/${tweetId}/retweet/`);
       return response.data;
     } catch (error) {
       console.error(`Error retweeting tweet ${tweetId}:`, error);
@@ -168,7 +168,7 @@ export const tweetService = {
   async fetchComments(tweetId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.get(`/${tweetId}/comments/`);
+      const response = await axiosInstance.get(`/tweets/${tweetId}/comments/`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching comments for tweet ${tweetId}:`, error);
@@ -192,7 +192,7 @@ export const tweetService = {
         formData.append('media', media);
       }
       
-      const response = await axiosInstance.post(`/${tweetId}/comments/`, formData, {
+      const response = await axiosInstance.post(`/tweets/${tweetId}/comments/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Accept': 'application/json',
@@ -215,7 +215,7 @@ export const tweetService = {
   async deleteComment(tweetId: number, commentId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.delete(`/${tweetId}/comments/${commentId}/`);
+      const response = await axiosInstance.delete(`/tweets/${tweetId}/comments/${commentId}/`);
       return response.data;
     } catch (error) {
       console.error(`Error deleting comment ${commentId} from tweet ${tweetId}:`, error);
