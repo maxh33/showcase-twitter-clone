@@ -232,19 +232,25 @@ export const SearchForm = styled.form`
   display: flex;
   padding: 12px 16px;
   border-bottom: 1px solid ${Colors.extraLightGray};
+  gap: 8px;
 `;
 
 export const SearchInput = styled.input`
   flex: 1;
+  min-width: 0;
   padding: 8px 12px;
   border: 1px solid ${Colors.extraLightGray};
-  border-right: none;
-  border-radius: 20px 0 0 20px;
+  border-radius: 20px;
   font-size: 14px;
   
   &:focus {
     outline: none;
     border-color: ${Colors.primary};
+    box-shadow: 0 0 0 2px rgba(29, 161, 242, 0.1);
+  }
+
+  &::placeholder {
+    color: ${Colors.darkGray};
   }
 `;
 
@@ -341,6 +347,9 @@ export const PickerContainer = styled.div`
   margin-bottom: 12px;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const EmojiPickerHeader = styled.div`
@@ -358,11 +367,26 @@ export const EmojiPickerHeader = styled.div`
 
 export const EmojiGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
   gap: 8px;
   padding: 16px;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${Colors.extraLightGray};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 4px;
+  }
 `;
 
 export const EmojiButton = styled.button`
