@@ -27,7 +27,7 @@ interface TweetComposerProps {
 
 const TweetComposer: React.FC<TweetComposerProps> = ({ 
   onTweetCreated,
-  userProfilePicture = 'https://via.placeholder.com/50'
+  userProfilePicture = '/logo192.png'
 }) => {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,9 +127,25 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
     }
   };
 
-  const handleUnsplashImageSelect = (image: UnsplashImage) => {
-    setPreviewUrl(image.url);
-    setShowImageSearch(false);
+  const handleUnsplashImageSelect = async (image: UnsplashImage) => {
+    try {
+      // Download the image
+      const response = await fetch(image.url);
+      const blob = await response.blob();
+      
+      // Create a File object from the blob
+      const file = new File([blob], `unsplash-${image.id}.jpg`, { type: 'image/jpeg' });
+      
+      // Set the file and preview URL
+      setSelectedFile(file);
+      setPreviewUrl(image.url);
+      setShowImageSearch(false);
+    } catch (error) {
+      console.error('Error downloading Unsplash image:', error);
+      // Fallback to using the URL directly
+      setPreviewUrl(image.url);
+      setShowImageSearch(false);
+    }
   };
   
   const toggleEmojiPicker = () => {

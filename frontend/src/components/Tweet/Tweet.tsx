@@ -67,7 +67,7 @@ const Tweet: React.FC<TweetProps> = ({
     <>
       <S.TweetContainer>
         <S.Avatar 
-          src={tweet.author.profile_picture || 'https://via.placeholder.com/50'} 
+          src={tweet.author.profile_picture || '/logo192.png'} 
           alt={`${tweet.author.username}'s profile picture`} 
         />
         <S.TweetContent>
@@ -90,9 +90,13 @@ const Tweet: React.FC<TweetProps> = ({
                   alt="Tweet media"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    console.error('Error loading image:', target.src);
-                    target.onerror = null; // Prevent infinite loop
-                    target.src = '/placeholder-image.png'; // Fallback image
+                    if (!target.dataset.tried) {
+                      target.dataset.tried = 'true';
+                      target.src = '/logo192.png';
+                    } else {
+                      target.style.backgroundColor = '#e0e0e0';
+                      target.style.borderRadius = '4px';
+                    }
                   }}
                 />
               ))}

@@ -87,8 +87,18 @@ export const ReplyingToUsername = styled.div`
   margin-bottom: 4px;
 `;
 
-export const ReplyingToContent = styled.div`
+export const ReplyingToContent = styled.p`
+  margin-top: 4px;
+  color: ${Colors.darkGray};
+  font-size: 14px;
+`;
+
+export const ReplyingToMedia = styled.div`
   margin-top: 8px;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid ${Colors.extraLightGray};
 `;
 
 export const ComposerSection = styled.div`

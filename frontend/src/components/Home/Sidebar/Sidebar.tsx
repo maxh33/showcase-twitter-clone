@@ -57,32 +57,32 @@ const Sidebar: React.FC<SidebarProps> = ({
           
           <S.NavItem active={activeItem === 'explore'} onClick={() => handleNavClick('/explore')}>
             #️⃣
-            <S.NavText>Explore</S.NavText>
+            <S.NavText>Explore-ToDo</S.NavText>
           </S.NavItem>
           
           <S.NavItem active={activeItem === 'notifications'} onClick={() => handleNavClick('/notifications')}>
             🔔
-            <S.NavText>Notifications</S.NavText>
+            <S.NavText>Notifications-ToDo</S.NavText>
           </S.NavItem>
           
           <S.NavItem active={activeItem === 'messages'} onClick={() => handleNavClick('/messages')}>
             ✉️
-            <S.NavText>Messages</S.NavText>
+            <S.NavText>Messages-ToDo</S.NavText>
           </S.NavItem>
           
           <S.NavItem active={activeItem === 'bookmarks'} onClick={() => handleNavClick('/bookmarks')}>
             🔖
-            <S.NavText>Bookmarks</S.NavText>
+            <S.NavText>Bookmarks-ToDo</S.NavText>
           </S.NavItem>
           
           <S.NavItem active={activeItem === 'lists'} onClick={() => handleNavClick('/lists')}>
             📋
-            <S.NavText>Lists</S.NavText>
+            <S.NavText>Lists-ToDo</S.NavText>
           </S.NavItem>
           
           <S.NavItem active={activeItem === 'profile'} onClick={() => handleNavClick('/profile')}>
             👤
-            <S.NavText>Profile</S.NavText>
+            <S.NavText>Profile-ToDo</S.NavText>
           </S.NavItem>
           
           <S.NavItem onClick={handleLogout}>
