@@ -17,6 +17,8 @@ from .serializers import (
 )
 from users.models import User
 from django.conf import settings
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 
 # Custom throttle classes
@@ -84,12 +86,50 @@ class TweetViewSet(viewsets.ModelViewSet):
         return context
     
     def perform_create(self, serializer):
-        tweet = serializer.save(author=self.request.user)
+        print("Creating tweet with data:", self.request.data)
+        print("Files in request:", self.request.FILES)
         
-        # Handle any media files if present
-        if 'media' in self.request.FILES:
-            for file in self.request.FILES.getlist('media'):
-                MediaAttachment.objects.create(tweet=tweet, file=file)
+        # Create the tweet first
+        tweet = serializer.save(author=self.request.user)
+        print(f"Created tweet with ID: {tweet.id}")
+        
+        try:
+            # Handle media attachments
+            files = self.request.FILES.getlist('media')
+            print(f"Processing {len(files)} media files")
+            
+            for file in files:
+                print(f"Processing file: {file.name} ({file.content_type}, {file.size} bytes)")
+                
+                # Validate file size
+                if file.size > self.MAX_FILE_SIZE:
+                    tweet.delete()
+                    raise ValidationError(f"File size cannot exceed {self.MAX_FILE_SIZE / (1024*1024)}MB")
+                
+                # Validate file type
+                if file.content_type not in self.ALLOWED_MIME_TYPES:
+                    tweet.delete()
+                    raise ValidationError(f"File type {file.content_type} not allowed")
+                
+                # Create media attachment
+                try:
+                    media = MediaAttachment.objects.create(
+                        tweet=tweet,
+                        file=file
+                    )
+                    print(f"Created media attachment: {media.id}")
+                except Exception as e:
+                    print(f"Error creating media attachment: {str(e)}")
+                    tweet.delete()
+                    raise
+                    
+        except Exception as e:
+            print(f"Error processing media: {str(e)}")
+            if tweet.id:
+                tweet.delete()
+            raise
+            
+        return tweet
     
     def perform_destroy(self, instance):
         """Soft delete a tweet instead of actually deleting it"""
@@ -207,6 +247,13 @@ class TweetViewSet(viewsets.ModelViewSet):
         tweet = self.get_object()
         user = request.user
 
+        # Check if user is a demo user
+        if getattr(user, 'is_demo_user', False):
+            return Response(
+                {'error': 'This feature is not available for demo accounts'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Check if user has already retweeted the tweet
         if Retweet.objects.filter(tweet=tweet, user=user).exists():
             return Response(
@@ -234,6 +281,13 @@ class TweetViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_comment(self, request, pk=None):
         """Add a comment to a tweet"""
+        # Check if user is a demo user
+        if getattr(request.user, 'is_demo_user', False):
+            return Response(
+                {'error': 'This feature is not available for demo accounts'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         tweet = self.get_object()
         serializer = CommentSerializer(data=request.data, context={'request': request})
         
