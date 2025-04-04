@@ -2,23 +2,36 @@ import styled from 'styled-components';
 import { Colors } from '../../../styles/global';
 
 export const FeedContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid ${Colors.lightGray};
-  border-left: 1px solid ${Colors.lightGray};
-  width: 100%;
-  height: 100vh;
-  max-width: 600px;
-  margin: 0 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
-  
-  /* Responsive styles */
-  @media (max-width: 768px) {
-    max-width: 100%;
-    border-left: none;
+  width: 600px;
+  border-left: 1px solid ${Colors.extraLightGray};
+  border-right: 1px solid ${Colors.extraLightGray};
+  box-sizing: border-box;
+
+  @media (max-width: 1200px) {
+    width: 100%;
+    max-width: 600px;
+  }
+
+  @media (max-width: 688px) {
     border-right: none;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+`;
+
+export const Header = styled.div`
+  padding: 16px;
+  font-size: 20px;
+  font-weight: bold;
+  border-bottom: 1px solid ${Colors.extraLightGray};
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+
+  @media (max-width: 688px) {
+    padding: 12px;
   }
 `;
 

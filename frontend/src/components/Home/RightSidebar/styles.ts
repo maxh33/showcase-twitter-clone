@@ -2,7 +2,7 @@ import styled from 'styled-components';
 import { Colors } from '../../../styles/global';
 
 export const RightSidebarContainer = styled.div`
-  width: 350px;
+  width: 380px;
   padding: 0 16px;
   height: 100vh;
   position: sticky;
@@ -12,7 +12,12 @@ export const RightSidebarContainer = styled.div`
   box-sizing: border-box;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  
   &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 1200px) {
     display: none;
   }
 `;
@@ -32,11 +37,13 @@ export const SearchInput = styled.input`
   color: ${Colors.black};
   font-size: 15px;
   box-sizing: border-box;
+  min-width: 0;
   
   &:focus {
     outline: none;
     background-color: white;
     border: 1px solid ${Colors.primary};
+    box-shadow: 0 0 0 2px rgba(29, 161, 242, 0.2);
   }
   
   &::placeholder {
@@ -112,7 +119,7 @@ export const TrendTweets = styled.div`
 export const SuggestedUser = styled.div`
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 16px;
   cursor: pointer;
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
   width: 100%;
@@ -128,8 +135,8 @@ export const SuggestedUser = styled.div`
 `;
 
 export const UserAvatar = styled.img`
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   margin-right: 12px;
   flex-shrink: 0;
@@ -143,7 +150,7 @@ export const UserInfo = styled.div`
 
 export const UserName = styled.div`
   font-weight: bold;
-  font-size: 15px;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -151,7 +158,7 @@ export const UserName = styled.div`
 
 export const UserHandle = styled.div`
   color: ${Colors.darkGray};
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -204,4 +211,5 @@ export const Copyright = styled.div`
   color: ${Colors.darkGray};
   font-size: 13px;
   margin-top: 8px;
+  width: 100%;
 `;
