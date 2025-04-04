@@ -2,25 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button';
 import { requestPasswordReset } from '../services/verificationService';
-import {
-  AuthContainer,
-  BannerContainer,
-  BannerImage,
-  FormContainer,
-  LogoContainer,
-  Logo,
-  FormTitle,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  ButtonContainer,
-  LinkContainer,
-  LinkText,
-  ErrorMessage,
-  SuccessMessage,
-  InfoMessage
-} from '../components/Auth/styles';
+import * as S from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
 import { AxiosError } from 'axios';
@@ -86,26 +68,26 @@ const ResetPasswordPage: React.FC = () => {
   };
 
   return (
-    <AuthContainer>
-      <BannerContainer>
-        <BannerImage src={signupBanner} alt="Reset Password" />
-      </BannerContainer>
+    <S.AuthContainer>
+      <S.BannerContainer>
+        <S.BannerImage src={signupBanner} alt="Reset Password" />
+      </S.BannerContainer>
       
-      <FormContainer>
-        <LogoContainer>
-          <Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </LogoContainer>
+      <S.FormContainer>
+        <S.LogoContainer>
+          <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
+        </S.LogoContainer>
         
-        <FormTitle>Reset Your Password</FormTitle>
+        <S.FormTitle>Reset Your Password</S.FormTitle>
         
-        {error && <ErrorMessage>{error}</ErrorMessage>}
-        {success && <SuccessMessage>{success}</SuccessMessage>}
-        {info && <InfoMessage>{info}</InfoMessage>}
+        {error && <S.ErrorMessage>{error}</S.ErrorMessage>}
+        {success && <S.SuccessMessage>{success}</S.SuccessMessage>}
+        {info && <S.InfoMessage>{info}</S.InfoMessage>}
         
-        <Form onSubmit={handleSubmit}>
-          <FormGroup>
-            <Label htmlFor="email">Email</Label>
-            <Input
+        <S.Form onSubmit={handleSubmit}>
+          <S.FormGroup>
+            <S.Label htmlFor="email">Email</S.Label>
+            <S.Input
               type="email"
               id="email"
               name="email"
@@ -114,9 +96,9 @@ const ResetPasswordPage: React.FC = () => {
               placeholder="Enter your email address"
               disabled={!!success}
             />
-          </FormGroup>
+          </S.FormGroup>
           
-          <ButtonContainer>
+          <S.ButtonContainer>
             <Button
               type="submit"
               variant="primary"
@@ -125,22 +107,22 @@ const ResetPasswordPage: React.FC = () => {
             >
               {isLoading ? 'Sending...' : requiresVerification ? 'Resend Verification Email' : 'Reset Password'}
             </Button>
-          </ButtonContainer>
-        </Form>
+          </S.ButtonContainer>
+        </S.Form>
         
-        <LinkContainer>
-          <LinkText>
+        <S.LinkContainer>
+          <S.LinkText>
             Remember your password? <Link to="/login">Log in</Link>
-          </LinkText>
-        </LinkContainer>
+          </S.LinkText>
+        </S.LinkContainer>
         
-        <LinkContainer>
-          <LinkText>
+        <S.LinkContainer>
+          <S.LinkText>
             Don't have an account? <Link to="/signup">Sign up</Link>
-          </LinkText>
-        </LinkContainer>
-      </FormContainer>
-    </AuthContainer>
+          </S.LinkText>
+        </S.LinkContainer>
+      </S.FormContainer>
+    </S.AuthContainer>
   );
 };
 

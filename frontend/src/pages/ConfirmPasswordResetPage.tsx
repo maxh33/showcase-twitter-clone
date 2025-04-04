@@ -1,25 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link, useParams } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import Button from '../components/Button';
 import { handlePasswordReset } from '../services/verificationService';
-import {
-  AuthContainer,
-  BannerContainer,
-  BannerImage,
-  FormContainer,
-  LogoContainer,
-  Logo,
-  FormTitle,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  ButtonContainer,
-  LinkContainer,
-  LinkText,
-  ErrorMessage,
-  SuccessMessage
-} from '../components/Auth/styles';
+import * as S from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
 import { AxiosError } from 'axios';
@@ -124,26 +107,26 @@ const ConfirmPasswordResetPage: React.FC = () => {
   };
 
   return (
-    <AuthContainer>
-      <BannerContainer>
-        <BannerImage src={signupBanner} alt="Reset Password" />
-      </BannerContainer>
+    <S.AuthContainer>
+      <S.BannerContainer>
+        <S.BannerImage src={signupBanner} alt="Reset Password" />
+      </S.BannerContainer>
       
-      <FormContainer>
-        <LogoContainer>
-          <Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </LogoContainer>
+      <S.FormContainer>
+        <S.LogoContainer>
+          <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
+        </S.LogoContainer>
         
-        <FormTitle>Set New Password</FormTitle>
+        <S.FormTitle>Set New Password</S.FormTitle>
         
-        {errors.general && <ErrorMessage>{errors.general}</ErrorMessage>}
-        {success && <SuccessMessage>{success}</SuccessMessage>}
+        {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
+        {success && <S.SuccessMessage>{success}</S.SuccessMessage>}
         
         {(!errors.general && uid && token) && !success && (
-          <Form onSubmit={handleSubmit}>
-            <FormGroup>
-              <Label htmlFor="password">New Password</Label>
-              <Input
+          <S.Form onSubmit={handleSubmit}>
+            <S.FormGroup>
+              <S.Label htmlFor="password">New Password</S.Label>
+              <S.Input
                 type="password"
                 id="password"
                 name="password"
@@ -151,12 +134,12 @@ const ConfirmPasswordResetPage: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Enter your new password"
               />
-              {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
-            </FormGroup>
+              {errors.password && <S.ErrorMessage>{errors.password}</S.ErrorMessage>}
+            </S.FormGroup>
             
-            <FormGroup>
-              <Label htmlFor="password_confirmation">Confirm New Password</Label>
-              <Input
+            <S.FormGroup>
+              <S.Label htmlFor="password_confirmation">Confirm New Password</S.Label>
+              <S.Input
                 type="password"
                 id="password_confirmation"
                 name="password_confirmation"
@@ -165,11 +148,11 @@ const ConfirmPasswordResetPage: React.FC = () => {
                 placeholder="Confirm your new password"
               />
               {errors.password_confirmation && (
-                <ErrorMessage>{errors.password_confirmation}</ErrorMessage>
+                <S.ErrorMessage>{errors.password_confirmation}</S.ErrorMessage>
               )}
-            </FormGroup>
+            </S.FormGroup>
             
-            <ButtonContainer>
+            <S.ButtonContainer>
               <Button
                 type="submit"
                 variant="primary"
@@ -178,17 +161,17 @@ const ConfirmPasswordResetPage: React.FC = () => {
               >
                 {isLoading ? 'Resetting...' : 'Reset Password'}
               </Button>
-            </ButtonContainer>
-          </Form>
+            </S.ButtonContainer>
+          </S.Form>
         )}
         
-        <LinkContainer>
-          <LinkText>
+        <S.LinkContainer>
+          <S.LinkText>
             Remember your password? <Link to="/login">Log in</Link>
-          </LinkText>
-        </LinkContainer>
-      </FormContainer>
-    </AuthContainer>
+          </S.LinkText>
+        </S.LinkContainer>
+      </S.FormContainer>
+    </S.AuthContainer>
   );
 };
 
