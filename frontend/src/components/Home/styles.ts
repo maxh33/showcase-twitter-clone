@@ -6,28 +6,32 @@ export const HomeContainer = styled.div`
   min-height: 100vh;
   max-width: 1300px;
   margin: 0 auto;
+  position: relative;
   background-color: ${Colors.white};
-  height: 100vh;
-  overflow: hidden;
+  overflow: hidden; /* Contain the scrollable area within the Feed component */
 
-  @media (max-width: 1024px) {
-    max-width: 1000px;
+  @media (max-width: 1200px) {
+    max-width: 100%;
   }
 
   @media (max-width: 688px) {
     max-width: 100%;
-    width: 100%;
+    margin: 0;
   }
 `;
 
 export const MainContent = styled.div`
   flex: 1;
   display: flex;
-  max-width: calc(100% - 68px);  /* Account for collapsed sidebar on mobile */
-  margin-left: auto;
-  
+  justify-content: center;
+  margin-left: 275px;
+
+  @media (max-width: 1200px) {
+    margin-left: 88px;
+  }
+
   @media (max-width: 688px) {
-    margin-left: 68px;  /* Width of collapsed sidebar */
+    margin-left: 68px;
   }
 `;
 
