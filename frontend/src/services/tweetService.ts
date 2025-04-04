@@ -56,7 +56,7 @@ export interface FeedResponse {
  */
 const createAxiosInstance = (): AxiosInstance => {
   const instance = axios.create({
-    baseURL: `${API_URL}/tweets`,
+    baseURL: API_URL,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -195,11 +195,11 @@ export const tweetService = {
       const response = await axiosInstance.post(`/${tweetId}/comments/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Accept: 'application/json',
+          'Accept': 'application/json',
         },
       });
       
-      console.log('Comment created successfully:', response.data);
+      console.log('Comment creation response:', response.data);
       return response.data;
     } catch (error) {
       console.error(`Error creating comment on tweet ${tweetId}:`, error);

@@ -20,7 +20,6 @@ export const handleEmailVerification = async ({ uidb64, token }: VerifyEmailPara
       token
     });
     
-    toast.success('Email verified successfully! You can now log in.');
     return { success: true };
   } catch (error) {
     console.error('Email verification failed:', error);
