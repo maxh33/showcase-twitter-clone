@@ -3,12 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { handleEmailVerification } from '../services/verificationService';
 import * as S from '../components/Auth/styles';
 import logo from '../assets/icons/blackIcon.png';
+import bannerFallback from '../assets/images/signupBanner.png';
 
 const VerifyEmailPage: React.FC = () => {
   const { uid, token } = useParams<{ uid: string; token: string }>();
   const navigate = useNavigate();
   const [isVerifying, setIsVerifying] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bannerSrc, setBannerSrc] = useState("https://source.unsplash.com/random/?nature,water");
+
+  const handleImageError = () => {
+    console.log("Banner image failed to load, using fallback");
+    setBannerSrc(bannerFallback);
+  };
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -22,7 +29,6 @@ const VerifyEmailPage: React.FC = () => {
           token: token
         });
         
-        // Wait a moment before redirecting to show success message
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -41,7 +47,11 @@ const VerifyEmailPage: React.FC = () => {
   return (
     <S.AuthContainer>
       <S.BannerContainer>
-        <S.BannerImage src="https://source.unsplash.com/random/?nature,water" alt="Banner" />
+        <S.BannerImage 
+          src={bannerSrc} 
+          alt="Banner" 
+          onError={handleImageError}
+        />
       </S.BannerContainer>
       <S.FormContainer>
         <S.LogoContainer>
