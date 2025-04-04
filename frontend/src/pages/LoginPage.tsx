@@ -96,18 +96,24 @@ const LoginPage: React.FC = () => {
           const errorData = responseData as Record<string, unknown>;
           
           // Check for unverified account error
-          if (errorData.detail === 'Email not verified.' || 
+          if (errorData.requires_verification === true || 
+              (typeof errorData.detail === 'string' && errorData.detail.includes('not been verified')) ||
+              (errorData.detail === 'Email not verified.') || 
               (typeof errorData.non_field_errors === 'string' && errorData.non_field_errors.includes('not verified')) ||
               (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors[0]?.includes('not verified'))) {
             setIsUnverified(true);
-            // If we have the email from the login attempt, store it
-            if (isEmail) {
-              setUnverifiedEmail(formData.identifier);
-            }
-            setErrors({ 
-              general: '📧 Your account needs to be verified. We have sent a new verification link to your email address. Please check your inbox (and spam folder) and click the verification link to activate your account.' 
-            });
-            setSuccessMessage('A new verification email has been sent. Please check your inbox.');
+            
+            // Get the email from the response if available, otherwise use the input
+            const emailFromResponse = errorData.email as string;
+            setUnverifiedEmail(emailFromResponse || (isEmail ? formData.identifier : null));
+            
+            // Use the detailed message from the backend if available
+            const detailMessage = typeof errorData.detail === 'string' 
+              ? errorData.detail 
+              : '📧 Your account needs to be verified. We have sent a new verification link to your email address. Please check your inbox (and spam folder) and click the verification link to activate your account.';
+            
+            setErrors({ general: detailMessage });
+            setSuccessMessage('A verification email has been sent. Please check your inbox.');
           } else {
             // Handle other errors as before
             if (errorData.email || errorData.username) {
