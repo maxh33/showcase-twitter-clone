@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { handleEmailVerification } from '../services/verificationService';
+import * as S from '../components/Auth/styles';
+import logo from '../assets/icons/blackIcon.png';
 
 const VerifyEmailPage: React.FC = () => {
   const { uid, token } = useParams<{ uid: string; token: string }>();
   const navigate = useNavigate();
   const [isVerifying, setIsVerifying] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -19,11 +22,15 @@ const VerifyEmailPage: React.FC = () => {
           token: token
         });
         
-        navigate('/login');
+        // Wait a moment before redirecting to show success message
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+        
+        setIsVerifying(false);
       } catch (error) {
         console.error('Email verification failed:', error);
-        navigate('/login');
-      } finally {
+        setError('Email verification failed. Please try again or contact support.');
         setIsVerifying(false);
       }
     };
@@ -32,14 +39,40 @@ const VerifyEmailPage: React.FC = () => {
   }, [uid, token, navigate]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      {isVerifying ? (
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-700">Verifying your email...</h2>
-        </div>
-      ) : null}
-    </div>
+    <S.AuthContainer>
+      <S.BannerContainer>
+        <S.BannerImage src="https://source.unsplash.com/random/?nature,water" alt="Banner" />
+      </S.BannerContainer>
+      <S.FormContainer>
+        <S.LogoContainer>
+          <S.Logo src={logo} alt="Logo" />
+        </S.LogoContainer>
+        <S.FormTitle>Email Verification</S.FormTitle>
+        
+        {isVerifying ? (
+          <S.InfoMessage>
+            Verifying your email address...
+          </S.InfoMessage>
+        ) : error ? (
+          <S.ErrorMessage>
+            {error}
+          </S.ErrorMessage>
+        ) : (
+          <S.SuccessMessage>
+            Email verified successfully! Redirecting to login...
+          </S.SuccessMessage>
+        )}
+        
+        <S.LinkContainer>
+          <S.LinkText>
+            Return to{' '}
+            <S.StyledLink onClick={() => navigate('/login')}>
+              Login
+            </S.StyledLink>
+          </S.LinkText>
+        </S.LinkContainer>
+      </S.FormContainer>
+    </S.AuthContainer>
   );
 };
 

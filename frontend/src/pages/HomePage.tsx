@@ -1,28 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../services/authService';
-import styled from 'styled-components';
-import Sidebar from '../components/Home/Sidebar/Sidebar';
-import Feed from '../components/Home/Feed/Feed';
-import RightSidebar from '../components/Home/RightSidebar/RightSidebar';
+import Home from '../components/Home';
 import { RandomUser, fetchRandomUser } from '../services/userGeneratorService';
-
-// Home page with the Twitter-like UI
-const HomeContainer = styled.div`
-  display: flex;
-  min-height: 100vh;
-  max-width: 1300px;
-  margin: 0 auto;
-  background-color: white;
-  height: 100vh;
-  overflow: hidden; /* Contain the scrollable area within the Feed component */
-`;
 
 const CURRENT_USER_KEY = 'twitter_clone_current_user';
 
 // Define a type that will convert RandomUser to the structure expected by Feed
 interface FormattedUser {
-  id: string | number;
+  id: string;
   username: string;
   profile_picture: string | null;
   email: string;
@@ -54,7 +40,7 @@ const HomePage: React.FC = () => {
             setCurrentUser(parsedUser);
             // Format user for Feed component
             setFormattedUser({
-              id: parsedUser.id || '1',
+              id: String(parsedUser.id || '1'),
               username: parsedUser.name || 'User',
               profile_picture: parsedUser.avatar || null,
               email: parsedUser.email || 'user@example.com'
@@ -67,7 +53,7 @@ const HomePage: React.FC = () => {
               localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
               // Format user for Feed component
               setFormattedUser({
-                id: user.id || '1',
+                id: String(user.id || '1'),
                 username: user.name || 'User',
                 profile_picture: user.avatar || null,
                 email: user.email || 'user@example.com'
@@ -91,24 +77,18 @@ const HomePage: React.FC = () => {
     navigate('/login');
   };
   
-  if (!authenticated || loading) {
-    return <div>Loading...</div>; // Show a loading indicator
-  }
-  
   return (
-    <HomeContainer>
-      <Sidebar 
-        activeItem="home" 
-        userInfo={currentUser ? {
-          name: currentUser.name,
-          handle: currentUser.handle,
-          avatar: currentUser.avatar
-        } : undefined}
-        onLogout={handleUserLogout}
-      />
-      <Feed currentUser={formattedUser} />
-      <RightSidebar />
-    </HomeContainer>
+    <Home
+      authenticated={authenticated}
+      loading={loading}
+      currentUser={currentUser ? {
+        name: currentUser.name,
+        handle: currentUser.handle,
+        avatar: currentUser.avatar
+      } : undefined}
+      formattedUser={formattedUser}
+      onLogout={handleUserLogout}
+    />
   );
 };
 
