@@ -29,6 +29,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     navigate(route);
   };
   
+  const handleGitHubClick = () => {
+    window.open('https://github.com/maxh33', '_blank');
+  };
+  
   const handleLogout = async () => {
     try {
       await logout();
@@ -55,32 +59,32 @@ const Sidebar: React.FC<SidebarProps> = ({
             <S.NavText>Feed</S.NavText>
           </S.NavItem>
           
-          <S.NavItem active={activeItem === 'explore'} onClick={() => handleNavClick('/explore')}>
+          <S.NavItem active={activeItem === 'explore'} onClick={handleGitHubClick}>
             #️⃣
             <S.NavText>Explore-ToDo</S.NavText>
           </S.NavItem>
           
-          <S.NavItem active={activeItem === 'notifications'} onClick={() => handleNavClick('/notifications')}>
+          <S.NavItem active={activeItem === 'notifications'} onClick={handleGitHubClick}>
             🔔
             <S.NavText>Notifications-ToDo</S.NavText>
           </S.NavItem>
           
-          <S.NavItem active={activeItem === 'messages'} onClick={() => handleNavClick('/messages')}>
+          <S.NavItem active={activeItem === 'messages'} onClick={handleGitHubClick}>
             ✉️
             <S.NavText>Messages-ToDo</S.NavText>
           </S.NavItem>
           
-          <S.NavItem active={activeItem === 'bookmarks'} onClick={() => handleNavClick('/bookmarks')}>
+          <S.NavItem active={activeItem === 'bookmarks'} onClick={handleGitHubClick}>
             🔖
             <S.NavText>Bookmarks-ToDo</S.NavText>
           </S.NavItem>
           
-          <S.NavItem active={activeItem === 'lists'} onClick={() => handleNavClick('/lists')}>
+          <S.NavItem active={activeItem === 'lists'} onClick={handleGitHubClick}>
             📋
             <S.NavText>Lists-ToDo</S.NavText>
           </S.NavItem>
           
-          <S.NavItem active={activeItem === 'profile'} onClick={() => handleNavClick('/profile')}>
+          <S.NavItem active={activeItem === 'profile'} onClick={handleGitHubClick}>
             👤
             <S.NavText>Profile-ToDo</S.NavText>
           </S.NavItem>

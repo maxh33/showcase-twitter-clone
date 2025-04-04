@@ -344,13 +344,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 📷
               </S.IconButton>
               
+              <S.IconButton onClick={toggleEmojiPicker} title="Add emoji" disabled={isSubmitting} type="button">
+                😊
+              </S.IconButton>
+              
               <S.IconButton onClick={toggleImageSearch} title="Search for images" disabled={isSubmitting} type="button">
                 🔍
               </S.IconButton>
               
-              <S.IconButton onClick={toggleEmojiPicker} title="Add emoji" disabled={isSubmitting} type="button">
-                😊
-              </S.IconButton>
             </S.IconGroup>
             
             <div>
