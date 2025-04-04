@@ -31,40 +31,68 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         logger.debug("CustomTokenObtainPairSerializer initialized with username field")
     
     def validate(self, attrs):
-        logger.debug(f"Login attempt with attrs: {attrs}")
+        """Validate credentials and return token data"""
         
-        # Make a copy of the attributes to avoid modifying the original
-        attrs_copy = attrs.copy()
-        logger.debug(f"Created attrs_copy: {attrs_copy}")
+        # Create a copy of attrs for logging and to avoid modifying the input dict
+        attrs_copy = dict(attrs)
         
-        # Check if username is provided, convert it to email for authentication
-        if 'username' in attrs_copy and attrs_copy['username'] and not attrs_copy.get('email'):
-            logger.debug(f"Login attempt with username: {attrs_copy['username']}")
-            # Find user by username
+        # Combine username and email to make login fields more flexible
+        if 'username' in attrs and 'email' not in attrs:
+            logger.debug("CustomTokenObtainPairSerializer initialized with username field")
+            attrs_copy['email'] = attrs['username']
+        
+        # Check if this is an actual email or just a username
+        if 'email' in attrs_copy and not '@' in attrs_copy['email']:
+            logger.debug(f"Login attempt with username, not email: {attrs_copy.get('email')}")
             try:
-                user = User.objects.get(username=attrs_copy['username'])
-                logger.debug(f"Found user by username: {user.email}")
+                # Try to find the user by username and get their email
+                user = User.objects.get(username=attrs_copy['email'])
+                logger.debug(f"Found user by username, email is: {user.email}")
+                # Replace username with actual email for authentication
                 attrs_copy['email'] = user.email
-                logger.debug(f"Updated attrs_copy with email: {attrs_copy}")
             except User.DoesNotExist:
-                logger.warning(f"No user found with username: {attrs_copy['username']}")
-                raise serializers.ValidationError(
-                    {'username': 'No user found with this username.'},
-                    code='authorization'
-                )
+                logger.debug(f"No user found with username: {attrs_copy.get('email')}")
+                # Keep as is, will fail validation later
+                pass
         
-        # Only proceed if email exists
-        if not attrs_copy.get('email'):
-            logger.warning("Neither username nor email was provided")
+        # If neither username nor email was provided, raise an error
+        if not 'email' in attrs_copy:
             raise serializers.ValidationError(
-                {'email': 'Email or username is required.'},
+                'No valid login credentials provided',
                 code='authorization'
             )
         
+        # First, check if the user exists but is inactive
         try:
-            logger.debug(f"Attempting to validate with email: {attrs_copy.get('email')}")
-            # Use the parent class validate method with email and password
-            auth_attrs = {'email': attrs_copy['email'], 'password': attrs_copy['password']}
+            # Try to find by email first
+            if '@' in attrs_copy['email']:
+                user = User.objects.get(email=attrs_copy['email'])
+            else:
+                # Then try by username
+                user = User.objects.get(username=attrs_copy['email'])
+            
+            # If user exists but is inactive, return appropriate error
+            if not user.is_active:
+                logger.warning(f"Login attempt for inactive account: {user.email}")
+                raise serializers.ValidationError({
+                    'detail': 'Your account has not been verified yet. Please check your email for the verification link.',
+                    'requires_verification': True,
+                    'email': user.email
+                })
+        except User.DoesNotExist:
+            # User doesn't exist, continue with normal flow to return generic error
+            pass
+        
+        try:
+            if '@' in attrs_copy['email']:
+                logger.debug(f"Attempting to validate with email: {attrs_copy.get('email')}")
+                # Use the parent class validate method with email and password
+                auth_attrs = {'email': attrs_copy['email'], 'password': attrs_copy['password']}
+            else:
+                logger.debug(f"Attempting to validate with username: {attrs_copy.get('email')}")
+                # Use the parent class validate method with username and password
+                auth_attrs = {'username': attrs_copy['email'], 'password': attrs_copy['password']}
+            
             logger.debug(f"Created auth_attrs for super().validate: {auth_attrs}")
             
             try:
