@@ -3,31 +3,58 @@ import axios, { AxiosError } from 'axios';
 // Store the original API URL from environment for debugging
 const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://backend:8000/api';
 
+// Log the original environment value for debugging
+console.log('Original API URL from environment:', ORIGINAL_API_URL);
+
 // Try to detect if we're in a deployed environment and use PythonAnywhere API
 // The hostname check helps detect when running on Vercel
 const isDeployed = typeof window !== 'undefined' && 
                   window.location.hostname !== 'localhost' && 
                   window.location.hostname !== '127.0.0.1';
 
+console.log('Is deployed environment:', isDeployed);
+
 // Check if the API URL is a development URL (localhost or Docker backend)
 const isDevApiUrl = ORIGINAL_API_URL.includes('localhost') || 
                    ORIGINAL_API_URL.includes('backend:') ||
                    ORIGINAL_API_URL.includes('127.0.0.1');
 
-// If deployed and using a development API URL, force to PythonAnywhere
+console.log('Is development API URL:', isDevApiUrl);
+
+// If deployed and using a development API URL, force to PythonAnywhere with HTTPS
 const API_URL = isDeployed && isDevApiUrl 
   ? 'https://maxh33.pythonanywhere.com/api' 
   : ORIGINAL_API_URL;
 
+// Always use HTTPS for production PythonAnywhere URLs
+const FINAL_API_URL = API_URL.includes('pythonanywhere.com') && !API_URL.startsWith('https://') 
+  ? API_URL.replace('http://', 'https://') 
+  : API_URL;
+
+console.log('Final API URL to use:', FINAL_API_URL);
+
 // Store the API URL in localStorage for debugging
 if (typeof window !== 'undefined') {
-  localStorage.setItem('debug-api-url', API_URL);
-  console.log('Using API URL:', API_URL);
+  localStorage.setItem('debug-api-url', FINAL_API_URL);
+  localStorage.setItem('api-url-determination', JSON.stringify({
+    original: ORIGINAL_API_URL,
+    isDeployed,
+    isDevApiUrl,
+    finalUrl: FINAL_API_URL,
+    time: new Date().toISOString()
+  }));
 }
 
 // Configure axios defaults
-axios.defaults.baseURL = window?.location?.hostname === 'localhost' ? 'http://localhost:8000/api' : API_URL;
+axios.defaults.baseURL = FINAL_API_URL;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
+
+// Add CORS headers for cross-origin requests
+if (isDeployed) {
+  axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
+  axios.defaults.headers.common['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+  axios.defaults.headers.common['Access-Control-Allow-Headers'] = 'Origin, Content-Type, Accept, Authorization';
+}
 
 // Track refresh token attempts to prevent infinite loops
 let refreshAttempts = 0;
@@ -94,30 +121,47 @@ interface AuthTokens {
 // Helper function to build complete API URLs
 const buildUrl = (endpoint: string): string => {
   if (endpoint.startsWith('http')) {
+    console.log('Using explicit URL:', endpoint);
     return endpoint; // Already a full URL
   }
   
   // Remove leading slash from endpoint if present
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   
-  // If axios has a baseURL configured, use relative path with v1 prefix
+  // Check if the API URL or axios baseURL already contains the v1 part
+  const hasV1InApiUrl = FINAL_API_URL.includes('/v1');
+  const hasV1InBaseUrl = axios.defaults.baseURL && axios.defaults.baseURL.toString().includes('/v1');
+  
+  // If axios has a baseURL configured, use relative path
   if (axios.defaults.baseURL) {
     // Check if the endpoint already includes v1/
     if (cleanEndpoint.startsWith('v1/')) {
-      return cleanEndpoint;
+      // If baseURL already has v1, remove the v1 from the endpoint to avoid duplicates
+      const endpointWithoutV1 = hasV1InBaseUrl ? cleanEndpoint.replace('v1/', '') : cleanEndpoint;
+      const url = endpointWithoutV1;
+      console.log(`[${new Date().toISOString()}] Built relative URL:`, url);
+      return url;
     }
     
-    // Add v1/ prefix
-    return `v1/${cleanEndpoint}`;
+    // Otherwise add v1/ prefix only if baseURL doesn't already have it
+    const url = hasV1InBaseUrl ? cleanEndpoint : `v1/${cleanEndpoint}`;
+    console.log(`[${new Date().toISOString()}] Built relative URL with v1 prefix:`, url);
+    return url;
   } else {
     // Using direct URL construction
     // Check if the endpoint already includes v1/
     if (cleanEndpoint.startsWith('v1/')) {
-      return `${API_URL}/${cleanEndpoint}`;
+      // If API URL already has v1, remove the v1 from the endpoint to avoid duplicates
+      const endpointWithoutV1 = cleanEndpoint.replace('v1/', '');
+      const url = hasV1InApiUrl ? `${FINAL_API_URL}/${endpointWithoutV1}` : `${FINAL_API_URL}/${cleanEndpoint}`;
+      console.log(`[${new Date().toISOString()}] Built full URL with existing v1 prefix:`, url);
+      return url;
     }
     
-    // Otherwise add v1/ prefix
-    return `${API_URL}/v1/${cleanEndpoint}`;
+    // Otherwise add v1/ prefix only if FINAL_API_URL doesn't already have it
+    const url = hasV1InApiUrl ? `${FINAL_API_URL}/${cleanEndpoint}` : `${FINAL_API_URL}/v1/${cleanEndpoint}`;
+    console.log(`[${new Date().toISOString()}] Built full URL with added v1 prefix:`, url);
+    return url;
   }
 };
 
