@@ -114,48 +114,44 @@ interface AuthTokens {
 
 // Helper function to build complete API URLs
 const buildUrl = (endpoint: string): string => {
-  if (endpoint.startsWith('http')) {
-    console.log('Using explicit URL:', endpoint);
-    return endpoint; // Already a full URL
-  }
-  
-  // Remove leading slash from endpoint if present
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  
-  // Check if the API URL or axios baseURL already contains the v1 part
-  const hasV1InApiUrl = FINAL_API_URL.includes('/v1');
-  const hasV1InBaseUrl = axios.defaults.baseURL && axios.defaults.baseURL.toString().includes('/v1');
-  
-  // If axios has a baseURL configured, use relative path
-  if (axios.defaults.baseURL) {
-    // Check if the endpoint already includes v1/
-    if (cleanEndpoint.startsWith('v1/')) {
-      // If baseURL already has v1, remove the v1 from the endpoint to avoid duplicates
-      const endpointWithoutV1 = hasV1InBaseUrl ? cleanEndpoint.replace('v1/', '') : cleanEndpoint;
-      const url = endpointWithoutV1;
-      console.log(`[${new Date().toISOString()}] Built relative URL:`, url);
-      return url;
+  try {
+    // Remove leading slash from endpoint if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    
+    // Always ensure we have a valid API URL
+    let baseUrl = '';
+    if (axios.defaults.baseURL) {
+      baseUrl = axios.defaults.baseURL.toString();
+    } else {
+      baseUrl = FINAL_API_URL;
     }
     
-    // Otherwise add v1/ prefix only if baseURL doesn't already have it
-    const url = hasV1InBaseUrl ? cleanEndpoint : `v1/${cleanEndpoint}`;
-    console.log(`[${new Date().toISOString()}] Built relative URL with v1 prefix:`, url);
-    return url;
-  } else {
-    // Using direct URL construction
-    // Check if the endpoint already includes v1/
-    if (cleanEndpoint.startsWith('v1/')) {
-      // If API URL already has v1, remove the v1 from the endpoint to avoid duplicates
-      const endpointWithoutV1 = cleanEndpoint.replace('v1/', '');
-      const url = hasV1InApiUrl ? `${FINAL_API_URL}/${endpointWithoutV1}` : `${FINAL_API_URL}/${cleanEndpoint}`;
-      console.log(`[${new Date().toISOString()}] Built full URL with existing v1 prefix:`, url);
-      return url;
-    }
+    console.log(`Building URL from base: ${baseUrl} and endpoint: ${cleanEndpoint}`);
     
-    // Otherwise add v1/ prefix only if FINAL_API_URL doesn't already have it
-    const url = hasV1InApiUrl ? `${FINAL_API_URL}/${cleanEndpoint}` : `${FINAL_API_URL}/v1/${cleanEndpoint}`;
-    console.log(`[${new Date().toISOString()}] Built full URL with added v1 prefix:`, url);
-    return url;
+    // Check if the API URL already contains the v1 part
+    const hasV1InBaseUrl = baseUrl.includes('/v1');
+    
+    // If the endpoint already includes v1/, don't add it again
+    if (cleanEndpoint.startsWith('v1/')) {
+      if (hasV1InBaseUrl) {
+        // If baseUrl has v1, remove v1 from endpoint to avoid duplication
+        const endpointWithoutV1 = cleanEndpoint.replace('v1/', '');
+        return `${baseUrl}/${endpointWithoutV1}`;
+      } else {
+        return `${baseUrl}/${cleanEndpoint}`;
+      }
+    } else {
+      // If baseUrl doesn't have v1, add it to the endpoint
+      if (hasV1InBaseUrl) {
+        return `${baseUrl}/${cleanEndpoint}`;
+      } else {
+        return `${baseUrl}/v1/${cleanEndpoint}`;
+      }
+    }
+  } catch (error) {
+    console.error('Error building URL:', error);
+    // In case of any error, ensure we return a valid URL
+    return `${FINAL_API_URL}/v1/${endpoint}`;
   }
 };
 
@@ -582,17 +578,25 @@ export const demoLogin = async () => {
   try {
     console.log('Attempting demo login...'); // Safe debug log (no credentials)
     
-    // Try with demo-login endpoint which creates a unique demo account
+    // Try with direct login using standard demo credentials
     try {
-      const response = await axios.post(buildUrl('auth/demo-login/'), {});
-      return handleSuccessfulLogin(response);
-    } catch (demoEndpointError) {
-      console.log('Demo endpoint failed, trying fallback method');
+      console.log('Using standard demo credentials');
       
-      // Fallback to regular login with generic demo credentials if demo endpoint fails
       const response = await axios.post(buildUrl('auth/login/'), {
         email: 'demo@twitterclone.com',
         username: 'demo_user',
+        password: 'Demo@123'
+      });
+      
+      return handleSuccessfulLogin(response);
+    } catch (loginError) {
+      console.error('Standard demo credentials failed, trying with timestamp', loginError);
+      
+      // Fallback to using a timestamp-based credential as a last resort
+      const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 12);
+      const response = await axios.post(buildUrl('auth/login/'), {
+        email: `demo+${timestamp}@twitterclone.com`,
+        username: `demo_user_${timestamp}`,
         password: 'Demo@123'
       });
       
