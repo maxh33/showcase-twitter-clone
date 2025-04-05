@@ -49,14 +49,8 @@ if (typeof window !== 'undefined') {
 axios.defaults.baseURL = FINAL_API_URL;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
-// Add CORS headers for cross-origin requests
-if (isDeployed) {
-  axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
-  axios.defaults.headers.common['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-  axios.defaults.headers.common['Access-Control-Allow-Headers'] = 'Origin, Content-Type, Accept, Authorization';
-}
-
-// Track refresh token attempts to prevent infinite loops
+// Remove CORS headers - these should only be set by the server, not the client
+// Keep track of refresh token attempts to prevent infinite loops
 let refreshAttempts = 0;
 const MAX_REFRESH_ATTEMPTS = 2;
 let refreshInProgress = false;
