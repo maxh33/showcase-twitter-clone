@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as S from './styles';
 import { formatDistanceToNow } from 'date-fns';
-import { FaRegComment, FaRetweet, FaRegHeart, FaShareAlt } from 'react-icons/fa';
+import { FaComment, FaRetweet, FaHeart, FaShareAlt } from 'react-icons/fa';
 import CommentsContainer from './Comments';
 import tweetService from '../../services/tweetService';
 import IconWrapper from '../common/IconWrapper';
@@ -112,7 +112,7 @@ const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
           <S.TweetFooter>
             <S.ActionsContainer>
               <S.ActionButton onClick={toggleComments}>
-                <IconWrapper icon={FaRegComment} size="medium" />
+                <IconWrapper icon={FaComment} size="medium" />
                 {localTweet.comments_count > 0 && localTweet.comments_count}
               </S.ActionButton>
               <S.ActionButton onClick={handleRetweet}>
@@ -120,7 +120,7 @@ const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
                 {localTweet.retweet_count > 0 && localTweet.retweet_count}
               </S.ActionButton>
               <S.ActionButton onClick={handleLike}>
-                <IconWrapper icon={FaRegHeart} size="medium" />
+                <IconWrapper icon={FaHeart} size="medium" />
                 {localTweet.likes_count > 0 && localTweet.likes_count}
               </S.ActionButton>
               <S.ActionButton>

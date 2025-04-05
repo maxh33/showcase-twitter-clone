@@ -67,16 +67,45 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
-    "https://showcase-twitter-clone-maxh33s-projects.vercel.app",  # Vercel production
+    "https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app",  # Vercel preview
+    "https://showcase-twitter-clone.vercel.app",  # Vercel production
     "https://showcase-twitter-clone-git-staging-maxh33s-projects.vercel.app",  # Vercel staging
-    "https://showcase-twitter-clone-27flgsqmu-maxh33s-projects.vercel.app",  # Another Vercel preview
 ]
 
 # For any other preview deployments we might create
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+# Get CORS settings from environment variable or use development defaults
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+    # If not allowing all origins, get the specific allowed origins from environment
+    if not CORS_ALLOW_ALL_ORIGINS and os.environ.get('CORS_ALLOWED_ORIGINS'):
+        CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
 
 # Required for cookies, authorization headers with HTTPS
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'access-control-allow-origin',
+]
 
 ROOT_URLCONF = "core.urls"
 
@@ -254,21 +283,68 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+            'level': 'DEBUG',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+            'level': 'DEBUG',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.mail': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.mail.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'authentication': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.zoho.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')  # Zoho email address
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Zoho password
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-
-# For development, use console backend if email settings are not configured
-if not (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.zoho.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Twitter Clone <services@maxhaider.dev>')
 
 # Frontend URL for email verification and password reset links
-FRONTEND_URL = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')  # Use environment variable
 
 # Swagger settings
 SWAGGER_SETTINGS = {

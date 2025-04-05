@@ -18,6 +18,7 @@ export const StyledButton = styled.button<StyledButtonProps>`
   border-radius: 12px;
   transition: all 0.3s ease;
   width: ${(props: StyledButtonProps) => props.fullWidth ? '100%' : 'auto'};
+  margin-bottom: 10px;
   
   ${(props: StyledButtonProps) => props.variant === 'primary' && `
     background-color: ${Colors.primary};
@@ -46,5 +47,9 @@ export const StyledButton = styled.button<StyledButtonProps>`
     color: ${Colors.darkGray};
     cursor: not-allowed;
     box-shadow: none;
+  }
+  
+  &:last-child {
+    margin-bottom: 0;
   }
 `;

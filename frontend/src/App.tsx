@@ -31,9 +31,9 @@ const App: React.FC = () => {
           {/* Auth routes */}
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/verify-email/:uid/:token" element={<VerifyEmailPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/reset-password/confirm" element={<ConfirmPasswordResetPage />} />
+          <Route path="/reset-password/confirm/:uid/:token" element={<ConfirmPasswordResetPage />} />
           
           {/* Protected routes */}
           <Route path="/" element={<ProtectedRoute element={<HomePage />} />} />

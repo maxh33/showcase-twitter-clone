@@ -1,110 +1,88 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { verifyEmail } from '../services/authService';
-import {
-  AuthContainer,
-  BannerContainer,
-  BannerImage,
-  FormContainer,
-  LogoContainer,
-  Logo,
-  FormTitle,
-  ButtonContainer,
-  LinkContainer,
-  LinkText,
-  ErrorMessage,
-  SuccessMessage
-} from '../components/Auth/styles';
-import Button from '../components/Button';
-import signupBanner from '../assets/images/signupBanner.png';
-import blackLogo from '../assets/icons/blackIcon.png';
-import { AxiosError } from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
+import { handleEmailVerification } from '../services/verificationService';
+import * as S from '../components/Auth/styles';
+import logo from '../assets/icons/blackIcon.png';
+import bannerFallback from '../assets/images/signupBanner.png';
 
 const VerifyEmailPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { uid, token } = useParams<{ uid: string; token: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [bannerSrc, setBannerSrc] = useState("https://source.unsplash.com/random/?nature,water");
+
+  const handleImageError = () => {
+    console.log("Banner image failed to load, using fallback");
+    setBannerSrc(bannerFallback);
+  };
 
   useEffect(() => {
-    const verifyUserEmail = async () => {
-      // Get token from URL query parameters
-      const queryParams = new URLSearchParams(location.search);
-      const token = queryParams.get('token');
-
-      if (!token) {
-        setError('Invalid verification link. Please request a new one.');
-        setIsLoading(false);
-        return;
-      }
-
+    const verifyEmail = async () => {
       try {
-        await verifyEmail({ token, uidb64: '' });
-        setSuccess('Email verified successfully! You can now login to your account.');
-      } catch (error: unknown) {
-        if (error && typeof error === 'object' && 'response' in error) {
-          const axiosError = error as AxiosError<{ message?: string }>;
-          if (axiosError.response?.data && 'message' in axiosError.response.data) {
-            setError(axiosError.response.data.message || 'Email verification failed');
-          } else {
-            setError('Failed to verify email. Please try again or contact support.');
-          }
-        } else {
-          setError('Failed to verify email. Please try again or contact support.');
+        if (!uid || !token) {
+          throw new Error('Missing verification parameters');
         }
-      } finally {
-        setIsLoading(false);
+        
+        await handleEmailVerification({
+          uidb64: uid,
+          token: token
+        });
+        
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+        
+        setIsVerifying(false);
+      } catch (error) {
+        console.error('Email verification failed:', error);
+        setError('Email verification failed. Please try again or contact support.');
+        setIsVerifying(false);
       }
     };
 
-    verifyUserEmail();
-  }, [location.search]);
-
-  const handleGoToLogin = () => {
-    navigate('/login');
-  };
+    verifyEmail();
+  }, [uid, token, navigate]);
 
   return (
-    <AuthContainer>
-      <BannerContainer>
-        <BannerImage src={signupBanner} alt="Email Verification" />
-      </BannerContainer>
-      
-      <FormContainer>
-        <LogoContainer>
-          <Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </LogoContainer>
+    <S.AuthContainer>
+      <S.BannerContainer>
+        <S.BannerImage 
+          src={bannerSrc} 
+          alt="Banner" 
+          onError={handleImageError}
+        />
+      </S.BannerContainer>
+      <S.FormContainer>
+        <S.LogoContainer>
+          <S.Logo src={logo} alt="Logo" />
+        </S.LogoContainer>
+        <S.FormTitle>Email Verification</S.FormTitle>
         
-        <FormTitle>Email Verification</FormTitle>
-        
-        {isLoading ? (
-          <p>Verifying your email...</p>
+        {isVerifying ? (
+          <S.InfoMessage>
+            Verifying your email address...
+          </S.InfoMessage>
+        ) : error ? (
+          <S.ErrorMessage>
+            {error}
+          </S.ErrorMessage>
         ) : (
-          <>
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-            {success && <SuccessMessage>{success}</SuccessMessage>}
-            
-            <ButtonContainer>
-              <Button
-                type="button"
-                variant="primary"
-                fullWidth
-                onClick={handleGoToLogin}
-              >
-                Go to Login
-              </Button>
-            </ButtonContainer>
-            
-            <LinkContainer>
-              <LinkText>
-                Having trouble? Contact our support team.
-              </LinkText>
-            </LinkContainer>
-          </>
+          <S.SuccessMessage>
+            Email verified successfully! Redirecting to login...
+          </S.SuccessMessage>
         )}
-      </FormContainer>
-    </AuthContainer>
+        
+        <S.LinkContainer>
+          <S.LinkText>
+            Return to{' '}
+            <S.StyledLink onClick={() => navigate('/login')}>
+              Login
+            </S.StyledLink>
+          </S.LinkText>
+        </S.LinkContainer>
+      </S.FormContainer>
+    </S.AuthContainer>
   );
 };
 

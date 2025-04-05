@@ -16,39 +16,14 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path, include
+from django.http import JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import JsonResponse
-from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-
-def api_root(request):
-    """
-    A simple view to confirm the API is working
-    """
-    return JsonResponse({
-        "status": "success",
-        "message": "Twitter Clone API is running",
-        "version": "1.0.0",
-        "endpoints": {
-            "auth": "/api/v1/auth/",
-            "users": "/api/v1/users/",
-            "tweets": "/api/v1/tweets/",
-            "notifications": "/api/v1/notifications/",
-            "follows": "/api/v1/follows/",
-        }
-    })
-
-# Define the API v1 URL patterns
-api_v1_patterns = [
-    path("auth/", include("authentication.urls", namespace="auth")),
-    path("users/", include("users.urls", namespace="users")),
-    path("tweets/", include("tweets.urls", namespace="tweets")),
-    path("notifications/", include("notifications.urls", namespace="notifications")),
-    path("follows/", include("follows.urls", namespace="follows")),
-]
+from rest_framework import permissions
+from django.views.static import serve
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -56,33 +31,51 @@ schema_view = get_schema_view(
         default_version='v1',
         description="API documentation for Twitter Clone project",
         terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@example.com"),
+        contact=openapi.Contact(email="contact@snippets.local"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
 
+def api_root(request):
+    """Root endpoint for API"""
+    return JsonResponse({
+        "status": "success",
+        "message": "API is running",
+        "endpoints": {
+            "auth": "/api/v1/auth/",
+            "users": "/api/v1/users/",
+            "tweets": "/api/v1/tweets/",
+            "docs": "/api/v1/docs/",
+            "swagger": "/api/v1/swagger/",
+        }
+    })
+
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    # Both /api and /api/ will show the API root response
-    path("api", api_root),
-    path("api/", api_root, name="api-root"),
-    # All API v1 endpoints will be under /api/v1/
-    path("api/v1/", include(api_v1_patterns)),
+    # API root
+    path('api/v1/', api_root, name='api-root'),
     
-    # Swagger documentation URLs
-    re_path(r'^swagger(?P<format>\.json|\.yaml)$', 
-            schema_view.without_ui(cache_timeout=0), 
-            name='schema-json'),
-    path('swagger/', 
-         schema_view.with_ui('swagger', cache_timeout=0), 
-         name='schema-swagger-ui'),
-    path('redoc/', 
-         schema_view.with_ui('redoc', cache_timeout=0), 
-         name='schema-redoc'),
+    # Admin
+    path('admin/', admin.site.urls),
+    
+    # API endpoints
+    path('api/v1/auth/', include('authentication.urls', namespace='auth')),
+    path('api/v1/users/', include('users.urls', namespace='users')),
+    path('api/v1/tweets/', include('tweets.urls', namespace='tweets')),
+    
+    # API documentation
+    path('api/v1/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('api/v1/docs/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # In production, serve media files through Django
+    urlpatterns += [
+        path('media/<path:path>', serve, {
+            'document_root': settings.MEDIA_ROOT,
+        }),
+    ]

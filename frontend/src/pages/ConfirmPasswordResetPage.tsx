@@ -1,25 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import Button from '../components/Button';
-import { confirmResetPassword } from '../services/authService';
-import {
-  AuthContainer,
-  BannerContainer,
-  BannerImage,
-  FormContainer,
-  LogoContainer,
-  Logo,
-  FormTitle,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  ButtonContainer,
-  LinkContainer,
-  LinkText,
-  ErrorMessage,
-  SuccessMessage
-} from '../components/Auth/styles';
+import { handlePasswordReset } from '../services/verificationService';
+import * as S from '../components/Auth/styles';
 import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
 import { AxiosError } from 'axios';
@@ -29,25 +12,18 @@ const ConfirmPasswordResetPage: React.FC = () => {
     password: '',
     password_confirmation: ''
   });
-  const [token, setToken] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
   const navigate = useNavigate();
-  const location = useLocation();
+  const { uid, token } = useParams<{ uid: string; token: string }>();
   
   useEffect(() => {
-    // Get token from URL query parameters
-    const queryParams = new URLSearchParams(location.search);
-    const tokenParam = queryParams.get('token');
-    
-    if (!tokenParam) {
+    if (!uid || !token) {
       setErrors({ general: 'Invalid reset link. Please request a new one.' });
-    } else {
-      setToken(tokenParam);
     }
-  }, [location.search]);
+  }, [uid, token]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -83,7 +59,7 @@ const ConfirmPasswordResetPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token) {
+    if (!uid || !token) {
       setErrors({ general: 'Invalid reset link. Please request a new one.' });
       return;
     }
@@ -93,11 +69,11 @@ const ConfirmPasswordResetPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      await confirmResetPassword({
+      await handlePasswordReset({
         token,
+        uidb64: uid,
         password: formData.password,
-        uidb64: '',
-        password2: ''
+        password2: formData.password_confirmation
       });
       
       setSuccess('Password has been reset successfully!');
@@ -114,7 +90,7 @@ const ConfirmPasswordResetPage: React.FC = () => {
           state: { message: 'Password has been reset successfully. You can now log in with your new password.' } 
         });
       }, 3000);
-    } catch (error: unknown) {
+    } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as AxiosError<Record<string, string>>;
         if (axiosError.response?.data) {
@@ -131,26 +107,26 @@ const ConfirmPasswordResetPage: React.FC = () => {
   };
 
   return (
-    <AuthContainer>
-      <BannerContainer>
-        <BannerImage src={signupBanner} alt="Reset Password" />
-      </BannerContainer>
+    <S.AuthContainer>
+      <S.BannerContainer>
+        <S.BannerImage src={signupBanner} alt="Reset Password" />
+      </S.BannerContainer>
       
-      <FormContainer>
-        <LogoContainer>
-          <Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </LogoContainer>
+      <S.FormContainer>
+        <S.LogoContainer>
+          <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
+        </S.LogoContainer>
         
-        <FormTitle>Set New Password</FormTitle>
+        <S.FormTitle>Set New Password</S.FormTitle>
         
-        {errors.general && <ErrorMessage>{errors.general}</ErrorMessage>}
-        {success && <SuccessMessage>{success}</SuccessMessage>}
+        {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
+        {success && <S.SuccessMessage>{success}</S.SuccessMessage>}
         
-        {!errors.general && !success && (
-          <Form onSubmit={handleSubmit}>
-            <FormGroup>
-              <Label htmlFor="password">New Password</Label>
-              <Input
+        {(!errors.general && uid && token) && !success && (
+          <S.Form onSubmit={handleSubmit}>
+            <S.FormGroup>
+              <S.Label htmlFor="password">New Password</S.Label>
+              <S.Input
                 type="password"
                 id="password"
                 name="password"
@@ -158,12 +134,12 @@ const ConfirmPasswordResetPage: React.FC = () => {
                 onChange={handleChange}
                 placeholder="Enter your new password"
               />
-              {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
-            </FormGroup>
+              {errors.password && <S.ErrorMessage>{errors.password}</S.ErrorMessage>}
+            </S.FormGroup>
             
-            <FormGroup>
-              <Label htmlFor="password_confirmation">Confirm New Password</Label>
-              <Input
+            <S.FormGroup>
+              <S.Label htmlFor="password_confirmation">Confirm New Password</S.Label>
+              <S.Input
                 type="password"
                 id="password_confirmation"
                 name="password_confirmation"
@@ -172,11 +148,11 @@ const ConfirmPasswordResetPage: React.FC = () => {
                 placeholder="Confirm your new password"
               />
               {errors.password_confirmation && (
-                <ErrorMessage>{errors.password_confirmation}</ErrorMessage>
+                <S.ErrorMessage>{errors.password_confirmation}</S.ErrorMessage>
               )}
-            </FormGroup>
+            </S.FormGroup>
             
-            <ButtonContainer>
+            <S.ButtonContainer>
               <Button
                 type="submit"
                 variant="primary"
@@ -185,17 +161,17 @@ const ConfirmPasswordResetPage: React.FC = () => {
               >
                 {isLoading ? 'Resetting...' : 'Reset Password'}
               </Button>
-            </ButtonContainer>
-          </Form>
+            </S.ButtonContainer>
+          </S.Form>
         )}
         
-        <LinkContainer>
-          <LinkText>
+        <S.LinkContainer>
+          <S.LinkText>
             Remember your password? <Link to="/login">Log in</Link>
-          </LinkText>
-        </LinkContainer>
-      </FormContainer>
-    </AuthContainer>
+          </S.LinkText>
+        </S.LinkContainer>
+      </S.FormContainer>
+    </S.AuthContainer>
   );
 };
 

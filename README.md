@@ -11,7 +11,14 @@ This Showcase is a Twitter clone that implements core functionalities such as us
 - Registration and login functionality
   - Username supports letters, numbers, spaces, periods, underscores, and hyphens (3-30 characters)
   - Login with either username or email address
-- Password reset and email verification
+- Email verification system
+  - Secure email verification process
+  - Zoho SMTP integration for reliable email delivery
+  - Custom email templates for verification and password reset
+- Password management
+  - Secure password reset flow
+  - Email-based password recovery
+  - Password strength validation
 - Tweet creation, deletion, and interaction
   - Comment on tweets with text and media
   - Like and reply to comments
@@ -96,6 +103,25 @@ The following API endpoints are available:
 ![Home Page](frontend/public/dummyHome.png)
 #
 
+## Email Notifications
+Our application features beautiful, responsive email templates for various user actions:
+
+### Registration and Account Verification
+When you register, you'll receive a verification email:
+![Verify Account Email](frontend/public/verifyaccountMail.png)
+#
+After clicking the verification link, you'll see your account is verified:
+![Registration Email](frontend/public/registrationMail.png)
+#
+
+### Password Management
+When requesting a password reset:
+![Password Reset Request](frontend/public/pwResetmail.png)
+#
+After successfully changing your password:
+![Password Changed Confirmation](frontend/public/pwChangedMail.png)
+#
+
 ## Deployment Infrastructure
 The application is deployed using a CI/CD pipeline:
 - **Backend**: Hosted on PythonAnywhere with automated deployment via GitHub Actions
@@ -146,3 +172,29 @@ The application is deployed using a CI/CD pipeline:
 - Dependency vulnerability scanning
 - Best practices enforcement
 - Security risk assessment
+
+## Email Configuration
+The application uses Zoho SMTP for sending emails. To configure email settings:
+
+1. Set up a Zoho Mail account
+2. Configure SMTP settings in your .env file:
+   ```
+   EMAIL_HOST=smtp.zoho.com
+   EMAIL_PORT=587
+   EMAIL_USE_TLS=True
+   EMAIL_HOST_USER=your_email@yourdomain.com
+   EMAIL_HOST_PASSWORD=your_app_specific_password
+   DEFAULT_FROM_EMAIL=Your Name <your_email@yourdomain.com>
+   ```
+3. In Zoho Mail:
+   - Enable SMTP access
+   - Generate an app-specific password
+   - Configure security settings to allow SMTP access
+
+## Troubleshooting Email Delivery
+If emails are not being delivered:
+1. Check SMTP credentials in .env file
+2. Verify Zoho Mail SMTP settings
+3. Check spam folders
+4. Review application logs for SMTP errors
+5. Use the test_smtp.py script in the backend folder to diagnose issues

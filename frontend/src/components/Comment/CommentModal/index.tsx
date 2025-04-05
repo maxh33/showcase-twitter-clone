@@ -29,7 +29,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
   onClose,
   onSubmit,
   replyingTo,
-  userProfilePicture = 'https://via.placeholder.com/50'
+  userProfilePicture = '/logo192.png'
 }) => {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -224,7 +224,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
           {replyingTo && (
             <S.ReplyingToSection>
               <S.ReplyingToAvatar 
-                src={replyingTo.author.profile_picture || 'https://via.placeholder.com/50'} 
+                src={replyingTo.author.profile_picture || '/logo192.png'} 
                 alt={`${replyingTo.author.username}'s profile picture`} 
               />
               
@@ -232,6 +232,21 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 <S.ReplyingToName>{replyingTo.author.username}</S.ReplyingToName>
                 <S.ReplyingToUsername>@{replyingTo.author.username?.toLowerCase().replace(/\s+/g, '')}</S.ReplyingToUsername>
                 <S.ReplyingToContent>{replyingTo.content}</S.ReplyingToContent>
+                {replyingTo.media && replyingTo.media.length > 0 && (
+                  <S.ReplyingToMedia>
+                    <img 
+                      src={replyingTo.media[0].file} 
+                      alt="Tweet media" 
+                      style={{ 
+                        width: '100%',
+                        maxHeight: '200px',
+                        objectFit: 'cover',
+                        borderRadius: '16px',
+                        marginTop: '8px'
+                      }}
+                    />
+                  </S.ReplyingToMedia>
+                )}
               </S.ReplyingToInfo>
             </S.ReplyingToSection>
           )}
@@ -329,13 +344,14 @@ const CommentModal: React.FC<CommentModalProps> = ({
                 📷
               </S.IconButton>
               
+              <S.IconButton onClick={toggleEmojiPicker} title="Add emoji" disabled={isSubmitting} type="button">
+                😊
+              </S.IconButton>
+              
               <S.IconButton onClick={toggleImageSearch} title="Search for images" disabled={isSubmitting} type="button">
                 🔍
               </S.IconButton>
               
-              <S.IconButton onClick={toggleEmojiPicker} title="Add emoji" disabled={isSubmitting} type="button">
-                😊
-              </S.IconButton>
             </S.IconGroup>
             
             <div>

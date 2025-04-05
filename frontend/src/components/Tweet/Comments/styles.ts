@@ -121,4 +121,43 @@ export const Avatar = styled.img`
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
+`;
+
+// Add emoji grid styles similar to TweetComposer
+export const EmojiGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 8px;
+  padding: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: ${Colors.extraLightGray};
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 4px;
+  }
+`;
+
+export const EmojiButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: ${Colors.extraLightGray};
+  }
 `; 

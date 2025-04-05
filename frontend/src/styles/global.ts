@@ -1,16 +1,22 @@
 import { createGlobalStyle } from 'styled-components';
 
 export const Colors = {
-    primary: '#1DA1F2',     // Twitter Blue
-    black: '#14171A',       // Twitter Black
-    darkGray: '#657786',    // Twitter Dark Gray
-    lightGray: '#AAB8C2',   // Twitter Light Gray
-    extraLightGray: '#E1E8ED',
-    backgroundGray: '#F5F8FA',
-    white: '#FFFFFF',
-    success: '#17BF63',
-    danger: '#E0245E',
-    blue: '#1991DA',
+    primary: '#0066ff',
+    primaryLight: '#e3f2fd',
+    primaryBorder: '#bbdefb',
+    black: '#1a1a1a',
+    darkGray: '#666666',
+    lightGray: '#999999',
+    extraLightGray: '#e6e6e6',
+    backgroundGray: '#f9f9f9',
+    white: '#ffffff',
+    success: '#2e7d32',
+    successLight: '#e8f5e9',
+    successBorder: '#c8e6c9',
+    danger: '#e0245e',
+    dangerLight: '#ffebee',
+    dangerBorder: '#ffcdd2',
+    blue: '#1da1f2',
     red: '#e0245e'
 }
 

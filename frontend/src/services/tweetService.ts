@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
 // Store the original API URL from environment for debugging
-const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 // Try to detect if we're in a deployed environment and use PythonAnywhere API
 // The hostname check helps detect when running on Vercel
@@ -56,7 +56,7 @@ export interface FeedResponse {
  */
 const createAxiosInstance = (): AxiosInstance => {
   const instance = axios.create({
-    baseURL: `${API_URL}/v1/tweets`,
+    baseURL: API_URL,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -89,8 +89,8 @@ export const tweetService = {
   async getFeed(page = 1): Promise<FeedResponse> {
     const axiosInstance = createAxiosInstance();
     try {
-      console.log(`Fetching tweets page ${page} from ${API_URL}/v1/tweets/`);
-      const response = await axiosInstance.get('/', {
+      console.log(`Fetching tweets page ${page} from ${API_URL}/tweets/`);
+      const response = await axiosInstance.get('/tweets/', {
         params: {
           page
         }
@@ -117,7 +117,7 @@ export const tweetService = {
         formData.append('media', media);
       }
       
-      const response = await axiosInstance.post('/', formData, {
+      const response = await axiosInstance.post('/tweets/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -138,7 +138,7 @@ export const tweetService = {
   async likeTweet(tweetId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.post(`/${tweetId}/like/`);
+      const response = await axiosInstance.post(`/tweets/${tweetId}/like/`);
       return response.data;
     } catch (error) {
       console.error(`Error liking tweet ${tweetId}:`, error);
@@ -153,7 +153,7 @@ export const tweetService = {
   async retweetTweet(tweetId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.post(`/${tweetId}/retweet/`);
+      const response = await axiosInstance.post(`/tweets/${tweetId}/retweet/`);
       return response.data;
     } catch (error) {
       console.error(`Error retweeting tweet ${tweetId}:`, error);
@@ -168,7 +168,7 @@ export const tweetService = {
   async fetchComments(tweetId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.get(`/${tweetId}/comments/`);
+      const response = await axiosInstance.get(`/tweets/${tweetId}/comments/`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching comments for tweet ${tweetId}:`, error);
@@ -192,14 +192,14 @@ export const tweetService = {
         formData.append('media', media);
       }
       
-      const response = await axiosInstance.post(`/${tweetId}/comments/`, formData, {
+      const response = await axiosInstance.post(`/tweets/${tweetId}/comments/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Accept: 'application/json',
+          'Accept': 'application/json',
         },
       });
       
-      console.log('Comment created successfully:', response.data);
+      console.log('Comment creation response:', response.data);
       return response.data;
     } catch (error) {
       console.error(`Error creating comment on tweet ${tweetId}:`, error);
@@ -215,7 +215,7 @@ export const tweetService = {
   async deleteComment(tweetId: number, commentId: number) {
     const axiosInstance = createAxiosInstance();
     try {
-      const response = await axiosInstance.delete(`/${tweetId}/comments/${commentId}/`);
+      const response = await axiosInstance.delete(`/tweets/${tweetId}/comments/${commentId}/`);
       return response.data;
     } catch (error) {
       console.error(`Error deleting comment ${commentId} from tweet ${tweetId}:`, error);

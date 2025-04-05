@@ -97,17 +97,46 @@ This job deploys the frontend to Vercel:
 
 The workflow uses the following secrets that need to be configured in the GitHub repository settings:
 
+### Email Configuration Secrets
+- `EMAIL_HOST`: SMTP server host (e.g., smtp.zoho.com)
+- `EMAIL_PORT`: SMTP server port (e.g., 587)
+- `EMAIL_HOST_USER`: Email address for sending emails
+- `EMAIL_HOST_PASSWORD`: App-specific password for SMTP authentication
+- `EMAIL_USE_TLS`: Whether to use TLS (typically True)
+- `DEFAULT_FROM_EMAIL`: Default sender email address
+
 ### PythonAnywhere Secrets
 - `PYTHONANYWHERE_HOST`: The hostname for SSH access (typically ssh.pythonanywhere.com)
 - `PYTHONANYWHERE_USERNAME`: Your PythonAnywhere username
 - `PYTHONANYWHERE_PASSWORD`: Your PythonAnywhere password
-- `PYTHONANYWHERE_PROJECT_PATH`: Path to the project on PythonAnywhere (e.g., /home/yourusername/showcase-twitter-clone)
+- `PYTHONANYWHERE_PROJECT_PATH`: Path to the project on PythonAnywhere
 - `PYTHONANYWHERE_WSGI_PATH`: Path to the WSGI file
 
 ### Vercel Secrets
 - `VERCEL_TOKEN`: Authentication token for Vercel
 - `VERCEL_ORG_ID`: Your organization ID on Vercel
 - `VERCEL_PROJECT_ID`: The project ID on Vercel
+
+### Database Secrets
+- `MYSQL_PASSWORD`: Database password for PythonAnywhere MySQL
+- `DATABASE_URL`: Full database URL (if using PostgreSQL)
+
+### Security Secrets
+- `DJANGO_SECRET_KEY`: Django's secret key for production
+- `JWT_SECRET_KEY`: Secret key for JWT token generation
+
+To add these secrets:
+1. Go to your GitHub repository
+2. Navigate to Settings > Secrets and variables > Actions
+3. Click "New repository secret"
+4. Add each secret with its corresponding value
+
+**Important Security Notes:**
+- Never commit sensitive credentials directly in code
+- Use app-specific passwords for email services when available
+- Rotate secrets periodically
+- Use environment variables for local development
+- Keep your .env file in .gitignore
 
 ## Docker Setup
 
