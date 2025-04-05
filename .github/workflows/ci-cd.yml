@@ -88,9 +88,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: ./frontend
-        run: |
-          rm -f package-lock.json
-          npm install
+        run: npm install --legacy-peer-deps
       
       - name: Set up environment variables
         working-directory: ./frontend
