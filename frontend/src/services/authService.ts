@@ -97,16 +97,26 @@ const buildUrl = (endpoint: string): string => {
     return endpoint; // Already a full URL
   }
   
-  // Remove leading slash from endpoint if present
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  
-  // Check if the endpoint already includes v1/
-  if (cleanEndpoint.startsWith('v1/')) {
-    return `${API_URL}/${cleanEndpoint}`;
+  // If axios has a baseURL configured, use relative path
+  if (axios.defaults.baseURL) {
+    // Remove leading slash from endpoint if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    
+    // If using relative path with axios, don't add /api or /v1
+    return cleanEndpoint;
+  } else {
+    // Using direct URL construction
+    // Remove leading slash from endpoint if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    
+    // Check if the endpoint already includes v1/
+    if (cleanEndpoint.startsWith('v1/')) {
+      return `${API_URL}/${cleanEndpoint}`;
+    }
+    
+    // Otherwise add v1/ prefix
+    return `${API_URL}/v1/${cleanEndpoint}`;
   }
-  
-  // Otherwise add v1/ prefix
-  return `${API_URL}/v1/${cleanEndpoint}`;
 };
 
 export const register = async (data: RegisterData, retryCount = 0, maxRetries = 3): Promise<RegisterResponse> => {

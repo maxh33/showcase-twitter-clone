@@ -20,18 +20,28 @@ const getApiUrl = () => {
 
 // Build complete API URL for a given endpoint
 const buildUrl = (endpoint: string): string => {
-  const apiUrl = getApiUrl();
-  
-  // Remove leading slash from endpoint if present
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  
-  // Check if the endpoint already includes v1/
-  if (cleanEndpoint.startsWith('v1/')) {
-    return `${apiUrl}/${cleanEndpoint}`;
+  // If axios has a baseURL configured, use relative path
+  if (axios.defaults.baseURL) {
+    // Remove leading slash from endpoint if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    
+    // If using relative path with axios, don't add /api or /v1
+    return cleanEndpoint;
+  } else {
+    // Using direct URL construction
+    const apiUrl = getApiUrl();
+    
+    // Remove leading slash from endpoint if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    
+    // Check if the endpoint already includes v1/
+    if (cleanEndpoint.startsWith('v1/')) {
+      return `${apiUrl}/${cleanEndpoint}`;
+    }
+    
+    // Otherwise add v1/ prefix
+    return `${apiUrl}/v1/${cleanEndpoint}`;
   }
-  
-  // Otherwise add v1/ prefix
-  return `${apiUrl}/v1/${cleanEndpoint}`;
 };
 
 export const demoLogin = async (): Promise<User> => {
