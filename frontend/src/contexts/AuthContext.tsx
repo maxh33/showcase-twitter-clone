@@ -16,6 +16,7 @@ interface AuthContextType {
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setUnverifiedEmail: React.Dispatch<React.SetStateAction<string | null>>;
+  setIsUnverified: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,9 +52,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authService.login({ email: identifier, password });
       
       if (response.user) {
-        setUser(response.user);
-        const isDemo = await demoAuthService.isDemoUser();
-        setIsDemoUser(isDemo);
+        if (
+          typeof response.user === 'object' && 
+          'id' in response.user && 
+          'username' in response.user && 
+          'email' in response.user
+        ) {
+          setUser(response.user as unknown as User);
+          const isDemo = await demoAuthService.isDemoUser();
+          setIsDemoUser(isDemo);
+        } else {
+          console.error('User data from API does not match expected format', response.user);
+          setError('Invalid user data received from server');
+        }
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -100,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError,
     setSuccessMessage,
     setUnverifiedEmail,
+    setIsUnverified,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

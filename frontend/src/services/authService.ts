@@ -80,6 +80,12 @@ interface RegisterResponse {
   message?: string;
 }
 
+interface AuthTokens {
+  access: string;
+  refresh: string;
+  user?: Record<string, unknown>;
+}
+
 export const register = async (data: RegisterData, retryCount = 0, maxRetries = 3): Promise<RegisterResponse> => {
   try {
     console.log('Attempting registration with data:', { ...data, password: '********', password2: '********' }); // Debug log
@@ -142,7 +148,7 @@ const handleLoginError = (error: unknown): never => {
 };
 
 // Helper function to store authentication tokens
-const storeAuthTokens = (data: any) => {
+const storeAuthTokens = (data: AuthTokens) => {
   if (data.access) {
     localStorage.setItem('token', data.access);
     localStorage.setItem('refreshToken', data.refresh);
@@ -470,7 +476,7 @@ const handleDemoLoginError = (error: unknown): never => {
 };
 
 // Helper function to handle successful login
-const handleSuccessfulLogin = (response: any) => {
+const handleSuccessfulLogin = (response: { data: AuthTokens }) => {
   if (response?.data?.access) {
     localStorage.setItem('token', response.data.access);
     localStorage.setItem('refreshToken', response.data.refresh);

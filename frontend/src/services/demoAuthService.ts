@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { User } from '../types/user';
-import { setupAuthHeaders } from './authService';
 
 export const demoLogin = async (): Promise<User> => {
   try {

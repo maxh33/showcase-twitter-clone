@@ -19,7 +19,9 @@ from users.models import User
 from django.conf import settings
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+import logging
 
+logger = logging.getLogger(__name__)
 
 # Custom throttle classes
 class TweetCreateThrottle(UserRateThrottle):
@@ -86,20 +88,20 @@ class TweetViewSet(viewsets.ModelViewSet):
         return context
     
     def perform_create(self, serializer):
-        print("Creating tweet with data:", self.request.data)
-        print("Files in request:", self.request.FILES)
+        logger.info("Creating tweet with data: %s", self.request.data)
+        logger.info("Files in request: %s", self.request.FILES)
         
         # Create the tweet first
         tweet = serializer.save(author=self.request.user)
-        print(f"Created tweet with ID: {tweet.id}")
+        logger.info("Created tweet with ID: %s", tweet.id)
         
         try:
             # Handle media attachments
             files = self.request.FILES.getlist('media')
-            print(f"Processing {len(files)} media files")
+            logger.info("Processing %s media files", len(files))
             
             for file in files:
-                print(f"Processing file: {file.name} ({file.content_type}, {file.size} bytes)")
+                logger.info("Processing file: %s (%s, %s bytes)", file.name, file.content_type, file.size)
                 
                 # Validate file size
                 if file.size > self.MAX_FILE_SIZE:
@@ -117,14 +119,14 @@ class TweetViewSet(viewsets.ModelViewSet):
                         tweet=tweet,
                         file=file
                     )
-                    print(f"Created media attachment: {media.id}")
+                    logger.info("Created media attachment: %s", media.id)
                 except Exception as e:
-                    print(f"Error creating media attachment: {str(e)}")
+                    logger.error("Error creating media attachment: %s", str(e))
                     tweet.delete()
                     raise
                     
         except Exception as e:
-            print(f"Error processing media: {str(e)}")
+            logger.error("Error processing media: %s", str(e))
             if tweet.id:
                 tweet.delete()
             raise

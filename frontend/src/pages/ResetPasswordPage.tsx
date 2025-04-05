@@ -7,6 +7,14 @@ import signupBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
 import { AxiosError } from 'axios';
 
+// Define an interface for the error response from the API
+interface ErrorResponse {
+  message?: string;
+  detail?: string;
+  requires_verification?: boolean;
+  [key: string]: unknown;
+}
+
 const ResetPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +58,7 @@ const ResetPasswordPage: React.FC = () => {
       setEmail(''); // Clear the form
     } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as AxiosError<any>;
+        const axiosError = error as AxiosError<ErrorResponse>;
         if (axiosError.response?.status === 403 && axiosError.response.data?.requires_verification) {
           setInfo(axiosError.response.data.message || 'Your account needs to be verified. Please check your email for verification instructions.');
           setRequiresVerification(true);
