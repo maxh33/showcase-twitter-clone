@@ -254,7 +254,9 @@ jobs:
           EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
           EMAIL_USE_TLS: 'True'
           DEFAULT_FROM_EMAIL: 'Twitter Clone <services@maxhaider.dev>'
-          FRONTEND_URL: 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
+          FRONTEND_URL: 'https://showcase-twitter-clone.vercel.app'
+          FRONTEND_URL_PREVIEW: 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
+          FRONTEND_URL_PRODUCTION: 'https://showcase-twitter-clone.vercel.app'
         run: |
           # Generate a simple Python script to handle deployment
           cat > deploy.py << 'EOL'
@@ -384,7 +386,9 @@ jobs:
               "os.environ['EMAIL_HOST_PASSWORD'] = '" + os.environ.get('EMAIL_HOST_PASSWORD', '') + "'\n"
               "os.environ['EMAIL_USE_TLS'] = 'True'\n"
               "os.environ['DEFAULT_FROM_EMAIL'] = 'Twitter Clone <services@maxhaider.dev>'\n"
-              "os.environ['FRONTEND_URL'] = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'\n"
+              "os.environ['FRONTEND_URL'] = 'https://showcase-twitter-clone.vercel.app'\n"
+              "os.environ['FRONTEND_URL_PREVIEW'] = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'\n"
+              "os.environ['FRONTEND_URL_PRODUCTION'] = 'https://showcase-twitter-clone.vercel.app'\n"
               "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
               "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
               "os.environ['SECRET_KEY'] = '" + secret_key + "'\n\n"
@@ -550,7 +554,9 @@ jobs:
           EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
           EMAIL_USE_TLS: 'True'
           DEFAULT_FROM_EMAIL: 'Twitter Clone <services@maxhaider.dev>'
-          FRONTEND_URL: 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
+          FRONTEND_URL: 'https://showcase-twitter-clone.vercel.app'
+          FRONTEND_URL_PREVIEW: 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'
+          FRONTEND_URL_PRODUCTION: 'https://showcase-twitter-clone.vercel.app'
         run: |
           # Create a simple Python script to handle deployment
           cat > deploy_staging.py << 'EOL'
@@ -668,7 +674,9 @@ jobs:
               "os.environ['EMAIL_HOST_PASSWORD'] = '" + os.environ.get('EMAIL_HOST_PASSWORD', '') + "'\n"
               "os.environ['EMAIL_USE_TLS'] = 'True'\n"
               "os.environ['DEFAULT_FROM_EMAIL'] = 'Twitter Clone <services@maxhaider.dev>'\n"
-              "os.environ['FRONTEND_URL'] = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'\n"
+              "os.environ['FRONTEND_URL'] = 'https://showcase-twitter-clone.vercel.app'\n"
+              "os.environ['FRONTEND_URL_PREVIEW'] = 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app'\n"
+              "os.environ['FRONTEND_URL_PRODUCTION'] = 'https://showcase-twitter-clone.vercel.app'\n"
               "os.environ['ALLOWED_HOSTS'] = 'maxh33.pythonanywhere.com,localhost,127.0.0.1'\n"
               "os.environ['CORS_ALLOW_ALL_ORIGINS'] = 'True'\n"
               "os.environ['SECRET_KEY'] = '" + secret_key + "'\n\n"
