@@ -162,6 +162,58 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    def _prepare_request_data(self, request_data):
+        """Prepare request data for authentication"""
+        # Make a copy of the request data
+        data = request_data.copy() if hasattr(request_data, 'copy') else dict(request_data)
+        
+        # If email is provided but username is not, use email as username
+        if 'email' in data and 'username' not in data:
+            data['username'] = data['email']
+        
+        return data
+    
+    def _get_safe_log_data(self, data):
+        """Get safe data for logging (mask password)"""
+        safe_data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'password' in safe_data:
+            safe_data['password'] = '********'
+        return safe_data
+    
+    def _check_rate_limit(self, email, ip_address):
+        """Check if account is rate limited due to failed attempts"""
+        if FailedLoginAttempt.is_blocked(email, ip_address):
+            return Response(
+                {'error': 'Too many failed login attempts. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        return None
+    
+    def _handle_authentication_success(self, serializer, email):
+        """Handle successful authentication"""
+        FailedLoginAttempt.clear_failed_attempts(email)
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+    
+    def _handle_validation_exception(self, e, email, ip_address):
+        """Handle validation exception"""
+        logger.error(f"Validation error during login: {str(e)}")
+        FailedLoginAttempt.record_failed_attempt(email, ip_address)
+        return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    def _handle_token_exception(self, e, email, ip_address):
+        """Handle token exception"""
+        logger.error(f"Token error during login: {str(e)}")
+        FailedLoginAttempt.record_failed_attempt(email, ip_address)
+        return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    def _handle_unexpected_exception(self, e):
+        """Handle unexpected exception"""
+        logger.exception(f"Unexpected error during login: {str(e)}")
+        return Response(
+            {'error': 'An unexpected error occurred. Please try again later.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
     @swagger_auto_schema(
         operation_description="User login endpoint",
         request_body=openapi.Schema(
@@ -184,9 +236,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         ip_address = self.get_client_ip(request)
         
         # Log request data for debugging without exposing passwords
-        safe_data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if 'password' in safe_data:
-            safe_data['password'] = '********'
+        safe_data = self._get_safe_log_data(request.data)
         logger.info(f"Login attempt - Request data: {safe_data}")
         
         # Get the email/username from the request for tracking failed attempts
@@ -194,11 +244,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         username = request.data.get('username', '')
         
         # Check if account is locked due to too many failed attempts
-        if FailedLoginAttempt.is_blocked(email, ip_address):
-            return Response(
-                {'error': 'Too many failed login attempts. Please try again later.'},
-                status=status.HTTP_429_TOO_MANY_REQUESTS
-            )
+        rate_limit_response = self._check_rate_limit(email, ip_address)
+        if rate_limit_response:
+            return rate_limit_response
         
         try:
             # First check directly if user exists but is inactive
@@ -209,16 +257,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     return response
             
             # Handle both email and username login formats
-            request_data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-            
-            # If email is provided but username is not, use email as username
-            if 'email' in request_data and 'username' not in request_data:
-                request_data['username'] = request_data['email']
+            request_data = self._prepare_request_data(request.data)
             
             # Log sanitized data
-            safe_data = request_data.copy() if hasattr(request_data, 'copy') else dict(request_data)
-            if 'password' in safe_data:
-                safe_data['password'] = '********'
+            safe_data = self._get_safe_log_data(request_data)
             logger.debug(f"Attempting to validate with serializer data: {safe_data}")
             
             # Attempt to authenticate
@@ -230,31 +272,16 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 return self.handle_validation_error(serializer, email, user.email if user else None)
             
             # If we get here, login was successful
-            FailedLoginAttempt.clear_failed_attempts(email)
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+            return self._handle_authentication_success(serializer, email)
             
         except serializers.ValidationError as e:
-            # Log validation error details
-            logger.error(f"Validation error during login: {str(e)}")
-            # Record failed attempt and return appropriate status code
-            FailedLoginAttempt.record_failed_attempt(email, ip_address)
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            return self._handle_validation_exception(e, email, ip_address)
             
         except (InvalidToken, TokenError) as e:
-            # Log token error details
-            logger.error(f"Token error during login: {str(e)}")
-            # Record failed attempt for token-related errors
-            FailedLoginAttempt.record_failed_attempt(email, ip_address)
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            return self._handle_token_exception(e, email, ip_address)
             
         except Exception as e:
-            # Log unexpected error details
-            logger.exception(f"Unexpected error during login: {str(e)}")
-            # For any other errors, don't record a failed attempt as it might be a server issue
-            return Response(
-                {'error': 'An unexpected error occurred. Please try again later.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return self._handle_unexpected_exception(e)
 
 
 class RegistrationView(generics.CreateAPIView):
