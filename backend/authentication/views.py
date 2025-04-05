@@ -186,7 +186,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         safe_data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if 'password' in safe_data:
             safe_data['password'] = '********'
-        print(f"Login attempt - Request data: {safe_data}")
+        logger.info(f"Login attempt - Request data: {safe_data}")
         
         # Get the email/username from the request for tracking failed attempts
         email = request.data.get('email') or request.data.get('username', '')
@@ -218,14 +218,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             safe_data = request_data.copy() if hasattr(request_data, 'copy') else dict(request_data)
             if 'password' in safe_data:
                 safe_data['password'] = '********'
-            print(f"Attempting to validate with serializer data: {safe_data}")
+            logger.debug(f"Attempting to validate with serializer data: {safe_data}")
             
             # Attempt to authenticate
             serializer = self.get_serializer(data=request_data)
             
             # Log validation errors if any
             if not serializer.is_valid():
-                print(f"Serializer validation errors: {serializer.errors}")
+                logger.warning(f"Serializer validation errors: {serializer.errors}")
                 return self.handle_validation_error(serializer, email, user.email if user else None)
             
             # If we get here, login was successful
@@ -234,21 +234,21 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             
         except serializers.ValidationError as e:
             # Log validation error details
-            print(f"Validation error during login: {str(e)}")
+            logger.error(f"Validation error during login: {str(e)}")
             # Record failed attempt and return appropriate status code
             FailedLoginAttempt.record_failed_attempt(email, ip_address)
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
             
         except (InvalidToken, TokenError) as e:
             # Log token error details
-            print(f"Token error during login: {str(e)}")
+            logger.error(f"Token error during login: {str(e)}")
             # Record failed attempt for token-related errors
             FailedLoginAttempt.record_failed_attempt(email, ip_address)
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
             
         except Exception as e:
             # Log unexpected error details
-            print(f"Unexpected error during login: {str(e)}")
+            logger.exception(f"Unexpected error during login: {str(e)}")
             # For any other errors, don't record a failed attempt as it might be a server issue
             return Response(
                 {'error': 'An unexpected error occurred. Please try again later.'},

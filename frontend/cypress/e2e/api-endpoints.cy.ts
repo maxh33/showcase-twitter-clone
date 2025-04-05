@@ -7,13 +7,19 @@
 
 import { expect } from 'chai';
 
+interface ApiResponse {
+  status: number;
+  body: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 declare global {
   namespace Cypress {
-    interface Chainable<Subject = any> {
-      intercept(method: string, url: string, response: any): Chainable<null>;
+    interface Chainable<Subject = unknown> {
+      intercept(method: string, url: string, response: unknown): Chainable<null>;
       wait(alias: string): Chainable<null>;
-      login(email: string, password: string): Chainable<any>;
-      ensureAuthenticated(user: any): Chainable<null>;
+      login(email: string, password: string): Chainable<unknown>;
+      ensureAuthenticated(user: { username: string, email: string, password: string }): Chainable<null>;
     }
   }
 }

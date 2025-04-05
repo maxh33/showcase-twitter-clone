@@ -10,32 +10,30 @@ describe('API Configuration', () => {
 
   beforeEach(() => {
     // Set API URL in localStorage
-    cy.window().then((window) => {
-      window.localStorage.setItem('debug-api-url', expectedBaseUrl);
+    cy.window().then((win) => {
+      win.localStorage.setItem('debug-api-url', expectedBaseUrl);
     });
   });
 
   it('should have correct API URL', () => {
-    cy.window().then((window) => {
-      const apiUrl = window.localStorage.getItem('debug-api-url');
+    cy.window().then((win) => {
+      const apiUrl = win.localStorage.getItem('debug-api-url');
       expect(apiUrl).to.equal(expectedBaseUrl);
     });
   });
 
   it('should have correct login endpoint', () => {
-    cy.window().then((window) => {
-      const loginUrl = `${expectedBaseUrl}/auth/login/`;
-      cy.request({
-        method: 'POST',
-        url: loginUrl,
-        failOnStatusCode: false,
-        body: {
-          email: 'test@example.com',
-          password: 'wrongpassword'
-        }
-      }).then((response) => {
-        expect(response.status).to.be.oneOf([400, 401]);
-      });
+    const loginUrl = `${expectedBaseUrl}/auth/login/`;
+    cy.request({
+      method: 'POST',
+      url: loginUrl,
+      failOnStatusCode: false,
+      body: {
+        email: 'test@example.com',
+        password: 'wrongpassword'
+      }
+    }).then((response) => {
+      expect(response.status).to.be.oneOf([400, 401]);
     });
   });
 

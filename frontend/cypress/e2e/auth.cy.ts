@@ -5,10 +5,16 @@
 import { expect } from 'chai';
 import '../support/commands';
 
+interface ApiResponse {
+  body: Record<string, unknown>;
+  status: number;
+  [key: string]: unknown;
+}
+
 declare global {
   namespace Cypress {
-    interface Chainable<Subject = any> {
-      intercept(method: string, url: string, response: any): Chainable<null>;
+    interface Chainable<Subject = unknown> {
+      intercept(method: string, url: string, response: unknown): Chainable<null>;
       wait(alias: string): Chainable<null>;
     }
   }

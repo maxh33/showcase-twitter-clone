@@ -8,10 +8,17 @@
 // https://on.cypress.io/custom-commands
 // ***********************************************
 
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  [key: string]: unknown;
+}
+
 interface LoginResponse {
   access: string;
   refresh: string;
-  user: any;
+  user: User;
 }
 
 // -- This is a parent command --
@@ -56,12 +63,12 @@ Cypress.Commands.add('ensureAuthenticated', (testUser: { email: string; password
 
 declare global {
   namespace Cypress {
-    interface Chainable<Subject = any> {
+    interface Chainable<Subject = unknown> {
       login(email: string, password: string): Chainable<LoginResponse | null>;
       ensureAuthenticated(testUser: { email: string; password: string }): Chainable<void>;
-      intercept(method: string, url: string, response: any): Chainable<null>;
+      intercept(method: string, url: string, response: unknown): Chainable<null>;
       wait(alias: string): Chainable<null>;
-      request(options: any): Chainable<any>;
+      request(options: unknown): Chainable<unknown>;
       exec(command: string): Chainable<{ stdout: string; stderr: string; code: number }>;
       url(): Chainable<string>;
       contains(content: string): Chainable<JQuery<HTMLElement>>;
