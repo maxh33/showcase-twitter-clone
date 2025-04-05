@@ -33,16 +33,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     window.open('https://github.com/maxh33', '_blank');
   };
   
-  const handleLogout = async () => {
-    try {
-      await logout();
-      if (onLogout) {
-        onLogout();
-      } else {
-        navigate('/login');
+  const handleLogout = (event: React.MouseEvent) => {
+    event.preventDefault();
+    console.log('Sidebar: handleLogout called');
+    
+    // Call the provided onLogout handler
+    if (typeof onLogout === 'function') {
+      console.log('Sidebar: Calling provided onLogout handler');
+      onLogout();
+    } else {
+      console.warn('Sidebar: No onLogout handler provided');
+      // Fallback direct logout
+      try {
+        console.log('Sidebar: Attempting fallback direct logout');
+        logout();
+        // Force navigation to login page
+        window.location.href = '/login';
+      } catch (error) {
+        console.error('Sidebar: Fallback logout failed:', error);
       }
-    } catch (error) {
-      console.error('Error during logout:', error);
     }
   };
   

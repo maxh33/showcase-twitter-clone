@@ -16,7 +16,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <StyledButton 
       variant={variant} 
-      fullWidth={fullWidth} 
+      $fullWidth={fullWidth} 
       {...props}
     >
       {children}

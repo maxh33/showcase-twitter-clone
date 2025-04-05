@@ -1,9 +1,9 @@
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
 import { Colors } from '../../styles/global';
 
 interface StyledButtonProps {
   variant: 'primary' | 'secondary';
-  fullWidth?: boolean;
+  $fullWidth?: boolean;
 }
 
 export const StyledButton = styled.button<StyledButtonProps>`
@@ -17,10 +17,10 @@ export const StyledButton = styled.button<StyledButtonProps>`
   font-size: 16px;
   border-radius: 12px;
   transition: all 0.3s ease;
-  width: ${(props: StyledButtonProps) => props.fullWidth ? '100%' : 'auto'};
+  width: ${(props) => props.$fullWidth ? '100%' : 'auto'};
   margin-bottom: 10px;
   
-  ${(props: StyledButtonProps) => props.variant === 'primary' && `
+  ${(props) => props.variant === 'primary' && css`
     background-color: ${Colors.primary};
     color: ${Colors.white};
     
@@ -31,7 +31,7 @@ export const StyledButton = styled.button<StyledButtonProps>`
     }
   `}
   
-  ${(props: StyledButtonProps) => props.variant === 'secondary' && `
+  ${(props) => props.variant === 'secondary' && css`
     background-color: transparent;
     color: ${Colors.primary};
     border: 1px solid ${Colors.primary};

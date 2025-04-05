@@ -3,28 +3,54 @@ import axios, { AxiosError } from 'axios';
 // Store the original API URL from environment for debugging
 const ORIGINAL_API_URL = process.env.REACT_APP_API_URL || 'http://backend:8000/api';
 
+// Log the original environment value for debugging
+console.log('Original API URL from environment:', ORIGINAL_API_URL);
+
 // Try to detect if we're in a deployed environment and use PythonAnywhere API
 // The hostname check helps detect when running on Vercel
 const isDeployed = typeof window !== 'undefined' && 
                   window.location.hostname !== 'localhost' && 
                   window.location.hostname !== '127.0.0.1';
 
-// If deployed and still using localhost, force to PythonAnywhere
-const API_URL = isDeployed && ORIGINAL_API_URL.includes('localhost') 
+console.log('Is deployed environment:', isDeployed);
+
+// Check if the API URL is a development URL (localhost or Docker backend)
+const isDevApiUrl = ORIGINAL_API_URL.includes('localhost') || 
+                   ORIGINAL_API_URL.includes('backend:') ||
+                   ORIGINAL_API_URL.includes('127.0.0.1');
+
+console.log('Is development API URL:', isDevApiUrl);
+
+// If deployed and using a development API URL, force to PythonAnywhere with HTTPS
+const API_URL = isDeployed && isDevApiUrl 
   ? 'https://maxh33.pythonanywhere.com/api' 
   : ORIGINAL_API_URL;
 
+// Always use HTTPS for production PythonAnywhere URLs
+const FINAL_API_URL = API_URL.includes('pythonanywhere.com') && !API_URL.startsWith('https://') 
+  ? API_URL.replace('http://', 'https://') 
+  : API_URL;
+
+console.log('Final API URL to use:', FINAL_API_URL);
+
 // Store the API URL in localStorage for debugging
 if (typeof window !== 'undefined') {
-  localStorage.setItem('debug-api-url', API_URL);
-  console.log('Using API URL:', API_URL);
+  localStorage.setItem('debug-api-url', FINAL_API_URL);
+  localStorage.setItem('api-url-determination', JSON.stringify({
+    original: ORIGINAL_API_URL,
+    isDeployed,
+    isDevApiUrl,
+    finalUrl: FINAL_API_URL,
+    time: new Date().toISOString()
+  }));
 }
 
 // Configure axios defaults
-axios.defaults.baseURL = window?.location?.hostname === 'localhost' ? 'http://localhost:8000/api/v1' : API_URL;
+axios.defaults.baseURL = FINAL_API_URL;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
-// Track refresh token attempts to prevent infinite loops
+// Remove CORS headers - these should only be set by the server, not the client
+// Keep track of refresh token attempts to prevent infinite loops
 let refreshAttempts = 0;
 const MAX_REFRESH_ATTEMPTS = 2;
 let refreshInProgress = false;
@@ -86,10 +112,53 @@ interface AuthTokens {
   user?: Record<string, unknown>;
 }
 
+// Helper function to build complete API URLs
+const buildUrl = (endpoint: string): string => {
+  try {
+    // Remove leading slash from endpoint if present
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    
+    // Always ensure we have a valid API URL
+    let baseUrl = '';
+    if (axios.defaults.baseURL) {
+      baseUrl = axios.defaults.baseURL.toString();
+    } else {
+      baseUrl = FINAL_API_URL;
+    }
+    
+    console.log(`Building URL from base: ${baseUrl} and endpoint: ${cleanEndpoint}`);
+    
+    // Check if the API URL already contains the v1 part
+    const hasV1InBaseUrl = baseUrl.includes('/v1');
+    
+    // If the endpoint already includes v1/, don't add it again
+    if (cleanEndpoint.startsWith('v1/')) {
+      if (hasV1InBaseUrl) {
+        // If baseUrl has v1, remove v1 from endpoint to avoid duplication
+        const endpointWithoutV1 = cleanEndpoint.replace('v1/', '');
+        return `${baseUrl}/${endpointWithoutV1}`;
+      } else {
+        return `${baseUrl}/${cleanEndpoint}`;
+      }
+    } else {
+      // If baseUrl doesn't have v1, add it to the endpoint
+      if (hasV1InBaseUrl) {
+        return `${baseUrl}/${cleanEndpoint}`;
+      } else {
+        return `${baseUrl}/v1/${cleanEndpoint}`;
+      }
+    }
+  } catch (error) {
+    console.error('Error building URL:', error);
+    // In case of any error, ensure we return a valid URL
+    return `${FINAL_API_URL}/v1/${endpoint}`;
+  }
+};
+
 export const register = async (data: RegisterData, retryCount = 0, maxRetries = 3): Promise<RegisterResponse> => {
   try {
     console.log('Attempting registration with data:', { ...data, password: '********', password2: '********' }); // Debug log
-    const response = await axios.post('/auth/register/', data);
+    const response = await axios.post(buildUrl('auth/register/'), data);
     console.log('Registration response:', response.data); // Debug log
     return response.data;
   } catch (error) {
@@ -168,7 +237,7 @@ export const login = async (data: LoginData) => {
     const safeData = { ...loginData, password: '********' };
     console.log('Sending login data:', safeData);
     
-    const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
+    const response = await axios.post(buildUrl('auth/login/'), loginData);
     return storeAuthTokens(response.data);
   } catch (error) {
     return handleLoginError(error);
@@ -190,7 +259,7 @@ export const logout = async (skipApiCall = false) => {
     if (refreshToken && !skipApiCall) {
       try {
         // Send refreshToken to be blacklisted
-        await axios.post(`${API_URL}/auth/logout/`, { refresh: refreshToken });
+        await axios.post(buildUrl('auth/logout/'), { refresh: refreshToken });
       } catch (apiError) {
         console.warn('Could not blacklist token on server, but will continue with local logout');
       }
@@ -253,7 +322,7 @@ export const refreshToken = async () => {
       throw new Error('No refresh token available');
     }
     
-    const response = await axios.post(`${API_URL}/auth/token/refresh/`, { refresh: refreshTokenValue });
+    const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
@@ -272,7 +341,7 @@ export const refreshToken = async () => {
 
 export const verifyEmail = async (data: VerifyEmailData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
+    const response = await axios.post(buildUrl('auth/verify-email/'), data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -312,7 +381,7 @@ const handleResetPasswordError = (error: unknown): never => {
 
 export const resetPassword = async (data: ResetPasswordData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/reset-password/`, data);
+    const response = await axios.post(buildUrl('auth/reset-password/'), data);
     return response.data;
   } catch (error) {
     return handleResetPasswordError(error);
@@ -348,7 +417,7 @@ const handleVerificationEmailError = (error: unknown): never => {
 
 export const resendVerification = async (data: ResendVerificationData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/resend-verification/`, data);
+    const response = await axios.post(buildUrl('auth/resend-verification/'), data);
     return response.data;
   } catch (error) {
     return handleVerificationEmailError(error);
@@ -432,7 +501,7 @@ const handleConfirmResetPasswordError = (error: unknown): never => {
 
 export const confirmResetPassword = async (data: ConfirmResetPasswordData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
+    const response = await axios.post(buildUrl('auth/password-reset/confirm/'), data);
     return response.data;
   } catch (error) {
     return handleConfirmResetPasswordError(error);
@@ -509,17 +578,25 @@ export const demoLogin = async () => {
   try {
     console.log('Attempting demo login...'); // Safe debug log (no credentials)
     
-    // Try with demo-login endpoint which creates a unique demo account
+    // Try with direct login using standard demo credentials
     try {
-      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
-      return handleSuccessfulLogin(response);
-    } catch (demoEndpointError) {
-      console.log('Demo endpoint failed, trying fallback method');
+      console.log('Using standard demo credentials');
       
-      // Fallback to regular login with generic demo credentials if demo endpoint fails
-      const response = await axios.post(`${API_URL}/v1/auth/login/`, {
+      const response = await axios.post(buildUrl('auth/login/'), {
         email: 'demo@twitterclone.com',
         username: 'demo_user',
+        password: 'Demo@123'
+      });
+      
+      return handleSuccessfulLogin(response);
+    } catch (loginError) {
+      console.error('Standard demo credentials failed, trying with timestamp', loginError);
+      
+      // Fallback to using a timestamp-based credential as a last resort
+      const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 12);
+      const response = await axios.post(buildUrl('auth/login/'), {
+        email: `demo+${timestamp}@twitterclone.com`,
+        username: `demo_user_${timestamp}`,
         password: 'Demo@123'
       });
       

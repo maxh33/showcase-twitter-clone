@@ -101,6 +101,7 @@ export const Input = styled.input`
 export const ButtonContainer = styled.div`
   margin-top: 2rem;
   width: 100%;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
   gap: 10px;

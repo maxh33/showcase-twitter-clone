@@ -360,3 +360,6 @@ SWAGGER_SETTINGS = {
 
 # Disable deprecated Swagger renderers
 SWAGGER_USE_COMPAT_RENDERERS = False
+
+FRONTEND_URL_PREVIEW = os.environ.get('FRONTEND_URL_PREVIEW', 'http://localhost:3000')
+FRONTEND_URL_PRODUCTION = os.environ.get('FRONTEND_URL_PRODUCTION', 'http://localhost:3000')

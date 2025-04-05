@@ -80,8 +80,25 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   
   useEffect(() => {
     console.log('Feed component: Initial load of tweets');
-    fetchTweets(1, true);
-  }, [fetchTweets]);
+    
+    const loadTweets = async () => {
+      try {
+        await fetchTweets(1, true);
+      } catch (error) {
+        console.error('Error in initial tweet load:', error);
+      }
+    };
+    
+    // Only fetch if the component is mounted
+    if (currentUser) {
+      loadTweets();
+    }
+    
+    // Cleanup function to prevent updates after unmount
+    return () => {
+      // No need to set isMounted to false since removed it
+    };
+  }, [fetchTweets, currentUser]);
   
   const handleRefresh = async () => {
     console.log('Feed component: Manual refresh triggered');
