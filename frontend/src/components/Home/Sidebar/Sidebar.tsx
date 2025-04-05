@@ -35,24 +35,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   
   const handleLogout = async () => {
     try {
-      // If there's a parent logout handler, call it first to clean up app state
+      // Call the parent onLogout handler and let it handle all state cleanup
       if (onLogout) {
         onLogout();
       }
       
-      // Then do the silent logout to clear tokens before API call
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('isDemoUser');
-      
-      // Do the API logout in the background, but don't wait for it
-      logout(true).catch(e => console.error('Background logout error:', e));
-      
-      // Remove the navigate call to prevent duplicate navigation
-      // The parent onLogout handler should handle navigation
+      // No need to clear localStorage or call logout() here - the parent onLogout already does this
+      // This prevents multiple state updates that trigger the infinite loop
     } catch (error) {
       console.error('Error during logout:', error);
-      // The parent should handle navigation, so we don't navigate here
     }
   };
   

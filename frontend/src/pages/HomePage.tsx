@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated } from '../services/authService';
+import { isAuthenticated, logout, silentLogout } from '../services/authService';
 import Home from '../components/Home';
 import { RandomUser, fetchRandomUser } from '../services/userGeneratorService';
+import { useAuth } from '../contexts/AuthContext';
 
 const CURRENT_USER_KEY = 'twitter_clone_current_user';
 
@@ -20,6 +21,7 @@ const HomePage: React.FC = () => {
   const [formattedUser, setFormattedUser] = useState<FormattedUser | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { logout: authContextLogout } = useAuth();
   
   useEffect(() => {
     // Check if user is authenticated
@@ -73,8 +75,40 @@ const HomePage: React.FC = () => {
   
   // Function to clear user data on logout
   const handleUserLogout = () => {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    navigate('/login');
+    console.log('Starting logout process...');
+    
+    // 1. Clear all storage related to the user
+    localStorage.clear(); // Clear localStorage
+    sessionStorage.clear(); // Clear sessionStorage
+    
+    // 2. Clear state
+    setAuthenticated(false);
+    setCurrentUser(null);
+    setFormattedUser(undefined);
+    
+    // 3. Quick attempt to call auth context logout function
+    if (typeof authContextLogout === 'function') {
+      try {
+        authContextLogout();
+      } catch (error) {
+        console.error('Auth context logout failed:', error);
+      }
+    }
+    
+    // 4. Try a service logout as backup
+    try {
+      logout();
+    } catch (error) {
+      console.error('Service logout failed:', error);
+    }
+    
+    console.log('Auth data cleared, forcing hard redirect to login page...');
+    
+    // 5. Force page reload directly to the login page
+    window.location.href = '/login';
+    
+    // 6. Return null to prevent any further execution
+    return null;
   };
   
   return (
