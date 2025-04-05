@@ -34,22 +34,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isDemoUser, setIsDemoUser] = useState(false);
 
+  // Initialize auth state
   useEffect(() => {
-    const checkDemoUser = async () => {
+    const initializeAuthState = async () => {
+      setIsLoading(true);
       try {
-        const isDemo = await demoAuthService.isDemoUser();
-        setIsDemoUser(isDemo);
+        // Check if we have a token in localStorage
+        const token = localStorage.getItem('token');
+        if (token) {
+          // Set auth headers with the token
+          authService.setupAuthHeaders();
+          
+          // Check if user is demo user
+          const isDemo = localStorage.getItem('isDemoUser') === 'true';
+          setIsDemoUser(isDemo);
+          
+          // For now, just create a basic user object since we have a token
+          // In a real app, you might want to fetch the user profile here
+          setUser({
+            id: '0', // placeholder ID as string
+            username: 'user', // placeholder
+            email: '', // placeholder
+            is_verified: true, // assume verified since they have a token
+            is_demo_user: isDemo,
+            created_at: new Date().toISOString(),
+            followers_count: 0,
+            following_count: 0,
+            tweets_count: 0
+          });
+        }
       } catch (error) {
-        console.error('Error checking demo user status:', error);
+        console.error('Error initializing auth state:', error);
+        // If there's an error, clear the auth state
+        authService.silentLogout();
+        setUser(null);
         setIsDemoUser(false);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Check local storage first for faster response
-    setIsDemoUser(localStorage.getItem('isDemoUser') === 'true');
-    
-    // Then verify with backend if possible
-    checkDemoUser();
+    initializeAuthState();
   }, []);
 
   const login = async (identifier: string, password: string) => {
@@ -72,6 +97,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('User data from API does not match expected format', response.user);
           setError('Invalid user data received from server');
         }
+      } else {
+        // If no user data in response, create a basic user object
+        const isDemo = authService.isDemoUser();
+        setUser({
+          id: '0', // placeholder ID as string
+          username: 'user',
+          email: identifier.includes('@') ? identifier : '',
+          is_verified: true,
+          is_demo_user: isDemo,
+          created_at: new Date().toISOString(),
+          followers_count: 0,
+          following_count: 0,
+          tweets_count: 0
+        });
+        setIsDemoUser(isDemo);
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -100,6 +140,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Fallback to client-side demo login
         await authService.demoLogin();
+        // Create a basic demo user object
+        setUser({
+          id: '0', // Demo user ID as string
+          username: 'demo_user',
+          email: 'demo@twitterclone.com',
+          is_verified: true,
+          is_demo_user: true,
+          created_at: new Date().toISOString(),
+          followers_count: 0,
+          following_count: 0,
+          tweets_count: 0
+        });
         setIsDemoUser(true);
       }
     } catch (error) {
