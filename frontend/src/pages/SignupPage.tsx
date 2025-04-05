@@ -110,7 +110,7 @@ const SignupPage: React.FC = () => {
           <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
         </S.LogoContainer>
         
-        <S.FormTitle>Join Twitter Clone today</S.FormTitle>
+        <S.FormTitle>Join Max Twitter Clone today</S.FormTitle>
         
         {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
         

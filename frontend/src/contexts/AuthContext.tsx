@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types/user';
 import * as authService from '../services/authService';
 import * as demoAuthService from '../services/demoAuthService';
+import axios from 'axios';
 
 // Make sure auth service is initialized with proper headers
 authService.setupAuthHeaders();
@@ -25,6 +26,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Get API URL for user profile fetching
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('debug-api-url') || 
+           (window.location.hostname === 'localhost' ? 'http://localhost:8000/api' : 'https://maxh33.pythonanywhere.com/api');
+  }
+  return 'https://maxh33.pythonanywhere.com/api';
+};
+
+// Helper function to fetch user profile
+const fetchUserProfile = async (): Promise<User | null> => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    
+    // Set authorization header
+    const apiUrl = getApiUrl();
+    // Try to get user profile using /auth/user/me/ endpoint which is standard in Django REST
+    const response = await axios.get(`${apiUrl}/v1/auth/user/me/`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,23 +77,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Set auth headers with the token
           authService.setupAuthHeaders();
           
-          // Check if user is demo user
-          const isDemo = localStorage.getItem('isDemoUser') === 'true';
-          setIsDemoUser(isDemo);
+          // Fetch the user profile from backend
+          const userProfile = await fetchUserProfile();
           
-          // For now, just create a basic user object since we have a token
-          // In a real app, you might want to fetch the user profile here
-          setUser({
-            id: '0', // placeholder ID as string
-            username: 'user', // placeholder
-            email: '', // placeholder
-            is_verified: true, // assume verified since they have a token
-            is_demo_user: isDemo,
-            created_at: new Date().toISOString(),
-            followers_count: 0,
-            following_count: 0,
-            tweets_count: 0
-          });
+          if (userProfile) {
+            setUser(userProfile);
+            
+            // Check if user is demo user
+            const isDemo = localStorage.getItem('isDemoUser') === 'true' || userProfile.is_demo_user;
+            setIsDemoUser(isDemo);
+          } else {
+            // If profile fetch fails, handle gracefully with a placeholder
+            const isDemo = localStorage.getItem('isDemoUser') === 'true';
+            setIsDemoUser(isDemo);
+            
+            // Create a basic user object as fallback
+            setUser({
+              id: '0', // placeholder ID as string
+              username: 'user', // placeholder
+              email: '', // placeholder
+              is_verified: true, // assume verified since they have a token
+              is_demo_user: isDemo,
+              created_at: new Date().toISOString(),
+              followers_count: 0,
+              following_count: 0,
+              tweets_count: 0
+            });
+          }
         }
       } catch (error) {
         console.error('Error initializing auth state:', error);
@@ -84,7 +126,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const response = await authService.login({ email: identifier, password });
       
-      if (response.user) {
+      // After login, fetch the user profile
+      const userProfile = await fetchUserProfile();
+      
+      if (userProfile) {
+        setUser(userProfile);
+        setIsDemoUser(userProfile.is_demo_user || authService.isDemoUser());
+      } else if (response.user) {
         if (
           typeof response.user === 'object' && 
           'id' in response.user && 
@@ -140,18 +188,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Fallback to client-side demo login
         await authService.demoLogin();
-        // Create a basic demo user object
-        setUser({
-          id: '0', // Demo user ID as string
-          username: 'demo_user',
-          email: 'demo@twitterclone.com',
-          is_verified: true,
-          is_demo_user: true,
-          created_at: new Date().toISOString(),
-          followers_count: 0,
-          following_count: 0,
-          tweets_count: 0
-        });
+        
+        // After login, try to fetch the user profile
+        const userProfile = await fetchUserProfile();
+        
+        if (userProfile) {
+          setUser(userProfile);
+        } else {
+          // Create a basic demo user object as fallback
+          setUser({
+            id: '0', // Demo user ID as string
+            username: 'demo_user',
+            email: 'demo@twitterclone.com',
+            is_verified: true,
+            is_demo_user: true,
+            created_at: new Date().toISOString(),
+            followers_count: 0,
+            following_count: 0,
+            tweets_count: 0
+          });
+        }
         setIsDemoUser(true);
       }
     } catch (error) {

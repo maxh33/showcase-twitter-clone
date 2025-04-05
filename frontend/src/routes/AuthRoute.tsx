@@ -13,7 +13,12 @@ interface AuthRouteProps {
  * @param requireAuth - If true, redirects to login if not authenticated. If false, redirects to home if authenticated.
  */
 const AuthRoute: React.FC<AuthRouteProps> = ({ element, requireAuth = true }) => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  
+  // If still loading auth state, show nothing (or could show a loading spinner)
+  if (isLoading) {
+    return <div>Loading...</div>; // Could be replaced with a proper loading component
+  }
   
   // If we require authentication and user is not logged in, redirect to login
   if (requireAuth && !user) {

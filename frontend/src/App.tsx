@@ -4,7 +4,7 @@ import { GlobalStyles } from './styles/global';
 import { AppThemeProvider } from './providers/ThemeProvider';
 import { setupAuthHeaders } from './services/authService';
 import { AuthProvider } from './contexts/AuthContext';
-import AuthRoute from './components/AuthRoute';
+import AuthRoute from './routes/AuthRoute';
 
 // Pages
 import SignupPage from './pages/SignupPage';

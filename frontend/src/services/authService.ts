@@ -26,7 +26,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Configure axios defaults
-axios.defaults.baseURL = window?.location?.hostname === 'localhost' ? 'http://localhost:8000/api/v1' : API_URL;
+axios.defaults.baseURL = window?.location?.hostname === 'localhost' ? 'http://localhost:8000/api' : API_URL;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 // Track refresh token attempts to prevent infinite loops
@@ -90,6 +90,24 @@ interface AuthTokens {
   refresh: string;
   user?: Record<string, unknown>;
 }
+
+// Helper function to build complete API URLs
+const buildUrl = (endpoint: string): string => {
+  if (endpoint.startsWith('http')) {
+    return endpoint; // Already a full URL
+  }
+  
+  // Remove leading slash from endpoint if present
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+  
+  // Check if the endpoint already includes v1/
+  if (cleanEndpoint.startsWith('v1/')) {
+    return `${API_URL}/${cleanEndpoint}`;
+  }
+  
+  // Otherwise add v1/ prefix
+  return `${API_URL}/v1/${cleanEndpoint}`;
+};
 
 export const register = async (data: RegisterData, retryCount = 0, maxRetries = 3): Promise<RegisterResponse> => {
   try {
@@ -173,7 +191,7 @@ export const login = async (data: LoginData) => {
     const safeData = { ...loginData, password: '********' };
     console.log('Sending login data:', safeData);
     
-    const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
+    const response = await axios.post(buildUrl('auth/login/'), loginData);
     return storeAuthTokens(response.data);
   } catch (error) {
     return handleLoginError(error);
@@ -195,7 +213,7 @@ export const logout = async (skipApiCall = false) => {
     if (refreshToken && !skipApiCall) {
       try {
         // Send refreshToken to be blacklisted
-        await axios.post(`${API_URL}/auth/logout/`, { refresh: refreshToken });
+        await axios.post(buildUrl('auth/logout/'), { refresh: refreshToken });
       } catch (apiError) {
         console.warn('Could not blacklist token on server, but will continue with local logout');
       }
@@ -258,7 +276,7 @@ export const refreshToken = async () => {
       throw new Error('No refresh token available');
     }
     
-    const response = await axios.post(`${API_URL}/auth/token/refresh/`, { refresh: refreshTokenValue });
+    const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
@@ -277,7 +295,7 @@ export const refreshToken = async () => {
 
 export const verifyEmail = async (data: VerifyEmailData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
+    const response = await axios.post(buildUrl('auth/verify-email/'), data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -317,7 +335,7 @@ const handleResetPasswordError = (error: unknown): never => {
 
 export const resetPassword = async (data: ResetPasswordData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/reset-password/`, data);
+    const response = await axios.post(buildUrl('auth/reset-password/'), data);
     return response.data;
   } catch (error) {
     return handleResetPasswordError(error);
@@ -353,7 +371,7 @@ const handleVerificationEmailError = (error: unknown): never => {
 
 export const resendVerification = async (data: ResendVerificationData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/resend-verification/`, data);
+    const response = await axios.post(buildUrl('auth/resend-verification/'), data);
     return response.data;
   } catch (error) {
     return handleVerificationEmailError(error);
@@ -437,7 +455,7 @@ const handleConfirmResetPasswordError = (error: unknown): never => {
 
 export const confirmResetPassword = async (data: ConfirmResetPasswordData) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
+    const response = await axios.post(buildUrl('auth/password-reset/confirm/'), data);
     return response.data;
   } catch (error) {
     return handleConfirmResetPasswordError(error);
@@ -516,13 +534,13 @@ export const demoLogin = async () => {
     
     // Try with demo-login endpoint which creates a unique demo account
     try {
-      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
+      const response = await axios.post(buildUrl('auth/demo-login/'), {});
       return handleSuccessfulLogin(response);
     } catch (demoEndpointError) {
       console.log('Demo endpoint failed, trying fallback method');
       
       // Fallback to regular login with generic demo credentials if demo endpoint fails
-      const response = await axios.post(`${API_URL}/v1/auth/login/`, {
+      const response = await axios.post(buildUrl('auth/login/'), {
         email: 'demo@twitterclone.com',
         username: 'demo_user',
         password: 'Demo@123'

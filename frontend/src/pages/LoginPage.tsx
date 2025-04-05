@@ -279,7 +279,7 @@ const LoginPage: React.FC = () => {
           </S.ButtonContainer>
         </S.Form>
 
-        <S.ButtonContainer style={{ marginTop: '16px', maxWidth: '400px' }}>
+        <S.ButtonContainer style={{ marginTop: '16px' }}>
           {isUnverified && (
             <Button
               type="button"
