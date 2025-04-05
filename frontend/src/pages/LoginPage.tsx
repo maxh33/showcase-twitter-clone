@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
-import { login, demoLogin, resendVerification } from '../services/authService';
+import { login, resendVerification } from '../services/authService';
+import { useAuth } from '../contexts/AuthContext';
 import {
   AuthContainer,
   BannerContainer,
@@ -48,6 +49,7 @@ const LoginPage: React.FC = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
+  const { demoLogin } = useAuth(); // Get demoLogin from auth context
   
   // Check for success message from registration or other sources
   useEffect(() => {

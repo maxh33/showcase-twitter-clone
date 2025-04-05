@@ -3,6 +3,9 @@ import { User } from '../types/user';
 import * as authService from '../services/authService';
 import * as demoAuthService from '../services/demoAuthService';
 
+// Make sure auth service is initialized with proper headers
+authService.setupAuthHeaders();
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -13,6 +16,7 @@ interface AuthContextType {
   isDemoUser: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  demoLogin: () => Promise<void>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setUnverifiedEmail: React.Dispatch<React.SetStateAction<string | null>>;
@@ -41,6 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // Check local storage first for faster response
+    setIsDemoUser(localStorage.getItem('isDemoUser') === 'true');
+    
+    // Then verify with backend if possible
     checkDemoUser();
   }, []);
 
@@ -59,8 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'email' in response.user
         ) {
           setUser(response.user as unknown as User);
-          const isDemo = await demoAuthService.isDemoUser();
-          setIsDemoUser(isDemo);
+          setIsDemoUser(authService.isDemoUser());
         } else {
           console.error('User data from API does not match expected format', response.user);
           setError('Invalid user data received from server');
@@ -78,14 +85,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleDemoLogin = async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      
+      // Try the server-side demo login first
+      try {
+        const demoUser = await demoAuthService.demoLogin();
+        setUser(demoUser);
+        setIsDemoUser(true);
+      } catch (serverError) {
+        console.error('Server-side demo login failed, using client-side fallback', serverError);
+        
+        // Fallback to client-side demo login
+        await authService.demoLogin();
+        setIsDemoUser(true);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to create demo login');
+      }
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setIsLoading(true);
-      if (isDemoUser) {
-        await authService.logout();
-      } else {
-        await authService.logout();
-      }
+      await authService.logout();
       setUser(null);
       setIsDemoUser(false);
     } catch (error) {
@@ -108,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isDemoUser,
     login,
     logout,
+    demoLogin: handleDemoLogin,
     setError,
     setSuccessMessage,
     setUnverifiedEmail,

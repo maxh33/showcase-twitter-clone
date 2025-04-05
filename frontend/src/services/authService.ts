@@ -9,8 +9,13 @@ const isDeployed = typeof window !== 'undefined' &&
                   window.location.hostname !== 'localhost' && 
                   window.location.hostname !== '127.0.0.1';
 
-// If deployed and still using localhost, force to PythonAnywhere
-const API_URL = isDeployed && ORIGINAL_API_URL.includes('localhost') 
+// Check if the API URL is a development URL (localhost or Docker backend)
+const isDevApiUrl = ORIGINAL_API_URL.includes('localhost') || 
+                   ORIGINAL_API_URL.includes('backend:') ||
+                   ORIGINAL_API_URL.includes('127.0.0.1');
+
+// If deployed and using a development API URL, force to PythonAnywhere
+const API_URL = isDeployed && isDevApiUrl 
   ? 'https://maxh33.pythonanywhere.com/api' 
   : ORIGINAL_API_URL;
 

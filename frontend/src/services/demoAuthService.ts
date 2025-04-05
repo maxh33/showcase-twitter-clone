@@ -1,10 +1,20 @@
 import axios from 'axios';
 import { User } from '../types/user';
 
+// Get the API URL from localStorage for consistency with authService
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('debug-api-url') || 
+           (window.location.hostname === 'localhost' ? 'http://localhost:8000/api/v1' : 'https://maxh33.pythonanywhere.com/api');
+  }
+  return 'https://maxh33.pythonanywhere.com/api';
+};
+
 export const demoLogin = async (): Promise<User> => {
   try {
     // Call the backend demo login endpoint
-    const response = await axios.post('/auth/demo-login/');
+    const apiUrl = getApiUrl();
+    const response = await axios.post(`${apiUrl}/v1/auth/demo-login/`);
     
     // Set auth headers with the received token
     if (response.data.access) {
@@ -20,7 +30,8 @@ export const demoLogin = async (): Promise<User> => {
 
 export const isDemoUser = async (): Promise<boolean> => {
   try {
-    const response = await axios.get('/auth/check-demo/');
+    const apiUrl = getApiUrl();
+    const response = await axios.get(`${apiUrl}/v1/auth/check-demo/`);
     return response.data.is_demo_user;
   } catch (error) {
     return false;
