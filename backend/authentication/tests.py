@@ -392,6 +392,10 @@ class TestDemoLogin:
         # Different sessions should get different users
         assert user1_email != user2_email
         
+        # NOTE: This test confirms unique demo accounts are created
+        # for different sessions, which is the intended behavior in utils.setup_demo_user
+        # when a unique session_id is provided each time
+    
     def test_demo_login_with_rate_limit(self, api_client):
         """Test that demo login respects rate limiting"""
         url = reverse('auth:demo_login')

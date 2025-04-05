@@ -29,8 +29,7 @@ def auth_api_root(request):
             "verify_email": "verify-email/",
             "resend_verification": "resend-verification/",
             "password_reset": "password-reset/",
-            "password_reset_confirm": "password-reset/confirm/",
-            "demo_login": "demo-login/"
+            "password_reset_confirm": "password-reset/confirm/"
         }
     })
 
@@ -51,7 +50,4 @@ urlpatterns = [
     # Password reset
     path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    
-    # Demo login
-    path('demo-login/', DemoUserLoginView.as_view(), name='demo_login'),
 ] 
