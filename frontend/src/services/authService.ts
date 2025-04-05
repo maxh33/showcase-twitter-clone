@@ -355,6 +355,63 @@ export const resendVerification = async (data: ResendVerificationData) => {
   }
 };
 
+// Helper function to handle token refresh in interceptor
+const handleTokenRefresh = async (originalRequest: {
+  _retry: boolean;
+  headers: Record<string, string>;
+  [key: string]: unknown;
+}) => {
+  originalRequest._retry = true;
+  
+  try {
+    // Try to refresh the token
+    const refreshResponse = await refreshToken();
+    
+    // Update the authorization header
+    originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
+    
+    // Retry the original request
+    return axios(originalRequest);
+  } catch (refreshError) {
+    // If refresh token fails, redirect to login (but don't call API logout)
+    silentLogout();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?session=expired';
+    }
+    return Promise.reject(refreshError);
+  }
+};
+
+// Helper function to check if request needs token refresh
+const shouldAttemptTokenRefresh = (error: {
+  response?: { status?: number };
+  config: { _retry?: boolean; url?: string };
+}) => {
+  const originalRequest = error.config;
+  return error.response?.status === 401 && 
+         !originalRequest._retry && 
+         !originalRequest.url?.includes('login') &&
+         !originalRequest.url?.includes('token/refresh') &&
+         !originalRequest.url?.includes('logout');
+};
+
+// Helper function to handle password reset confirmation errors for specific fields
+const handleSpecificPasswordResetError = (errorData: Record<string, unknown>): never => {
+  // Check for specific error fields in order of priority
+  const errorFields = ['password', 'password2', 'token', 'uidb64', 'error'];
+  
+  for (const field of errorFields) {
+    if (errorData[field]) {
+      const fieldError = errorData[field];
+      throw new Error(Array.isArray(fieldError) ? fieldError[0] : String(fieldError));
+    }
+  }
+  
+  // If no specific field error, get the first error message
+  const firstError = Object.values(errorData)[0];
+  throw new Error(Array.isArray(firstError) ? firstError[0] : String(firstError));
+};
+
 // Helper function to handle password reset confirmation errors
 const handleConfirmResetPasswordError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
@@ -362,25 +419,7 @@ const handleConfirmResetPasswordError = (error: unknown): never => {
     if (axiosError.response?.data) {
       const errorData = axiosError.response.data;
       if (typeof errorData === 'object') {
-        // Check for specific error fields
-        if (errorData.password) {
-          throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
-        }
-        if (errorData.password2) {
-          throw new Error(Array.isArray(errorData.password2) ? errorData.password2[0] : errorData.password2);
-        }
-        if (errorData.token) {
-          throw new Error(Array.isArray(errorData.token) ? errorData.token[0] : errorData.token);
-        }
-        if (errorData.uidb64) {
-          throw new Error(Array.isArray(errorData.uidb64) ? errorData.uidb64[0] : errorData.uidb64);
-        }
-        if (errorData.error) {
-          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
-        }
-        // If no specific field error, get the first error message
-        const firstError = Object.values(errorData)[0];
-        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+        return handleSpecificPasswordResetError(errorData as Record<string, unknown>);
       }
     }
     throw new Error('Password reset confirmation failed. Please try again.');
@@ -417,39 +456,6 @@ if (typeof window !== 'undefined') {
   refreshAttempts = 0;
   setupAuthHeaders();
 }
-
-// Helper function to handle token refresh in interceptor
-const handleTokenRefresh = async (originalRequest: any) => {
-  originalRequest._retry = true;
-  
-  try {
-    // Try to refresh the token
-    const refreshResponse = await refreshToken();
-    
-    // Update the authorization header
-    originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
-    
-    // Retry the original request
-    return axios(originalRequest);
-  } catch (refreshError) {
-    // If refresh token fails, redirect to login (but don't call API logout)
-    silentLogout();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login?session=expired';
-    }
-    return Promise.reject(refreshError);
-  }
-};
-
-// Helper function to check if request needs token refresh
-const shouldAttemptTokenRefresh = (error: any) => {
-  const originalRequest = error.config;
-  return error.response?.status === 401 && 
-         !originalRequest._retry && 
-         !originalRequest.url?.includes('login') &&
-         !originalRequest.url?.includes('token/refresh') &&
-         !originalRequest.url?.includes('logout');
-};
 
 // Setup axios interceptor to handle token expiration
 axios.interceptors.response.use(
