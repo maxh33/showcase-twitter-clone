@@ -41,7 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
       
       // Then do the silent logout to clear tokens before API call
-      // This is important for demo users to prevent infinite loop
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('isDemoUser');
@@ -49,11 +48,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       // Do the API logout in the background, but don't wait for it
       logout(true).catch(e => console.error('Background logout error:', e));
       
-      // Navigate away immediately
-      navigate('/login');
+      // Remove the navigate call to prevent duplicate navigation
+      // The parent onLogout handler should handle navigation
     } catch (error) {
       console.error('Error during logout:', error);
-      navigate('/login'); // Still navigate away even if there's an error
+      // The parent should handle navigation, so we don't navigate here
     }
   };
   

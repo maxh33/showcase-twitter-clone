@@ -235,12 +235,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Silent mode is used when we just want to clear state without waiting for API
       if (!silentMode) {
         await authService.logout();
+      } else {
+        // If in silent mode, just clear local storage
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('isDemoUser');
       }
       
-      // Clear all auth-related storage
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('isDemoUser');
+      // Don't repeat the localStorage removal if we're not in silent mode
+      // as authService.logout() already does this
       
       // Reset state again just to be safe
       setUser(null);
