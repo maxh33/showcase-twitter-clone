@@ -80,7 +80,6 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   
   useEffect(() => {
     console.log('Feed component: Initial load of tweets');
-    let isMounted = true;
     
     const loadTweets = async () => {
       try {
@@ -97,7 +96,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
     
     // Cleanup function to prevent updates after unmount
     return () => {
-      isMounted = false;
+      // No need to set isMounted to false since removed it
     };
   }, [fetchTweets, currentUser]);
   

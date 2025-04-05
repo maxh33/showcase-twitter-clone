@@ -33,17 +33,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     window.open('https://github.com/maxh33', '_blank');
   };
   
-  const handleLogout = async () => {
-    try {
-      // Call the parent onLogout handler and let it handle all state cleanup
-      if (onLogout) {
-        onLogout();
+  const handleLogout = (event: React.MouseEvent) => {
+    event.preventDefault();
+    console.log('Sidebar: handleLogout called');
+    
+    // Call the provided onLogout handler
+    if (typeof onLogout === 'function') {
+      console.log('Sidebar: Calling provided onLogout handler');
+      onLogout();
+    } else {
+      console.warn('Sidebar: No onLogout handler provided');
+      // Fallback direct logout
+      try {
+        console.log('Sidebar: Attempting fallback direct logout');
+        logout();
+        // Force navigation to login page
+        window.location.href = '/login';
+      } catch (error) {
+        console.error('Sidebar: Fallback logout failed:', error);
       }
-      
-      // No need to clear localStorage or call logout() here - the parent onLogout already does this
-      // This prevents multiple state updates that trigger the infinite loop
-    } catch (error) {
-      console.error('Error during logout:', error);
     }
   };
   

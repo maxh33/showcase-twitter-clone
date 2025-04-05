@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated, logout, silentLogout } from '../services/authService';
+import { isAuthenticated, logout } from '../services/authService';
 import Home from '../components/Home';
 import { RandomUser, fetchRandomUser } from '../services/userGeneratorService';
 import { useAuth } from '../contexts/AuthContext';
@@ -89,7 +89,9 @@ const HomePage: React.FC = () => {
     // 3. Quick attempt to call auth context logout function
     if (typeof authContextLogout === 'function') {
       try {
+        console.log('Calling auth context logout...');
         authContextLogout();
+        console.log('Auth context logout complete');
       } catch (error) {
         console.error('Auth context logout failed:', error);
       }
@@ -97,15 +99,21 @@ const HomePage: React.FC = () => {
     
     // 4. Try a service logout as backup
     try {
+      console.log('Calling service logout...');
       logout();
+      console.log('Service logout complete');
     } catch (error) {
       console.error('Service logout failed:', error);
+      // Even if service logout fails, we should still redirect
     }
     
     console.log('Auth data cleared, forcing hard redirect to login page...');
     
     // 5. Force page reload directly to the login page
-    window.location.href = '/login';
+    setTimeout(() => {
+      console.log('Executing redirect to login page...');
+      window.location.href = '/login';
+    }, 100); // Short timeout to ensure state updates complete
     
     // 6. Return null to prevent any further execution
     return null;
