@@ -86,9 +86,8 @@ export const fetchRandomImages = async (query = '', count = 10): Promise<Unsplas
 const generatePlaceholderImages = (count: number): UnsplashImage[] => {
   return Array.from({ length: count }, (_, index) => ({
     id: `placeholder-${index}`,
-    description: `Placeholder Image ${index + 1}`,
-    alt_description: `Placeholder Image ${index + 1}`,
-    url: `/logo192.png`,
+    url: `https://placehold.co/800x600/random/text=Image+${index + 1}`,
+    alt_description: `Placeholder image ${index + 1}`,
     user: {
       name: 'Placeholder User',
       username: 'placeholder'

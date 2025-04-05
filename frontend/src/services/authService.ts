@@ -114,7 +114,7 @@ export const login = async (data: LoginData) => {
     const safeData = { ...loginData, password: '********' };
     console.log('Sending login data:', safeData);
     
-    const response = await axios.post(`${API_URL}/auth/login/`, loginData);
+    const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
     if (response.data.access) {
       localStorage.setItem('token', response.data.access);
       localStorage.setItem('refreshToken', response.data.refresh);
@@ -157,6 +157,8 @@ export const login = async (data: LoginData) => {
 export const silentLogout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('isDemoUser');
+  localStorage.removeItem('demoCredentials');
   delete axios.defaults.headers.common['Authorization'];
   return { success: true };
 };
@@ -353,27 +355,68 @@ axios.interceptors.response.use(
   }
 );
 
+// Add demo login function
 export const demoLogin = async () => {
   try {
-    const response = await axios.post(`${API_URL}/auth/demo-login/`);
-    if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      refreshAttempts = 0;
+    console.log('Attempting demo login...'); // Safe debug log (no credentials)
+    
+    // Try with demo-login endpoint which creates a unique demo account
+    try {
+      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
+      handleSuccessfulLogin(response);
+      
+      // Store the unique demo credentials if provided
+      if (response.data.demo_credentials) {
+        localStorage.setItem('demoCredentials', JSON.stringify(response.data.demo_credentials));
+      }
+      
+      return response.data;
+    } catch (demoEndpointError) {
+      console.log('Demo endpoint failed, trying fallback method');
+      
+      // Fallback to regular login with generic demo credentials if demo endpoint fails
+      // This is only a last resort fallback to ensure demo mode works even if the special endpoint fails
+      const response = await axios.post(`${API_URL}/v1/auth/login/`, {
+        email: 'demo@twitterclone.com',
+        username: 'demo_user',
+        password: 'Demo@123'
+      });
+      
+      handleSuccessfulLogin(response);
+      return response.data;
     }
-    return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
       if (axiosError.response?.data) {
         const errorData = axiosError.response.data;
-        if (typeof errorData === 'object' && errorData.error) {
-          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+        if (typeof errorData === 'object') {
+          const firstError = Object.values(errorData)[0];
+          throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
         }
       }
       throw new Error('Demo login failed. Please try again later.');
+    } else if (error instanceof Error) {
+      throw new Error(error.message || 'An error occurred during demo login.');
+    } else {
+      throw new Error('An unexpected error occurred. Please try again.');
     }
-    throw new Error('An unexpected error occurred during demo login.');
   }
+};
+
+// Helper function to handle successful login
+const handleSuccessfulLogin = (response: any) => {
+  if (response?.data?.access) {
+    localStorage.setItem('token', response.data.access);
+    localStorage.setItem('refreshToken', response.data.refresh);
+    localStorage.setItem('isDemoUser', 'true');
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+    // Reset refresh attempts counter on successful login
+    refreshAttempts = 0;
+  }
+};
+
+// Add function to check if current user is demo user
+export const isDemoUser = () => {
+  return localStorage.getItem('isDemoUser') === 'true';
 };

@@ -2,7 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
 import { login, demoLogin, resendVerification } from '../services/authService';
-import * as S from '../components/Auth/styles';
+import {
+  AuthContainer,
+  BannerContainer,
+  BannerImage,
+  FormContainer,
+  LogoContainer,
+  Logo,
+  FormTitle,
+  Form,
+  FormGroup,
+  Label,
+  Input,
+  ButtonContainer,
+  LinkContainer,
+  LinkText,
+  ErrorMessage,
+  SuccessMessage
+} from '../components/Auth/styles';
 import loginBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
 
@@ -158,8 +175,7 @@ const LoginPage: React.FC = () => {
     setErrors({});
     
     try {
-      const response = await demoLogin();
-      console.log('Demo login successful:', response); // Debug log
+      await demoLogin();
       navigate('/'); // Redirect to home page after successful demo login
     } catch (error: unknown) {
       console.error('Demo login error:', error);
@@ -199,25 +215,25 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <S.AuthContainer>
-      <S.BannerContainer>
-        <S.BannerImage src={loginBanner} alt="Login banner" />
-      </S.BannerContainer>
+    <AuthContainer>
+      <BannerContainer>
+        <BannerImage src={loginBanner} alt="Login banner" />
+      </BannerContainer>
       
-      <S.FormContainer>
-        <S.LogoContainer>
-          <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </S.LogoContainer>
+      <FormContainer>
+        <LogoContainer>
+          <Logo src={blackLogo} alt="Twitter Clone Logo" />
+        </LogoContainer>
         
-        <S.FormTitle>Log in to Twitter Clone</S.FormTitle>
+        <FormTitle>Log in to Twitter Clone</FormTitle>
         
-        {successMessage && <S.SuccessMessage>{successMessage}</S.SuccessMessage>}
-        {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
+        {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
+        {errors.general && <ErrorMessage>{errors.general}</ErrorMessage>}
         
-        <S.Form onSubmit={handleSubmit}>
-          <S.FormGroup>
-            <S.Label htmlFor="identifier">Username or Email</S.Label>
-            <S.Input
+        <Form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label htmlFor="identifier">Username or Email</Label>
+            <Input
               type="text"
               id="identifier"
               name="identifier"
@@ -225,12 +241,12 @@ const LoginPage: React.FC = () => {
               onChange={handleChange}
               placeholder="Enter your username or email"
             />
-            {errors.identifier && <S.ErrorMessage>{errors.identifier}</S.ErrorMessage>}
-          </S.FormGroup>
+            {errors.identifier && <ErrorMessage>{errors.identifier}</ErrorMessage>}
+          </FormGroup>
           
-          <S.FormGroup>
-            <S.Label htmlFor="password">Password</S.Label>
-            <S.Input
+          <FormGroup>
+            <Label htmlFor="password">Password</Label>
+            <Input
               type="password"
               id="password"
               name="password"
@@ -238,10 +254,10 @@ const LoginPage: React.FC = () => {
               onChange={handleChange}
               placeholder="Enter your password"
             />
-            {errors.password && <S.ErrorMessage>{errors.password}</S.ErrorMessage>}
-          </S.FormGroup>
+            {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
+          </FormGroup>
           
-          <S.ButtonContainer>
+          <ButtonContainer>
             <Button
               type="submit"
               variant="primary"
@@ -250,46 +266,47 @@ const LoginPage: React.FC = () => {
             >
               {isLoading ? 'Logging in...' : 'Log in'}
             </Button>
+          </ButtonContainer>
+        </Form>
 
-            {isUnverified && (
-              <Button
-                type="button"
-                variant="secondary"
-                fullWidth
-                onClick={handleResendVerification}
-                disabled={isResendingVerification || !unverifiedEmail}
-                style={{ marginTop: '10px' }}
-              >
-                {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
-              </Button>
-            )}
-
+        <ButtonContainer style={{ marginTop: '16px' }}>
+          {isUnverified && (
             <Button
               type="button"
               variant="secondary"
               fullWidth
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-              style={{ marginTop: '10px' }}
+              onClick={handleResendVerification}
+              disabled={isResendingVerification || !unverifiedEmail}
+              style={{ marginBottom: '10px' }}
             >
-              Try Demo Account
+              {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
             </Button>
-          </S.ButtonContainer>
-        </S.Form>
+          )}
+
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            onClick={handleDemoLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Try Demo Account'}
+          </Button>
+        </ButtonContainer>
         
-        <S.LinkContainer>
-          <S.LinkText>
+        <LinkContainer>
+          <LinkText>
             <Link to="/reset-password">Forgot password?</Link>
-          </S.LinkText>
-        </S.LinkContainer>
+          </LinkText>
+        </LinkContainer>
         
-        <S.LinkContainer>
-          <S.LinkText>
+        <LinkContainer>
+          <LinkText>
             Don't have an account? <Link to="/signup">Sign up</Link>
-          </S.LinkText>
-        </S.LinkContainer>
-      </S.FormContainer>
-    </S.AuthContainer>
+          </LinkText>
+        </LinkContainer>
+      </FormContainer>
+    </AuthContainer>
   );
 };
 

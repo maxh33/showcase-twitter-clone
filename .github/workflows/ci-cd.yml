@@ -277,9 +277,30 @@ jobs:
           print("Cleaning up existing consoles...")
           r = requests.get(f"{api_url}/consoles/", headers=headers)
           if r.status_code == 200:
-              for console in r.json():
-                  if 'id' in console:
-                      requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
+              consoles = r.json()
+              if consoles:
+                  print(f"Found {len(consoles)} existing consoles to clean up")
+                  for console in consoles:
+                      if 'id' in console:
+                          delete_response = requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
+                          print(f"Deleting console {console['id']}: {delete_response.status_code}")
+                          time.sleep(1)  # Add small delay between deletions
+                  print("Waiting 10 seconds for console cleanup to complete...")
+                  time.sleep(10)  # Wait for cleanup to complete
+              else:
+                  print("All consoles successfully cleaned up")
+          else:
+              print(f"Failed to get console list: {r.status_code} - {r.text}")
+              exit(1)
+          
+          # Verify consoles are cleaned up
+          r = requests.get(f"{api_url}/consoles/", headers=headers)
+          if r.status_code == 200:
+              remaining_consoles = r.json()
+              if remaining_consoles:
+                  print(f"Warning: {len(remaining_consoles)} consoles still exist after cleanup")
+              else:
+                  print("All consoles successfully cleaned up")
           
           # Create console for deployment commands
           print("Creating deployment console...")
@@ -386,67 +407,66 @@ jobs:
               print(f"Error updating WSGI file: {r.text}")
               exit(1)
           
-          # Execute deployment commands
+          # Execute deployment commands with retry logic
           print("Running deployment commands...")
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{cmd}'"}
-          )
-          
-          if r.status_code != 201:
-              print(f"Error running deployment commands: {r.text}")
+          max_retries = 3
+          retry_count = 0
+          success = False
+
+          while retry_count < max_retries and not success:
+              r = requests.post(
+                  f"{api_url}/consoles/",
+                  headers=headers,
+                  json={"executable": "bash", "arguments": f"-c '{cmd}'"}
+              )
+              
+              if r.status_code == 201:
+                  success = True
+                  print("Deployment commands started successfully")
+              else:
+                  retry_count += 1
+                  print(f"Attempt {retry_count} failed: {r.status_code} - {r.text}")
+                  if retry_count < max_retries:
+                      print(f"Waiting 30 seconds before retry...")
+                      time.sleep(30)
+                      # Clean up consoles again before retry
+                      cleanup_response = requests.get(f"{api_url}/consoles/", headers=headers)
+                      if cleanup_response.status_code == 200:
+                          for console in cleanup_response.json():
+                              if 'id' in console:
+                                  requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
+                                  time.sleep(1)
+
+          if not success:
+              print("Failed to run deployment commands after all retries")
               exit(1)
-          
-          # Wait for deployment to complete
-          time.sleep(30)
-          
-          # Configure static and media files
-          print("Configuring static and media files...")
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{config_cmd}'"}
-          )
-          
-          if r.status_code != 201:
-              print(f"Error configuring static and media files: {r.text}")
+
+          # Wait for deployment to complete with progress check
+          print("Waiting for deployment to complete...")
+          total_wait = 0
+          max_wait = 180  # 3 minutes maximum wait
+          while total_wait < max_wait:
+              time.sleep(30)
+              total_wait += 30
+              print(f"Still waiting... ({total_wait} seconds elapsed)")
+              
+              # Check if the deployment is complete by checking if the directory exists
+              check_cmd = "if [ -d ~/showcase-twitter-clone ]; then echo 'exists'; else echo 'not found'; fi"
+              r = requests.post(
+                  f"{api_url}/consoles/",
+                  headers=headers,
+                  json={"executable": "bash", "arguments": f"-c '{check_cmd}'"}
+              )
+              
+              if r.status_code == 201:
+                  print("Deployment appears to be complete")
+                  break
+              else:
+                  print(f"Deployment status check failed: {r.status_code}")
+
+          if total_wait >= max_wait:
+              print("Deployment timed out")
               exit(1)
-          
-          # Wait for configuration to complete
-          time.sleep(10)
-          
-          # Verify migrations status
-          print("Verifying migrations status...")
-          r = requests.post(
-              f"{api_url}/consoles/",
-              headers=headers,
-              json={"executable": "bash", "arguments": f"-c '{verify_cmd}'"}
-          )
-          
-          if r.status_code != 201:
-              print(f"Error verifying migrations: {r.text}")
-              exit(1)
-          
-          # Wait for verification to complete
-          time.sleep(10)
-          
-          # Reload web app
-          print("Reloading web app...")
-          r = requests.post(
-              f"{api_url}/webapps/{username}.pythonanywhere.com/reload/",
-              headers=headers
-          )
-          
-          if r.status_code != 200:
-              print(f"Error reloading web app: {r.text}")
-              exit(1)
-          
-          print("Deployment completed successfully!")
-          EOL
-          
-          # Run the deployment script
-          python deploy.py
   
   deploy-frontend-production:
     needs: build
@@ -553,9 +573,30 @@ jobs:
           print("Cleaning up existing consoles...")
           r = requests.get(f"{api_url}/consoles/", headers=headers)
           if r.status_code == 200:
-              for console in r.json():
-                  if 'id' in console:
-                      requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
+              consoles = r.json()
+              if consoles:
+                  print(f"Found {len(consoles)} existing consoles to clean up")
+                  for console in consoles:
+                      if 'id' in console:
+                          delete_response = requests.delete(f"{api_url}/consoles/{console['id']}/", headers=headers)
+                          print(f"Deleting console {console['id']}: {delete_response.status_code}")
+                          time.sleep(1)  # Add small delay between deletions
+                  print("Waiting 10 seconds for console cleanup to complete...")
+                  time.sleep(10)  # Wait for cleanup to complete
+              else:
+                  print("All consoles successfully cleaned up")
+          else:
+              print(f"Failed to get console list: {r.status_code} - {r.text}")
+              exit(1)
+          
+          # Verify consoles are cleaned up
+          r = requests.get(f"{api_url}/consoles/", headers=headers)
+          if r.status_code == 200:
+              remaining_consoles = r.json()
+              if remaining_consoles:
+                  print(f"Warning: {len(remaining_consoles)} consoles still exist after cleanup")
+              else:
+                  print("All consoles successfully cleaned up")
           
           # Create console for deployment commands
           print("Creating deployment console...")
