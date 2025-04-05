@@ -101,13 +101,61 @@ export const register = async (data: RegisterData, retryCount = 0, maxRetries = 
   }
 };
 
-export const login = async (data: LoginData) => {
-  // Format the data to match backend expectations
-  const loginData = {
+// Helper function to format login data
+const formatLoginData = (data: LoginData) => {
+  return {
     email: data.email || data.username, // Use email if provided, otherwise use username
     username: data.email || data.username, // Include username field with same value for compatibility
     password: data.password
   };
+};
+
+// Helper function to handle login error responses
+const handleLoginError = (error: unknown): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    // The server responded with a status code outside the 2xx range
+    if (axiosError.response?.data) {
+      const errorData = axiosError.response.data;
+      if (typeof errorData === 'object') {
+        // Check for specific error fields
+        if (errorData.email) {
+          throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+        }
+        if (errorData.password) {
+          throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
+        }
+        if (errorData.error) {
+          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+        }
+        // If no specific field error, get the first error message
+        const firstError = Object.values(errorData)[0];
+        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+      }
+    }
+    throw new Error('Login failed. Please check your credentials and try again.');
+  } else if (error instanceof Error) {
+    throw new Error(error.message || 'An error occurred during login.');
+  } else {
+    throw new Error('An unexpected error occurred. Please try again.');
+  }
+};
+
+// Helper function to store authentication tokens
+const storeAuthTokens = (data: any) => {
+  if (data.access) {
+    localStorage.setItem('token', data.access);
+    localStorage.setItem('refreshToken', data.refresh);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access}`;
+    // Reset refresh attempts counter on successful login
+    refreshAttempts = 0;
+  }
+  return data;
+};
+
+export const login = async (data: LoginData) => {
+  // Format the data to match backend expectations
+  const loginData = formatLoginData(data);
 
   try {
     // Debug log with masked password
@@ -115,42 +163,9 @@ export const login = async (data: LoginData) => {
     console.log('Sending login data:', safeData);
     
     const response = await axios.post(`${API_URL}/v1/auth/login/`, loginData);
-    if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
-      localStorage.setItem('refreshToken', response.data.refresh);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      // Reset refresh attempts counter on successful login
-      refreshAttempts = 0;
-    }
-    return response.data;
+    return storeAuthTokens(response.data);
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<ApiErrorResponse>;
-      // The server responded with a status code outside the 2xx range
-      if (axiosError.response?.data) {
-        const errorData = axiosError.response.data;
-        if (typeof errorData === 'object') {
-          // Check for specific error fields
-          if (errorData.email) {
-            throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
-          }
-          if (errorData.password) {
-            throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
-          }
-          if (errorData.error) {
-            throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
-          }
-          // If no specific field error, get the first error message
-          const firstError = Object.values(errorData)[0];
-          throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
-        }
-      }
-      throw new Error('Login failed. Please check your credentials and try again.');
-    } else if (error instanceof Error) {
-      throw new Error(error.message || 'An error occurred during login.');
-    } else {
-      throw new Error('An unexpected error occurred. Please try again.');
-    }
+    return handleLoginError(error);
   }
 };
 
@@ -250,8 +265,43 @@ export const refreshToken = async () => {
 };
 
 export const verifyEmail = async (data: VerifyEmailData) => {
-  const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
-  return response.data;
+  try {
+    const response = await axios.post(`${API_URL}/auth/verify-email/`, data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.error || 'Email verification failed';
+      throw new Error(errorMessage);
+    }
+    throw error;
+  }
+};
+
+// Helper function to handle reset password error responses
+const handleResetPasswordError = (error: unknown): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    if (axiosError.response?.data) {
+      const errorData = axiosError.response.data;
+      if (typeof errorData === 'object') {
+        // Check for specific error fields
+        if (errorData.email) {
+          throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+        }
+        if (errorData.error) {
+          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+        }
+        // If no specific field error, get the first error message
+        const firstError = Object.values(errorData)[0];
+        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+      }
+    }
+    throw new Error('Password reset request failed. Please try again.');
+  } else if (error instanceof Error) {
+    throw new Error(error.message || 'An error occurred while requesting password reset.');
+  } else {
+    throw new Error('An unexpected error occurred. Please try again.');
+  }
 };
 
 export const resetPassword = async (data: ResetPasswordData) => {
@@ -259,7 +309,34 @@ export const resetPassword = async (data: ResetPasswordData) => {
     const response = await axios.post(`${API_URL}/auth/reset-password/`, data);
     return response.data;
   } catch (error) {
-    throw error;
+    return handleResetPasswordError(error);
+  }
+};
+
+// Helper function to handle verification email error responses
+const handleVerificationEmailError = (error: unknown): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    if (axiosError.response?.data) {
+      const errorData = axiosError.response.data;
+      if (typeof errorData === 'object') {
+        // Check for specific error fields
+        if (errorData.email) {
+          throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
+        }
+        if (errorData.error) {
+          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+        }
+        // If no specific field error, get the first error message
+        const firstError = Object.values(errorData)[0];
+        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+      }
+    }
+    throw new Error('Failed to resend verification email. Please try again.');
+  } else if (error instanceof Error) {
+    throw new Error(error.message || 'An error occurred while resending verification email.');
+  } else {
+    throw new Error('An unexpected error occurred. Please try again.');
   }
 };
 
@@ -268,35 +345,53 @@ export const resendVerification = async (data: ResendVerificationData) => {
     const response = await axios.post(`${API_URL}/auth/resend-verification/`, data);
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<ApiErrorResponse>;
-      if (axiosError.response?.data) {
-        const errorData = axiosError.response.data;
-        if (typeof errorData === 'object') {
-          // Check for specific error fields
-          if (errorData.email) {
-            throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
-          }
-          if (errorData.error) {
-            throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
-          }
-          // If no specific field error, get the first error message
-          const firstError = Object.values(errorData)[0];
-          throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+    return handleVerificationEmailError(error);
+  }
+};
+
+// Helper function to handle password reset confirmation errors
+const handleConfirmResetPasswordError = (error: unknown): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    if (axiosError.response?.data) {
+      const errorData = axiosError.response.data;
+      if (typeof errorData === 'object') {
+        // Check for specific error fields
+        if (errorData.password) {
+          throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
         }
+        if (errorData.password2) {
+          throw new Error(Array.isArray(errorData.password2) ? errorData.password2[0] : errorData.password2);
+        }
+        if (errorData.token) {
+          throw new Error(Array.isArray(errorData.token) ? errorData.token[0] : errorData.token);
+        }
+        if (errorData.uidb64) {
+          throw new Error(Array.isArray(errorData.uidb64) ? errorData.uidb64[0] : errorData.uidb64);
+        }
+        if (errorData.error) {
+          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
+        }
+        // If no specific field error, get the first error message
+        const firstError = Object.values(errorData)[0];
+        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
       }
-      throw new Error('Failed to resend verification email. Please try again.');
-    } else if (error instanceof Error) {
-      throw new Error(error.message || 'An error occurred while resending verification email.');
-    } else {
-      throw new Error('An unexpected error occurred. Please try again.');
     }
+    throw new Error('Password reset confirmation failed. Please try again.');
+  } else if (error instanceof Error) {
+    throw new Error(error.message || 'An error occurred while confirming password reset.');
+  } else {
+    throw new Error('An unexpected error occurred. Please try again.');
   }
 };
 
 export const confirmResetPassword = async (data: ConfirmResetPasswordData) => {
-  const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
-  return response.data;
+  try {
+    const response = await axios.post(`${API_URL}/auth/password-reset/confirm/`, data);
+    return response.data;
+  } catch (error) {
+    return handleConfirmResetPasswordError(error);
+  }
 };
 
 export const isAuthenticated = () => {
@@ -355,52 +450,22 @@ axios.interceptors.response.use(
   }
 );
 
-// Add demo login function
-export const demoLogin = async () => {
-  try {
-    console.log('Attempting demo login...'); // Safe debug log (no credentials)
-    
-    // Try with demo-login endpoint which creates a unique demo account
-    try {
-      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
-      handleSuccessfulLogin(response);
-      
-      // Store the unique demo credentials if provided
-      if (response.data.demo_credentials) {
-        localStorage.setItem('demoCredentials', JSON.stringify(response.data.demo_credentials));
+// Handle demo login errors
+const handleDemoLoginError = (error: unknown): never => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    if (axiosError.response?.data) {
+      const errorData = axiosError.response.data;
+      if (typeof errorData === 'object') {
+        const firstError = Object.values(errorData)[0];
+        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
       }
-      
-      return response.data;
-    } catch (demoEndpointError) {
-      console.log('Demo endpoint failed, trying fallback method');
-      
-      // Fallback to regular login with generic demo credentials if demo endpoint fails
-      // This is only a last resort fallback to ensure demo mode works even if the special endpoint fails
-      const response = await axios.post(`${API_URL}/v1/auth/login/`, {
-        email: 'demo@twitterclone.com',
-        username: 'demo_user',
-        password: 'Demo@123'
-      });
-      
-      handleSuccessfulLogin(response);
-      return response.data;
     }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<ApiErrorResponse>;
-      if (axiosError.response?.data) {
-        const errorData = axiosError.response.data;
-        if (typeof errorData === 'object') {
-          const firstError = Object.values(errorData)[0];
-          throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
-        }
-      }
-      throw new Error('Demo login failed. Please try again later.');
-    } else if (error instanceof Error) {
-      throw new Error(error.message || 'An error occurred during demo login.');
-    } else {
-      throw new Error('An unexpected error occurred. Please try again.');
-    }
+    throw new Error('Demo login failed. Please try again later.');
+  } else if (error instanceof Error) {
+    throw new Error(error.message || 'An error occurred during demo login.');
+  } else {
+    throw new Error('An unexpected error occurred. Please try again.');
   }
 };
 
@@ -413,6 +478,33 @@ const handleSuccessfulLogin = (response: any) => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
     // Reset refresh attempts counter on successful login
     refreshAttempts = 0;
+  }
+  return response.data;
+};
+
+// Add demo login function
+export const demoLogin = async () => {
+  try {
+    console.log('Attempting demo login...'); // Safe debug log (no credentials)
+    
+    // Try with demo-login endpoint which creates a unique demo account
+    try {
+      const response = await axios.post(`${API_URL}/v1/auth/demo-login/`, {});
+      return handleSuccessfulLogin(response);
+    } catch (demoEndpointError) {
+      console.log('Demo endpoint failed, trying fallback method');
+      
+      // Fallback to regular login with generic demo credentials if demo endpoint fails
+      const response = await axios.post(`${API_URL}/v1/auth/login/`, {
+        email: 'demo@twitterclone.com',
+        username: 'demo_user',
+        password: 'Demo@123'
+      });
+      
+      return handleSuccessfulLogin(response);
+    }
+  } catch (error) {
+    return handleDemoLoginError(error);
   }
 };
 

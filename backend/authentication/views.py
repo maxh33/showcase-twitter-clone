@@ -52,6 +52,115 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             return []
         return [LoginRateThrottle()]
     
+    def get_client_ip(self, request):
+        """Get client IP address from request"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+    
+    def check_unverified_account(self, user):
+        """Check if user exists but is inactive, and send verification email if needed"""
+        if not user.is_active:
+            logger.warning(f"Login attempt for inactive account: {user.email}")
+            
+            # Generate verification token
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+            
+            # Send new verification email
+            html_content = render_to_string('email/email_verification.html', {
+                'verification_url': verification_url,
+                'username': user.username
+            })
+            text_content = strip_tags(html_content)
+            
+            email = EmailMultiAlternatives(
+                'Verify your email address',
+                text_content,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email]
+            )
+            email.attach_alternative(html_content, "text/html")
+            email.send(fail_silently=False)
+            
+            return Response({
+                'detail': 'Your account has not been verified yet. We have sent a new verification email to your inbox. Please check your email and click the verification link to activate your account.',
+                'message': 'Account not verified. A new verification email has been sent.',
+                'requires_verification': True,
+                'email': user.email
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        return None
+    
+    def find_user_by_credentials(self, email, username):
+        """Find user by email or username"""
+        try:
+            if email and '@' in email:
+                user = User.objects.get(email=email)
+            elif username:
+                user = User.objects.get(username=username)
+            elif email:
+                # Try to find by username if email doesn't have @ symbol
+                user = User.objects.get(username=email)
+            else:
+                raise User.DoesNotExist()
+            
+            return user
+        except User.DoesNotExist:
+            return None
+    
+    def handle_validation_error(self, serializer, email, user_email=None):
+        """Handle validation errors, especially for unverified accounts"""
+        errors = serializer.errors
+        if isinstance(errors, dict) and errors.get('detail') and errors.get('requires_verification'):
+            # Get the email from the error
+            user_email = errors.get('email', user_email)
+            
+            try:
+                # Find the user
+                user = User.objects.get(email=user_email)
+                
+                # Generate verification token
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+                
+                # Send new verification email
+                html_content = render_to_string('email/email_verification.html', {
+                    'verification_url': verification_url,
+                    'username': user.username
+                })
+                text_content = strip_tags(html_content)
+                
+                email = EmailMultiAlternatives(
+                    'Verify your email address',
+                    text_content,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email]
+                )
+                email.attach_alternative(html_content, "text/html")
+                email.send(fail_silently=False)
+                
+                return Response({
+                    'detail': 'Your account has not been verified yet. We have sent a new verification email to your inbox. Please check your email and click the verification link to activate your account.',
+                    'message': 'Account not verified. A new verification email has been sent.',
+                    'requires_verification': True,
+                    'email': user.email
+                }, status=status.HTTP_403_FORBIDDEN)
+            except Exception as e:
+                logger.error(f"Failed to send verification email: {str(e)}")
+                return Response({
+                    'detail': 'Your account has not been verified yet. Please check your email for the verification link, or request a new verification email.',
+                    'message': 'Account not verified. Please check your email or contact support.',
+                    'requires_verification': True
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
     @swagger_auto_schema(
         operation_description="User login endpoint",
         request_body=openapi.Schema(
@@ -81,6 +190,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         
         # Get the email/username from the request for tracking failed attempts
         email = request.data.get('email') or request.data.get('username', '')
+        username = request.data.get('username', '')
         
         # Check if account is locked due to too many failed attempts
         if FailedLoginAttempt.is_blocked(email, ip_address):
@@ -91,53 +201,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         
         try:
             # First check directly if user exists but is inactive
-            try:
-                # Find the user by email or username
-                username = request.data.get('username', '')
-                if email and '@' in email:
-                    user = User.objects.get(email=email)
-                elif username:
-                    user = User.objects.get(username=username)
-                elif email:
-                    # Try to find by username if email doesn't have @ symbol
-                    user = User.objects.get(username=email)
-                else:
-                    raise User.DoesNotExist()
-                
-                # Check if user exists but is inactive
-                if not user.is_active:
-                    logger.warning(f"Login attempt for inactive account: {user.email}")
-                    
-                    # Generate verification token
-                    token = default_token_generator.make_token(user)
-                    uid = urlsafe_base64_encode(force_bytes(user.pk))
-                    verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
-                    
-                    # Send new verification email
-                    html_content = render_to_string('email/email_verification.html', {
-                        'verification_url': verification_url,
-                        'username': user.username
-                    })
-                    text_content = strip_tags(html_content)
-                    
-                    email = EmailMultiAlternatives(
-                        'Verify your email address',
-                        text_content,
-                        settings.DEFAULT_FROM_EMAIL,
-                        [user.email]
-                    )
-                    email.attach_alternative(html_content, "text/html")
-                    email.send(fail_silently=False)
-                    
-                    return Response({
-                        'detail': 'Your account has not been verified yet. We have sent a new verification email to your inbox. Please check your email and click the verification link to activate your account.',
-                        'message': 'Account not verified. A new verification email has been sent.',
-                        'requires_verification': True,
-                        'email': user.email
-                    }, status=status.HTTP_403_FORBIDDEN)
-            except User.DoesNotExist:
-                # User doesn't exist, proceed to standard authentication
-                pass
+            user = self.find_user_by_credentials(email, username)
+            if user:
+                response = self.check_unverified_account(user)
+                if response:
+                    return response
             
             # Handle both email and username login formats
             request_data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -158,53 +226,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             # Log validation errors if any
             if not serializer.is_valid():
                 print(f"Serializer validation errors: {serializer.errors}")
-                
-                # Check if this is an inactive account error requiring verification
-                errors = serializer.errors
-                if isinstance(errors, dict) and errors.get('detail') and errors.get('requires_verification'):
-                    # Get the email from the error
-                    user_email = errors.get('email')
-                    
-                    try:
-                        # Find the user
-                        user = User.objects.get(email=user_email)
-                        
-                        # Generate verification token
-                        token = default_token_generator.make_token(user)
-                        uid = urlsafe_base64_encode(force_bytes(user.pk))
-                        verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
-                        
-                        # Send new verification email
-                        html_content = render_to_string('email/email_verification.html', {
-                            'verification_url': verification_url,
-                            'username': user.username
-                        })
-                        text_content = strip_tags(html_content)
-                        
-                        email = EmailMultiAlternatives(
-                            'Verify your email address',
-                            text_content,
-                            settings.DEFAULT_FROM_EMAIL,
-                            [user.email]
-                        )
-                        email.attach_alternative(html_content, "text/html")
-                        email.send(fail_silently=False)
-                        
-                        return Response({
-                            'detail': 'Your account has not been verified yet. We have sent a new verification email to your inbox. Please check your email and click the verification link to activate your account.',
-                            'message': 'Account not verified. A new verification email has been sent.',
-                            'requires_verification': True,
-                            'email': user.email
-                        }, status=status.HTTP_403_FORBIDDEN)
-                    except Exception as e:
-                        logger.error(f"Failed to send verification email: {str(e)}")
-                        return Response({
-                            'detail': 'Your account has not been verified yet. Please check your email for the verification link, or request a new verification email.',
-                            'message': 'Account not verified. Please check your email or contact support.',
-                            'requires_verification': True
-                        }, status=status.HTTP_403_FORBIDDEN)
-                
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return self.handle_validation_error(serializer, email, user.email if user else None)
             
             # If we get here, login was successful
             FailedLoginAttempt.clear_failed_attempts(email)
@@ -232,15 +254,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 {'error': 'An unexpected error occurred. Please try again later.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
-    def get_client_ip(self, request):
-        """Get client IP address from request"""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
 
 
 class RegistrationView(generics.CreateAPIView):

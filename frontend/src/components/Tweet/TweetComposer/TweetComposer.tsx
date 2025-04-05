@@ -177,9 +177,66 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
     }, 0);
   };
   
-  const handleSubmit = async () => {
+  const validateTweetContent = (): boolean => {
     if (content.trim() === '' && !selectedFile && !previewUrl) {
       setErrorMessage('Please enter some content or add an image before tweeting.');
+      return false;
+    }
+    return true;
+  };
+
+  const createTweetWithMedia = async () => {
+    console.log('TweetComposer: Creating tweet with content:', content);
+    try {
+      return selectedFile 
+        ? await tweetService.createTweet(content, selectedFile)
+        : await tweetService.createTweet(content);
+    } catch (error: unknown) {
+      if (isAuthError(error)) {
+        console.log('TweetComposer: Authentication error, refreshing token...');
+        await refreshToken();
+        
+        // Try again with the new token
+        console.log('TweetComposer: Retrying tweet creation after token refresh');
+        return selectedFile 
+          ? await tweetService.createTweet(content, selectedFile)
+          : await tweetService.createTweet(content);
+      }
+      throw error; // Re-throw if it's not an auth error
+    }
+  };
+
+  const isAuthError = (error: unknown): boolean => {
+    return Boolean(
+      error && 
+      typeof error === 'object' && 
+      'response' in error && 
+      error.response && 
+      typeof error.response === 'object' && 
+      'status' in error.response && 
+      error.response.status === 401
+    );
+  };
+
+  const resetForm = () => {
+    setContent('');
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setShowImageSearch(false);
+    setShowEmojiPicker(false);
+  };
+
+  const notifyParent = () => {
+    if (onTweetCreated) {
+      console.log('TweetComposer: Calling onTweetCreated callback');
+      onTweetCreated();
+    } else {
+      console.warn('TweetComposer: onTweetCreated callback not provided');
+    }
+  };
+  
+  const handleSubmit = async () => {
+    if (!validateTweetContent()) {
       return;
     }
     
@@ -190,52 +247,11 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       // Ensure auth headers are setup
       setupAuthHeaders();
       
-      let createdTweet;
-      
-      // Create the tweet with or without media
-      console.log('TweetComposer: Creating tweet with content:', content);
-      try {
-        if (selectedFile) {
-          createdTweet = await tweetService.createTweet(content, selectedFile);
-        } else {
-          createdTweet = await tweetService.createTweet(content);
-        }
-      } catch (error: unknown) {
-        // Check if it's an authentication error
-        if (error && typeof error === 'object' && 'response' in error && 
-            error.response && typeof error.response === 'object' && 
-            'status' in error.response && error.response.status === 401) {
-          console.log('TweetComposer: Authentication error, refreshing token...');
-          // Try to refresh the token
-          await refreshToken();
-          // Try again with the new token
-          console.log('TweetComposer: Retrying tweet creation after token refresh');
-          if (selectedFile) {
-            createdTweet = await tweetService.createTweet(content, selectedFile);
-          } else {
-            createdTweet = await tweetService.createTweet(content);
-          }
-        } else {
-          throw error; // Re-throw if it's not an auth error
-        }
-      }
-      
+      const createdTweet = await createTweetWithMedia();
       console.log('TweetComposer: Tweet created successfully:', createdTweet);
       
-      // Reset form
-      setContent('');
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setShowImageSearch(false);
-      setShowEmojiPicker(false);
-      
-      // Notify parent component
-      if (onTweetCreated) {
-        console.log('TweetComposer: Calling onTweetCreated callback');
-        onTweetCreated();
-      } else {
-        console.warn('TweetComposer: onTweetCreated callback not provided');
-      }
+      resetForm();
+      notifyParent();
     } catch (error) {
       console.error('TweetComposer: Error creating tweet:', error);
       setErrorMessage('Failed to create tweet. Please try again.');

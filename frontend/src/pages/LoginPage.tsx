@@ -27,6 +27,13 @@ interface LocationState {
   message?: string;
 }
 
+interface ErrorResponse {
+  response?: {
+    data?: Record<string, unknown>;
+  };
+  message?: string;
+}
+
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
     identifier: '', // This can be either username or email
@@ -81,6 +88,86 @@ const LoginPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Check if the error response indicates an unverified account
+  const checkForUnverifiedAccount = (errorData: Record<string, unknown>, isEmail: boolean): boolean => {
+    if (
+      errorData.requires_verification === true || 
+      (typeof errorData.detail === 'string' && errorData.detail.includes('not been verified')) ||
+      (errorData.detail === 'Email not verified.') || 
+      (typeof errorData.non_field_errors === 'string' && errorData.non_field_errors.includes('not verified')) ||
+      (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors[0]?.includes('not verified'))
+    ) {
+      const emailFromResponse = errorData.email as string;
+      setUnverifiedEmail(emailFromResponse || (isEmail ? formData.identifier : null));
+      
+      // Use the detailed message from the backend if available
+      const detailMessage = typeof errorData.detail === 'string' 
+        ? errorData.detail 
+        : '📧 Your account needs to be verified. We have sent a new verification link to your email address. Please check your inbox (and spam folder) and click the verification link to activate your account.';
+      
+      setErrors({ general: detailMessage });
+      setSuccessMessage('A verification email has been sent. Please check your inbox.');
+      return true;
+    }
+    return false;
+  };
+
+  // Process various error types from the API response
+  const processApiErrors = (errorData: Record<string, unknown>): void => {
+    if (errorData.email || errorData.username) {
+      setErrors({ 
+        identifier: String(errorData.email || errorData.username) 
+      });
+    } else if (errorData.detail) {
+      setErrors({ general: String(errorData.detail) });
+    } else if (errorData.non_field_errors) {
+      const nonFieldErrors = errorData.non_field_errors;
+      if (Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
+        setErrors({ general: String(nonFieldErrors[0]) });
+      } else {
+        setErrors({ general: String(nonFieldErrors) });
+      }
+    } else {
+      // Convert all values to strings
+      const stringErrors: Record<string, string> = {};
+      Object.entries(errorData).forEach(([key, value]) => {
+        if (Array.isArray(value) && value.length > 0) {
+          stringErrors[key] = String(value[0]);
+        } else {
+          stringErrors[key] = String(value);
+        }
+      });
+      setErrors(stringErrors);
+    }
+  };
+
+  // Handle login errors by processing the error response
+  const handleLoginError = (error: unknown, isEmail: boolean): void => {
+    console.error('Login error:', error);
+    
+    // Cast to a type with the expected shape for easier handling
+    const errorObj = error as ErrorResponse;
+    
+    if (errorObj?.response?.data && typeof errorObj.response.data === 'object') {
+      const errorData = errorObj.response.data as Record<string, unknown>;
+      
+      // Check for unverified account first
+      const isUnverifiedAccount = checkForUnverifiedAccount(errorData, isEmail);
+      setIsUnverified(isUnverifiedAccount);
+      
+      if (!isUnverifiedAccount) {
+        // Process other API error types
+        processApiErrors(errorData);
+      }
+    } else if (errorObj?.message) {
+      // Handle errors with just a message property
+      setErrors({ general: errorObj.message });
+    } else {
+      // Generic fallback error
+      setErrors({ general: 'Unable to log in. Please check your credentials and try again.' });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -102,69 +189,7 @@ const LoginPage: React.FC = () => {
       await login(loginData);
       navigate('/'); // Redirect to home page after successful login
     } catch (error: unknown) {
-      console.error('Login error:', error);
-      
-      if (error && typeof error === 'object' && 'response' in error && 
-          error.response && typeof error.response === 'object' && 'data' in error.response) {
-        const responseData = error.response.data;
-        
-        if (responseData && typeof responseData === 'object') {
-          // Type assertion to allow property access
-          const errorData = responseData as Record<string, unknown>;
-          
-          // Check for unverified account error
-          if (errorData.requires_verification === true || 
-              (typeof errorData.detail === 'string' && errorData.detail.includes('not been verified')) ||
-              (errorData.detail === 'Email not verified.') || 
-              (typeof errorData.non_field_errors === 'string' && errorData.non_field_errors.includes('not verified')) ||
-              (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors[0]?.includes('not verified'))) {
-            setIsUnverified(true);
-            
-            // Get the email from the response if available, otherwise use the input
-            const emailFromResponse = errorData.email as string;
-            setUnverifiedEmail(emailFromResponse || (isEmail ? formData.identifier : null));
-            
-            // Use the detailed message from the backend if available
-            const detailMessage = typeof errorData.detail === 'string' 
-              ? errorData.detail 
-              : '📧 Your account needs to be verified. We have sent a new verification link to your email address. Please check your inbox (and spam folder) and click the verification link to activate your account.';
-            
-            setErrors({ general: detailMessage });
-            setSuccessMessage('A verification email has been sent. Please check your inbox.');
-          } else {
-            // Handle other errors as before
-            if (errorData.email || errorData.username) {
-              setErrors({ 
-                identifier: String(errorData.email || errorData.username) 
-              });
-            } else if (errorData.detail) {
-              setErrors({ general: String(errorData.detail) });
-            } else if (errorData.non_field_errors) {
-              const nonFieldErrors = errorData.non_field_errors;
-              if (Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
-                setErrors({ general: String(nonFieldErrors[0]) });
-              } else {
-                setErrors({ general: String(nonFieldErrors) });
-              }
-            } else {
-              // Convert all values to strings
-              const stringErrors: Record<string, string> = {};
-              Object.entries(errorData).forEach(([key, value]) => {
-                if (Array.isArray(value) && value.length > 0) {
-                  stringErrors[key] = String(value[0]);
-                } else {
-                  stringErrors[key] = String(value);
-                }
-              });
-              setErrors(stringErrors);
-            }
-          }
-        } else {
-          setErrors({ general: 'Invalid credentials. Please try again.' });
-        }
-      } else {
-        setErrors({ general: 'Unable to log in. Please check your credentials and try again.' });
-      }
+      handleLoginError(error, isEmail);
     } finally {
       setIsLoading(false);
     }
