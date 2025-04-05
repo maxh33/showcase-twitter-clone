@@ -30,6 +30,72 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         self.fields['username'] = serializers.CharField(required=False)
         logger.debug("CustomTokenObtainPairSerializer initialized with username field")
     
+    def _get_user_by_username(self, username):
+        """Helper method to find user by username"""
+        try:
+            user = User.objects.get(username=username)
+            logger.debug(f"Found user email: {user.email}")
+            return user
+        except User.DoesNotExist:
+            logger.warning(f"No user found with username: {username}")
+            raise serializers.ValidationError(
+                {'username': 'No user found with this username.'},
+                code='authorization'
+            )
+    
+    def _get_user_by_email(self, email):
+        """Helper method to find user by email"""
+        try:
+            user = User.objects.get(email=email)
+            logger.debug(f"Found user by email: {email}")
+            return user
+        except User.DoesNotExist:
+            logger.warning(f"No user found with email: {email}")
+            raise serializers.ValidationError(
+                {'email': 'No account found with this email address.'},
+                code='authorization'
+            )
+    
+    def _check_user_is_active(self, user):
+        """Helper method to check if user is active"""
+        if not user.is_active:
+            raise serializers.ValidationError(
+                {'email': 'This account is not active. Please verify your email.'},
+                code='authorization'
+            )
+    
+    def _authenticate_user(self, attrs_copy):
+        """Helper method to authenticate user"""
+        try:
+            data = super().validate(attrs_copy)
+            logger.debug("Authentication successful")
+            return data
+        except Exception as e:
+            logger.error(f"Authentication failed: {str(e)}")
+            logger.error(f"Exception traceback: {traceback.format_exc()}")
+            raise serializers.ValidationError(
+                {'password': 'No active account found with the given credentials.'},
+                code='authorization'
+            )
+    
+    def _add_user_data_to_response(self, data):
+        """Helper method to add user data to response"""
+        user = self.user
+        logger.debug(f"Authentication successful for user: {user.email}")
+        data.update({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'bio': user.bio,
+                'location': user.location,
+                'profile_picture': user.profile_picture.url if user.profile_picture else None,
+                'followers_count': user.followers_count,
+                'following_count': user.following_count,
+            }
+        })
+        return data
+    
     def validate(self, attrs):
         # Create a safe copy for logging (without password)
         safe_attrs = attrs.copy()
@@ -40,44 +106,22 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Make a copy of the attributes to avoid modifying the original
         attrs_copy = attrs.copy()
         
-        # Handle different login scenarios:
-        # 1. Username only (find user and set email)
-        # 2. Email only (set username to email)
-        # 3. Both provided (use as-is)
-        
         username = attrs_copy.get('username')
         email = attrs_copy.get('email')
         
         # Case 1: Username provided but no email
         if username and not email:
             logger.debug(f"Login attempt with username only: {username}")
-            try:
-                user = User.objects.get(username=username)
-                attrs_copy['email'] = user.email
-                logger.debug(f"Found user email: {user.email}")
-            except User.DoesNotExist:
-                logger.warning(f"No user found with username: {username}")
-                raise serializers.ValidationError(
-                    {'username': 'No user found with this username.'},
-                    code='authorization'
-                )
+            user = self._get_user_by_username(username)
+            attrs_copy['email'] = user.email
         
         # Case 2: Email provided but no username
         elif email and not username:
             logger.debug(f"Login attempt with email only: {email}")
             # SimpleJWT's parent class expects username field to be populated
             attrs_copy['username'] = email
-            
             # Verify user exists with this email
-            try:
-                user = User.objects.get(email=email)
-                logger.debug(f"Found user by email: {email}")
-            except User.DoesNotExist:
-                logger.warning(f"No user found with email: {email}")
-                raise serializers.ValidationError(
-                    {'email': 'No account found with this email address.'},
-                    code='authorization'
-                )
+            self._get_user_by_email(email)
         
         # Case 3: Neither provided
         elif not username and not email:
@@ -104,41 +148,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             else:
                 user = User.objects.filter(username=username).first()
                 
-            if user and not user.is_active:
-                raise serializers.ValidationError(
-                    {'email': 'This account is not active. Please verify your email.'},
-                    code='authorization'
-                )
+            if user:
+                self._check_user_is_active(user)
             
-            # Call parent validate method for actual authentication
-            try:
-                data = super().validate(attrs_copy)
-                logger.debug("Authentication successful")
-            except Exception as e:
-                logger.error(f"Authentication failed: {str(e)}")
-                logger.error(f"Exception traceback: {traceback.format_exc()}")
-                raise serializers.ValidationError(
-                    {'password': 'No active account found with the given credentials.'},
-                    code='authorization'
-                )
+            # Authenticate user
+            data = self._authenticate_user(attrs_copy)
             
             # Add user details to response
-            user = self.user
-            logger.debug(f"Authentication successful for user: {user.email}")
-            data.update({
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'bio': user.bio,
-                    'location': user.location,
-                    'profile_picture': user.profile_picture.url if user.profile_picture else None,
-                    'followers_count': user.followers_count,
-                    'following_count': user.following_count,
-                }
-            })
+            return self._add_user_data_to_response(data)
             
-            return data
         except serializers.ValidationError as e:
             logger.error(f"Validation error: {e}")
             raise

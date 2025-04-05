@@ -418,6 +418,39 @@ if (typeof window !== 'undefined') {
   setupAuthHeaders();
 }
 
+// Helper function to handle token refresh in interceptor
+const handleTokenRefresh = async (originalRequest: any) => {
+  originalRequest._retry = true;
+  
+  try {
+    // Try to refresh the token
+    const refreshResponse = await refreshToken();
+    
+    // Update the authorization header
+    originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
+    
+    // Retry the original request
+    return axios(originalRequest);
+  } catch (refreshError) {
+    // If refresh token fails, redirect to login (but don't call API logout)
+    silentLogout();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?session=expired';
+    }
+    return Promise.reject(refreshError);
+  }
+};
+
+// Helper function to check if request needs token refresh
+const shouldAttemptTokenRefresh = (error: any) => {
+  const originalRequest = error.config;
+  return error.response?.status === 401 && 
+         !originalRequest._retry && 
+         !originalRequest.url?.includes('login') &&
+         !originalRequest.url?.includes('token/refresh') &&
+         !originalRequest.url?.includes('logout');
+};
+
 // Setup axios interceptor to handle token expiration
 axios.interceptors.response.use(
   (response) => response,
@@ -425,31 +458,8 @@ axios.interceptors.response.use(
     const originalRequest = error.config;
     
     // If the error is 401 and not a login/refresh/logout request and hasn't been retried
-    if (error.response?.status === 401 && 
-        !originalRequest._retry && 
-        !originalRequest.url?.includes('login') &&
-        !originalRequest.url?.includes('token/refresh') &&
-        !originalRequest.url?.includes('logout')) {
-      
-      originalRequest._retry = true;
-      
-      try {
-        // Try to refresh the token
-        const refreshResponse = await refreshToken();
-        
-        // Update the authorization header
-        originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
-        
-        // Retry the original request
-        return axios(originalRequest);
-      } catch (refreshError) {
-        // If refresh token fails, redirect to login (but don't call API logout)
-        silentLogout();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login?session=expired';
-        }
-        return Promise.reject(refreshError);
-      }
+    if (shouldAttemptTokenRefresh(error)) {
+      return handleTokenRefresh(originalRequest);
     }
     
     return Promise.reject(error);
