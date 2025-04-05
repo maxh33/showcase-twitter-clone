@@ -23,6 +23,7 @@ import uuid
 import logging
 from django.urls import reverse
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 from .throttling import AuthRateThrottle, LoginRateThrottle
 from .serializers import (
@@ -690,12 +691,11 @@ class DemoUserLoginView(CustomTokenObtainPairView):
             # Generate a unique session ID from request data with timestamp
             client_ip = self.get_client_ip(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
             random_component = str(uuid.uuid4())
             session_id = f"{client_ip}_{timestamp}_{random_component}"
             
             # Cleanup old demo accounts (older than 24 hours)
-            from django.utils import timezone
             cleanup_threshold = timezone.now() - timedelta(hours=24)
             User.objects.filter(
                 username__startswith='demo_user_',

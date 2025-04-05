@@ -2,6 +2,7 @@ from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 import os
 import random
 import string
@@ -121,7 +122,7 @@ def setup_demo_user(session_id=None):
     # Create a unique suffix based on session_id
     # Generate a random suffix even with session_id to prevent username guessing
     random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-    timestamp = datetime.now().strftime('%m%d%H%M')
+    timestamp = timezone.now().strftime('%m%d%H%M')
     unique_suffix = f"{timestamp}_{random_suffix}"
     
     # Create unique credentials for this session
