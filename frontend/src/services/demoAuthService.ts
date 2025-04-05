@@ -65,14 +65,76 @@ const buildUrl = (endpoint: string): string => {
   }
 };
 
+// Create a reliable local demo user without requiring backend authentication
+const createLocalDemoUser = (timestamp: string): User => {
+  console.log(`[${timestamp}] Creating reliable local demo user without backend authentication`);
+  
+  // Create a fallback user with timestamp to ensure uniqueness
+  const fallbackUser: User = {
+    id: `local_${timestamp}`,
+    username: `demo_user_${timestamp}`,
+    email: `demo_${timestamp}@twitterclone.com`,
+    is_verified: true,
+    is_demo_user: true,
+    bio: 'This is a local demo account for testing',
+    profile_picture: '/logo192.png',
+    created_at: new Date().toISOString(),
+    followers_count: 0,
+    following_count: 0,
+    tweets_count: 0
+  };
+  
+  // Store the local user state consistently
+  localStorage.setItem('token', 'demo_mock_token'); // Mock token to satisfy auth checks
+  localStorage.setItem('refreshToken', 'demo_mock_refresh_token');
+  localStorage.setItem('isDemoUser', 'true');
+  localStorage.setItem('demoTimestamp', timestamp);
+  localStorage.setItem('demoUser', JSON.stringify(fallbackUser));
+  
+  // Set auth header to maintain consistency
+  axios.defaults.headers.common['Authorization'] = `Bearer demo_mock_token`;
+  
+  return fallbackUser;
+};
+
 // Improved demo login with detailed logging and fallbacks
 export const demoLogin = async (): Promise<User> => {
   const timestamp = new Date().toISOString().replace(/[-:]/g, '').substring(0, 15);
   console.log(`[${timestamp}] Starting demo login process...`);
   
+  // Check if we already have a demo user stored - use it to avoid API calls
+  const existingDemoUser = localStorage.getItem('demoUser');
+  if (existingDemoUser) {
+    try {
+      console.log(`[${timestamp}] Using existing demo user from localStorage`);
+      const user = JSON.parse(existingDemoUser) as User;
+      
+      // Ensure we have the demo tokens set
+      if (!localStorage.getItem('token')) {
+        localStorage.setItem('token', 'demo_mock_token');
+        localStorage.setItem('refreshToken', 'demo_mock_refresh_token');
+        localStorage.setItem('isDemoUser', 'true');
+        axios.defaults.headers.common['Authorization'] = `Bearer demo_mock_token`;
+      }
+      
+      return user;
+    } catch (error) {
+      console.error(`[${timestamp}] Error parsing existing demo user:`, error);
+      // Continue to create a new one
+    }
+  }
+  
   try {
-    // Skip the demo login endpoint attempt since we know it doesn't exist
-    // Go straight to regular login with demo credentials
+    // For production deployments, just use local demo user to avoid API errors
+    if (typeof window !== 'undefined' && 
+        window.location.hostname !== 'localhost' && 
+        window.location.hostname !== '127.0.0.1') {
+      
+      console.log(`[${timestamp}] Skipping API login in production, using local demo user`);
+      return createLocalDemoUser(timestamp);
+    }
+    
+    // Only try API login for local development
     console.log(`[${timestamp}] Using regular login with demo user credentials...`);
     const loginUrl = buildUrl('auth/login/');
     
@@ -125,38 +187,7 @@ export const demoLogin = async (): Promise<User> => {
       return enhancedUser;
     } catch (error: unknown) {
       console.error(`[${timestamp}] Regular demo login failed:`, error);
-      
-      // Type guard to check if it's an AxiosError
-      if (axios.isAxiosError(error) && error.response?.status === 400) {
-        // Check if we have a validation error (likely "No active account with given credentials")
-        console.log(`[${timestamp}] Attempting to create a fallback demo user object`);
-        
-        // Create a fallback user without attempting further API calls
-        const fallbackUser = {
-          id: '0',
-          username: 'demo_user',
-          email: 'demo@twitterclone.com',
-          is_verified: true,
-          is_demo_user: true,
-          created_at: new Date().toISOString(),
-          followers_count: 0,
-          following_count: 0,
-          tweets_count: 0
-        };
-        
-        // Store the fallback demo credentials anyway to maintain app state
-        localStorage.setItem('isDemoUser', 'true');
-        localStorage.setItem('demoTimestamp', timestamp);
-        localStorage.setItem('demoUser', JSON.stringify(fallbackUser));
-        
-        // Log the fallback creation
-        console.log(`[${timestamp}] Created fallback demo user without authentication`);
-        
-        return fallbackUser;
-      }
-      
-      // For other errors, rethrow to be caught by the outer try/catch
-      throw error;
+      return createLocalDemoUser(timestamp);
     }
   } catch (error) {
     console.error(`[${timestamp}] All demo login attempts failed:`, error);
@@ -168,25 +199,8 @@ export const demoLogin = async (): Promise<User> => {
       date: new Date().toISOString()
     }));
     
-    // Create a last-resort fallback demo user even after all errors
-    // This helps the app continue functioning even if authentication fails
-    const emergencyFallbackUser = {
-      id: '0',
-      username: 'demo_user_emergency',
-      email: 'demo_emergency@twitterclone.com',
-      is_verified: true,
-      is_demo_user: true,
-      created_at: new Date().toISOString(),
-      followers_count: 0,
-      following_count: 0,
-      tweets_count: 0
-    };
-    
-    localStorage.setItem('demoUser', JSON.stringify(emergencyFallbackUser));
-    localStorage.setItem('isDemoUser', 'true');
-    
-    console.log(`[${timestamp}] Created emergency fallback demo user after all login attempts failed`);
-    return emergencyFallbackUser;
+    // Always return a working demo user even after errors
+    return createLocalDemoUser(timestamp);
   }
 };
 

@@ -158,7 +158,7 @@ const buildUrl = (endpoint: string): string => {
 export const register = async (data: RegisterData, retryCount = 0, maxRetries = 3): Promise<RegisterResponse> => {
   try {
     console.log('Attempting registration with data:', { ...data, password: '********', password2: '********' }); // Debug log
-    const response = await axios.post('/auth/register/', data);
+    const response = await axios.post(buildUrl('auth/register/'), data);
     console.log('Registration response:', response.data); // Debug log
     return response.data;
   } catch (error) {

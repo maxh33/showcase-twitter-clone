@@ -182,7 +182,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting demo login process...');
       
-      // Try to use the demoAuthService for login first
+      // Check if we already have a demo user (avoid repeated API calls)
+      const existingDemoUser = localStorage.getItem('demoUser');
+      const hasExistingToken = localStorage.getItem('token');
+      
+      if (existingDemoUser && hasExistingToken) {
+        try {
+          console.log('Using existing demo user data from localStorage');
+          const parsedDemoUser = JSON.parse(existingDemoUser) as User;
+          
+          // Set the user state directly
+          setUser(parsedDemoUser);
+          setIsDemoUser(true);
+          setIsLoading(false);
+          
+          return parsedDemoUser;
+        } catch (parseError) {
+          console.error('Error parsing stored demo user:', parseError);
+          // Continue to other login methods
+        }
+      }
+      
+      // Try to use the demoAuthService which has robust fallback mechanisms
       try {
         console.log('Attempting to use demoAuthService.demoLogin()...');
         const demoUser = await demoAuthService.demoLogin();
@@ -193,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(demoUser);
           setIsDemoUser(true);
           
-          // Set the user in localStorage as well (backup)
+          // Ensure our app state is consistent
           localStorage.setItem('currentUser', JSON.stringify(demoUser));
           localStorage.setItem('isDemoUser', 'true');
           
@@ -202,31 +223,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (demoServiceError) {
         console.error('Demo service login failed:', demoServiceError);
-        // Continue to fallback approach below
+        // No need to continue to fallback approach since demoAuthService has its own fallbacks
       }
       
-      // If demo service failed, check if we have a fallback demo user stored
-      const storedDemoUser = localStorage.getItem('demoUser');
-      if (storedDemoUser) {
-        try {
-          console.log('Using stored demo user from localStorage');
-          const parsedDemoUser = JSON.parse(storedDemoUser) as User;
-          setUser(parsedDemoUser);
-          setIsDemoUser(true);
-          setIsLoading(false);
-          return parsedDemoUser;
-        } catch (parseError) {
-          console.error('Error parsing stored demo user:', parseError);
-          // Continue to last fallback
-        }
-      }
-      
-      // Last resort fallback: Create a basic demo user object 
-      console.log('Creating basic fallback demo user');
+      // Create a guaranteed fallback demo user as a last resort
+      console.log('Creating guaranteed fallback demo user');
+      const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 10);
       const fallbackDemoUser: User = {
-        id: '0',
-        username: 'demo_user_fallback',
-        email: 'demo@twitterclone.com',
+        id: `emergency_${timestamp}`,
+        username: `demo_emergency_${timestamp}`,
+        email: `demo+${timestamp}@twitterclone.com`,
         is_verified: true,
         is_demo_user: true,
         created_at: new Date().toISOString(),
@@ -235,9 +241,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tweets_count: 0
       };
       
-      // Store it for future use and in current state
+      // Set up auth state to maintain consistency
+      localStorage.setItem('token', 'emergency_demo_token');
+      localStorage.setItem('refreshToken', 'emergency_demo_refresh');
       localStorage.setItem('demoUser', JSON.stringify(fallbackDemoUser));
       localStorage.setItem('isDemoUser', 'true');
+      
+      // Update authorization header
+      axios.defaults.headers.common['Authorization'] = `Bearer emergency_demo_token`;
+      
+      // Update state
       setUser(fallbackDemoUser);
       setIsDemoUser(true);
       
@@ -253,7 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Even after all errors, try to return a minimal user object
       // This ensures the app can still function even if everything fails
       const emergencyUser: User = {
-        id: '0',
+        id: 'absolute_emergency',
         username: 'emergency_demo',
         email: 'emergency@demo.com',
         is_verified: true,
@@ -263,6 +276,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         following_count: 0,
         tweets_count: 0
       };
+      
+      // Set up auth state to maintain consistency even in error case
+      localStorage.setItem('token', 'absolute_emergency_token');
+      localStorage.setItem('refreshToken', 'absolute_emergency_refresh');
+      localStorage.setItem('demoUser', JSON.stringify(emergencyUser));
+      localStorage.setItem('isDemoUser', 'true');
+      
+      // Update authorization header
+      axios.defaults.headers.common['Authorization'] = `Bearer absolute_emergency_token`;
       
       setUser(emergencyUser);
       setIsDemoUser(true);
