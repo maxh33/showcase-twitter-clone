@@ -3,24 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
 import { login, resendVerification } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  AuthContainer,
-  BannerContainer,
-  BannerImage,
-  FormContainer,
-  LogoContainer,
-  Logo,
-  FormTitle,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  ButtonContainer,
-  LinkContainer,
-  LinkText,
-  ErrorMessage,
-  SuccessMessage
-} from '../components/Auth/styles';
+import * as S from '../components/Auth/styles';
 import loginBanner from '../assets/images/signupBanner.png';
 import blackLogo from '../assets/icons/blackIcon.png';
 
@@ -242,25 +225,25 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <AuthContainer>
-      <BannerContainer>
-        <BannerImage src={loginBanner} alt="Login banner" />
-      </BannerContainer>
+    <S.AuthContainer>
+      <S.BannerContainer>
+        <S.BannerImage src={loginBanner} alt="Login banner" />
+      </S.BannerContainer>
       
-      <FormContainer>
-        <LogoContainer>
-          <Logo src={blackLogo} alt="Twitter Clone Logo" />
-        </LogoContainer>
+      <S.FormContainer>
+        <S.LogoContainer>
+          <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
+        </S.LogoContainer>
         
-        <FormTitle>Log in to Twitter Clone</FormTitle>
+        <S.FormTitle>Log in to Twitter Clone</S.FormTitle>
         
-        {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
-        {errors.general && <ErrorMessage>{errors.general}</ErrorMessage>}
+        {successMessage && <S.SuccessMessage>{successMessage}</S.SuccessMessage>}
+        {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
         
-        <Form onSubmit={handleSubmit}>
-          <FormGroup>
-            <Label htmlFor="identifier">Username or Email</Label>
-            <Input
+        <S.Form onSubmit={handleSubmit}>
+          <S.FormGroup>
+            <S.Label htmlFor="identifier">Username or Email</S.Label>
+            <S.Input
               type="text"
               id="identifier"
               name="identifier"
@@ -268,12 +251,12 @@ const LoginPage: React.FC = () => {
               onChange={handleChange}
               placeholder="Enter your username or email"
             />
-            {errors.identifier && <ErrorMessage>{errors.identifier}</ErrorMessage>}
-          </FormGroup>
+            {errors.identifier && <S.ErrorMessage>{errors.identifier}</S.ErrorMessage>}
+          </S.FormGroup>
           
-          <FormGroup>
-            <Label htmlFor="password">Password</Label>
-            <Input
+          <S.FormGroup>
+            <S.Label htmlFor="password">Password</S.Label>
+            <S.Input
               type="password"
               id="password"
               name="password"
@@ -281,10 +264,10 @@ const LoginPage: React.FC = () => {
               onChange={handleChange}
               placeholder="Enter your password"
             />
-            {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
-          </FormGroup>
+            {errors.password && <S.ErrorMessage>{errors.password}</S.ErrorMessage>}
+          </S.FormGroup>
           
-          <ButtonContainer>
+          <S.ButtonContainer>
             <Button
               type="submit"
               variant="primary"
@@ -293,10 +276,10 @@ const LoginPage: React.FC = () => {
             >
               {isLoading ? 'Logging in...' : 'Log in'}
             </Button>
-          </ButtonContainer>
-        </Form>
+          </S.ButtonContainer>
+        </S.Form>
 
-        <ButtonContainer style={{ marginTop: '16px' }}>
+        <S.ButtonContainer style={{ marginTop: '16px', maxWidth: '400px' }}>
           {isUnverified && (
             <Button
               type="button"
@@ -319,21 +302,21 @@ const LoginPage: React.FC = () => {
           >
             {isLoading ? 'Loading...' : 'Try Demo Account'}
           </Button>
-        </ButtonContainer>
+        </S.ButtonContainer>
         
-        <LinkContainer>
-          <LinkText>
+        <S.LinkContainer>
+          <S.LinkText>
             <Link to="/reset-password">Forgot password?</Link>
-          </LinkText>
-        </LinkContainer>
+          </S.LinkText>
+        </S.LinkContainer>
         
-        <LinkContainer>
-          <LinkText>
+        <S.LinkContainer>
+          <S.LinkText>
             Don't have an account? <Link to="/signup">Sign up</Link>
-          </LinkText>
-        </LinkContainer>
-      </FormContainer>
-    </AuthContainer>
+          </S.LinkText>
+        </S.LinkContainer>
+      </S.FormContainer>
+    </S.AuthContainer>
   );
 };
 

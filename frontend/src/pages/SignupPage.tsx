@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import { register } from '../services/authService';
 import * as S from '../components/Auth/styles';
@@ -102,7 +102,7 @@ const SignupPage: React.FC = () => {
   return (
     <S.AuthContainer>
       <S.BannerContainer>
-        <S.BannerImage src={signupBanner} alt="Sign up banner" />
+        <S.BannerImage src={signupBanner} alt="Signup banner" />
       </S.BannerContainer>
       
       <S.FormContainer>
@@ -110,7 +110,7 @@ const SignupPage: React.FC = () => {
           <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
         </S.LogoContainer>
         
-        <S.FormTitle>Create your account</S.FormTitle>
+        <S.FormTitle>Join Twitter Clone today</S.FormTitle>
         
         {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
         
@@ -123,7 +123,7 @@ const SignupPage: React.FC = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              placeholder="Enter your username"
+              placeholder="Choose a username"
             />
             {errors.username && <S.ErrorMessage>{errors.username}</S.ErrorMessage>}
           </S.FormGroup>
@@ -136,7 +136,7 @@ const SignupPage: React.FC = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Enter your email address"
+              placeholder="Enter your email"
             />
             {errors.email && <S.ErrorMessage>{errors.email}</S.ErrorMessage>}
           </S.FormGroup>
@@ -176,7 +176,7 @@ const SignupPage: React.FC = () => {
               fullWidth
               disabled={isLoading}
             >
-              {isLoading ? 'Signing up...' : 'Sign up'}
+              {isLoading ? 'Creating account...' : 'Sign up'}
             </Button>
           </S.ButtonContainer>
         </S.Form>

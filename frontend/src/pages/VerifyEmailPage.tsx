@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { handleEmailVerification } from '../services/verificationService';
 import * as S from '../components/Auth/styles';
 import logo from '../assets/icons/blackIcon.png';
