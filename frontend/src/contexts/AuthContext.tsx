@@ -7,8 +7,9 @@ import axios from 'axios';
 // Make sure auth service is initialized with proper headers
 authService.setupAuthHeaders();
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
+  isLoggedIn: boolean;
   isLoading: boolean;
   error: string | null;
   isUnverified: boolean;
@@ -16,7 +17,7 @@ interface AuthContextType {
   successMessage: string | null;
   isDemoUser: boolean;
   login: (identifier: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (silentMode?: boolean) => Promise<boolean>;
   demoLogin: () => Promise<void>;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>;
@@ -222,17 +223,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = async () => {
+  const logout = async (silentMode = false) => {
+    setIsLoading(true);
+    
+    // Immediately clear state to prevent any race conditions or updates after unmount
+    setUser(null);
+    setIsDemoUser(false);
+    
     try {
-      setIsLoading(true);
-      await authService.logout();
+      // Only actually call API logout if we're not in silent mode
+      // Silent mode is used when we just want to clear state without waiting for API
+      if (!silentMode) {
+        await authService.logout();
+      }
+      
+      // Clear all auth-related storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('isDemoUser');
+      
+      // Reset state again just to be safe
       setUser(null);
       setIsDemoUser(false);
+      
+      return true;
     } catch (error) {
-      console.error('Logout error:', error);
-      if (error instanceof Error) {
-        setError(error.message);
-      }
+      console.error('Error during logout:', error);
+      
+      // Still reset state even if the API call fails
+      setUser(null);
+      setIsDemoUser(false);
+      
+      // Clear storage even on error
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('isDemoUser');
+      
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -240,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     user,
+    isLoggedIn: !!user,
     isLoading,
     error,
     isUnverified,
