@@ -88,14 +88,12 @@ jobs:
       
       - name: Install dependencies
         working-directory: ./frontend
-        run: |
-          rm -f package-lock.json
-          npm install
+        run: npm install --legacy-peer-deps
       
       - name: Set up environment variables
         working-directory: ./frontend
         run: |
-          echo "REACT_APP_API_URL=http://localhost:8000/api" >> .env
+          echo "REACT_APP_API_URL=http://localhost:8000/api/v1" >> .env
       
       - name: Run linting
         working-directory: ./frontend

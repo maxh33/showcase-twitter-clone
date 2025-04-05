@@ -13,8 +13,10 @@
 // https://on.cypress.io/configuration
 // ***********************************************************
 
+/// <reference types="cypress" />
+
 // Import commands.js using ES2015 syntax:
-import './commands'
+import './commands';
 
 // Import Chai and plugins
 import chai from 'chai';
@@ -23,14 +25,31 @@ import chaiString from 'chai-string';
 // Configure Chai
 chai.use(chaiString);
 
-// Add Chai to global namespace
+export {};
+
 declare global {
-  export namespace Cypress {
+  namespace Cypress {
     interface Chainable {
       // Add custom commands here
+      login(email: string, password: string): void;
+      logout(): void;
     }
   }
 }
+
+// Custom command for login
+Cypress.Commands.add('login', (email: string, password: string) => {
+  cy.visit('/login');
+  cy.get('input[name="identifier"]').type(email);
+  cy.get('input[name="password"]').type(password);
+  cy.get('button[type="submit"]').click();
+});
+
+// Custom command for logout
+Cypress.Commands.add('logout', () => {
+  cy.contains('Logout').click();
+  cy.url().should('include', '/login');
+});
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands') 

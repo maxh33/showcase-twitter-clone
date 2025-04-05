@@ -83,7 +83,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         elif not username and not email:
             logger.warning("Neither username nor email was provided")
             raise serializers.ValidationError(
-                {'email': 'Email or username is required.'},
+                'No valid login credentials provided',
                 code='authorization'
             )
         
@@ -238,6 +238,20 @@ class EmailVerificationSerializer(serializers.Serializer):
     """Serializer for email verification"""
     token = serializers.CharField(required=True)
     uidb64 = serializers.CharField(required=True)
+
+
+class ResendVerificationSerializer(serializers.Serializer):
+    """Serializer for resending verification email"""
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email=value)
+            if user.is_active:
+                raise serializers.ValidationError("This email is already verified.")
+            return value
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No user found with this email address.")
 
 
 class LogoutSerializer(serializers.Serializer):

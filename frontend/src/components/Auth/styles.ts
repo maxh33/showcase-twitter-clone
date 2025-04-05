@@ -61,10 +61,13 @@ export const FormTitle = styled.h1`
 export const Form = styled.form`
   width: 100%;
   max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 `;
 
 export const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 `;
 
 export const Label = styled.label`
@@ -97,6 +100,10 @@ export const Input = styled.input`
 
 export const ButtonContainer = styled.div`
   margin-top: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 `;
 
 export const LinkContainer = styled.div`
@@ -120,14 +127,35 @@ export const StyledLink = styled.a`
   }
 `;
 
-export const ErrorMessage = styled.p`
+export const ErrorMessage = styled.div`
   color: ${Colors.danger};
+  background-color: ${Colors.dangerLight};
+  border: 1px solid ${Colors.dangerBorder};
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
   font-size: 14px;
-  margin-top: 0.5rem;
+  text-align: center;
 `;
 
-export const SuccessMessage = styled.p`
+export const SuccessMessage = styled.div`
   color: ${Colors.success};
+  background-color: ${Colors.successLight};
+  border: 1px solid ${Colors.successBorder};
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
   font-size: 14px;
-  margin-top: 0.5rem;
+  text-align: center;
+`;
+
+export const InfoMessage = styled.div`
+  color: ${Colors.primary};
+  background-color: ${Colors.primaryLight};
+  border: 1px solid ${Colors.primaryBorder};
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
 `;

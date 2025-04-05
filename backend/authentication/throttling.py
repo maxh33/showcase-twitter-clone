@@ -10,7 +10,7 @@ class AuthRateThrottle(AnonRateThrottle):
     def get_rate(self):
         if settings.TESTING:
             return None
-        return '5/hour'
+        return '20/hour'
 
     def allow_request(self, request, view):
         if settings.TESTING:
@@ -31,7 +31,7 @@ class LoginRateThrottle(AnonRateThrottle):
     def get_rate(self):
         if settings.TESTING:
             return None
-        return '5/hour'
+        return '20/hour'
 
     def allow_request(self, request, view):
         if settings.TESTING:

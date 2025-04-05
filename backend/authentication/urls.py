@@ -11,6 +11,7 @@ from .views import (
     PasswordResetRequestView,
     PasswordResetConfirmView,
     LogoutView,
+    ResendVerificationView,
     DemoUserLoginView,
 )
 
@@ -26,8 +27,10 @@ def auth_api_root(request):
             "logout": "logout/",
             "token_refresh": "token/refresh/",
             "verify_email": "verify-email/",
+            "resend_verification": "resend-verification/",
             "password_reset": "password-reset/",
-            "password_reset_confirm": "password-reset/confirm/"
+            "password_reset_confirm": "password-reset/confirm/",
+            "demo_login": "demo-login/"
         }
     })
 
@@ -43,8 +46,12 @@ urlpatterns = [
     
     # Email verification
     path('verify-email/', EmailVerificationView.as_view(), name='verify_email'),
+    path('resend-verification/', ResendVerificationView.as_view(), name='resend_verification'),
     
     # Password reset
     path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    
+    # Demo login
+    path('demo-login/', DemoUserLoginView.as_view(), name='demo_login'),
 ] 

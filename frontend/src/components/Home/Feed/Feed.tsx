@@ -230,7 +230,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
         
         <TweetComposer 
           onTweetCreated={onTweetCreated} 
-          userProfilePicture={currentUser?.profile_picture || 'https://via.placeholder.com/50'}
+          userProfilePicture={currentUser?.profile_picture || '/logo192.png'}
         />
         
         {error && <S.EmptyState>{error}</S.EmptyState>}

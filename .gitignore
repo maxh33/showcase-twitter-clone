@@ -56,6 +56,12 @@ htmlcov/
 .pytest_cache/
 cypress/videos/
 cypress/screenshots/
+cypress/downloads/
+cypress/fixtures/
+cypress/results/
+cypress/reports/
+test_smtp.py
+**/test_smtp.py
 
 # Production
 /build

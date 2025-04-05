@@ -8,19 +8,26 @@
 // https://on.cypress.io/custom-commands
 // ***********************************************
 
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  [key: string]: unknown;
+}
+
 interface LoginResponse {
   access: string;
   refresh: string;
-  user: any;
+  user: User;
 }
 
 // -- This is a parent command --
 Cypress.Commands.add('login', (email: string, password: string) => {
-  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api';
+  const API_URL = Cypress.env('API_URL') || 'http://localhost:8000/api/v1';
   
   return cy.request({
     method: 'POST',
-    url: `${API_URL}/v1/auth/login/`,
+    url: `${API_URL}/auth/login/`,
     body: { email, password },
     failOnStatusCode: false
   }).then((response) => {
@@ -56,9 +63,20 @@ Cypress.Commands.add('ensureAuthenticated', (testUser: { email: string; password
 
 declare global {
   namespace Cypress {
-    interface Chainable {
-      login(email: string, password: string): Chainable<LoginResponse | null>
-      ensureAuthenticated(testUser: { email: string; password: string }): Chainable<void>
+    interface Chainable<Subject = unknown> {
+      login(email: string, password: string): Chainable<LoginResponse | null>;
+      ensureAuthenticated(testUser: { email: string; password: string }): Chainable<void>;
+      intercept(method: string, url: string, response: unknown): Chainable<null>;
+      wait(alias: string): Chainable<null>;
+      request(options: unknown): Chainable<unknown>;
+      exec(command: string): Chainable<{ stdout: string; stderr: string; code: number }>;
+      url(): Chainable<string>;
+      contains(content: string): Chainable<JQuery<HTMLElement>>;
+      get(selector: string): Chainable<JQuery<HTMLElement>>;
+      clearLocalStorage(): Chainable<void>;
+      clearCookies(): Chainable<void>;
+      visit(url: string): Chainable<void>;
+      log(message: string): void;
     }
   }
 } 
