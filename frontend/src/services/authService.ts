@@ -388,6 +388,8 @@ export const refreshToken = async (): Promise<TokenRefreshResponse> => {
     
     return result;
   } catch (error) {
+    // Log the error but still propagate it
+    console.error('Token refresh failed:', error);
     throw error;
   } finally {
     refreshInProgress = false;

@@ -55,6 +55,111 @@ interface CommentModalProps {
   userProfilePicture?: string;
 }
 
+// Media and UI-related hooks
+const useImageSearch = (initialImages: UnsplashImage[] = [], setExternalPreviewUrl: (url: string) => void) => {
+  const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>(initialImages);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [imageSearchQuery, setImageSearchQuery] = useState('');
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  
+  const fetchImages = useCallback(async (query = '') => {
+    setIsLoadingImages(true);
+    try {
+      const images = await fetchRandomImages(query || undefined);
+      setUnsplashImages(images);
+    } catch (error) {
+      console.error('Error fetching images:', error);
+    } finally {
+      setIsLoadingImages(false);
+    }
+  }, []);
+  
+  const toggleImageSearch = useCallback(async () => {
+    const newState = !showImageSearch;
+    setShowImageSearch(newState);
+    
+    if (newState && unsplashImages.length === 0) {
+      await fetchImages();
+    }
+  }, [showImageSearch, unsplashImages.length, fetchImages]);
+  
+  const handleImageSearchSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (imageSearchQuery.trim()) {
+      fetchImages(imageSearchQuery);
+    }
+  }, [imageSearchQuery, fetchImages]);
+  
+  const handleUnsplashImageSelect = useCallback((image: UnsplashImage) => {
+    setExternalPreviewUrl(image.url);
+    setShowImageSearch(false);
+  }, [setExternalPreviewUrl, setShowImageSearch]);
+  
+  return {
+    unsplashImages,
+    isLoadingImages,
+    imageSearchQuery,
+    showImageSearch,
+    setImageSearchQuery,
+    setShowImageSearch,
+    toggleImageSearch,
+    handleImageSearchSubmit,
+    handleUnsplashImageSelect
+  };
+};
+
+const useFileHandler = () => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const readFileAsDataURL = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+  
+  const processFileSelection = useCallback(async (file: File) => {
+    setSelectedFile(file);
+    const dataUrl = await readFileAsDataURL(file);
+    setPreviewUrl(dataUrl);
+  }, [readFileAsDataURL]);
+  
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFileSelection(file);
+    }
+  }, [processFileSelection]);
+  
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+  
+  return {
+    selectedFile,
+    previewUrl,
+    fileInputRef,
+    setSelectedFile,
+    setPreviewUrl,
+    handleFileChange,
+    handleFileSelect,
+    handleRemoveFile
+  };
+};
+
 const CommentModal: React.FC<CommentModalProps> = ({
   isOpen,
   onClose,
@@ -73,16 +178,61 @@ const CommentModal: React.FC<CommentModalProps> = ({
   // Media state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // UI state
-  const [showImageSearch, setShowImageSearch] = useState(false);
+  // Use file handler functions
+  const readFileAsDataURL = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+  
+  const processFileSelection = useCallback(async (file: File) => {
+    setSelectedFile(file);
+    const dataUrl = await readFileAsDataURL(file);
+    setPreviewUrl(dataUrl);
+  }, [readFileAsDataURL]);
+  
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFileSelection(file);
+    }
+  }, [processFileSelection]);
+  
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+  
+  // Emoji picker state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>([]);
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
-  const [imageSearchQuery, setImageSearchQuery] = useState('');
+  
+  // Use image search with setPreviewUrl dependency
+  const {
+    unsplashImages,
+    isLoadingImages,
+    imageSearchQuery,
+    showImageSearch,
+    setImageSearchQuery,
+    setShowImageSearch,
+    toggleImageSearch,
+    handleImageSearchSubmit,
+    handleUnsplashImageSelect
+  } = useImageSearch([], setPreviewUrl);
   
   // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -96,92 +246,17 @@ const CommentModal: React.FC<CommentModalProps> = ({
   // Use the custom hook for emoji picker outside click
   useOutsideClickHandler(emojiPickerRef, handleCloseEmojiPicker);
   
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     if (errorMessage) setErrorMessage(null);
-  };
+  }, [errorMessage]);
   
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
-  };
-  
-  // Extract file reading logic to a separate function
-  const readFileAsDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-  
-  // Process file selection
-  const processFileSelection = async (file: File) => {
-    setSelectedFile(file);
-    const dataUrl = await readFileAsDataURL(file);
-    setPreviewUrl(dataUrl);
-    
-    // Close other pickers when a file is selected
-    setShowImageSearch(false);
-    setShowEmojiPicker(false);
-  };
-  
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      await processFileSelection(file);
-    }
-  };
-  
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-  
-  const toggleImageSearch = async () => {
-    setShowEmojiPicker(false);
-    
-    const newState = !showImageSearch;
-    setShowImageSearch(newState);
-    
-    if (newState && unsplashImages.length === 0) {
-      await fetchImages();
-    }
-  };
-  
-  const fetchImages = async (query = '') => {
-    setIsLoadingImages(true);
-    try {
-      const images = await fetchRandomImages(query || undefined);
-      setUnsplashImages(images);
-    } catch (error) {
-      console.error('Error fetching images:', error);
-    } finally {
-      setIsLoadingImages(false);
-    }
-  };
-  
-  const handleImageSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (imageSearchQuery.trim()) {
-      fetchImages(imageSearchQuery);
-    }
-  };
-  
-  const handleUnsplashImageSelect = (image: UnsplashImage) => {
-    setPreviewUrl(image.url);
-    setShowImageSearch(false);
-  };
-  
-  const toggleEmojiPicker = (e: React.MouseEvent) => {
+  // Memoized handler for toggling emoji picker
+  const toggleEmojiPicker = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setShowImageSearch(false);
     setShowEmojiPicker(!showEmojiPicker);
-  };
+  }, [showEmojiPicker, setShowImageSearch]);
   
   const handleEmojiSelect = (emoji: string) => {
     const cursorPosition = textInputRef.current?.selectionStart || content.length;
