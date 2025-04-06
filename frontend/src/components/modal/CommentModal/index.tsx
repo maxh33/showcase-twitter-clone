@@ -4,6 +4,22 @@ import { fetchRandomImages, UnsplashImage } from '../../../services/imageService
 import { Tweet } from '../../../services/tweetService';
 import * as S from './styles';
 
+// Custom hook to handle outside clicks
+const useOutsideClickHandler = (ref: React.RefObject<HTMLElement>, callback: () => void) => {
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        callback();
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [ref, callback]);
+};
+
 // Allow for flexible author ID type (string or number)
 interface FlexibleTweet extends Omit<Tweet, 'author'> {
   author: {
@@ -59,34 +75,11 @@ const CommentModal: React.FC<CommentModalProps> = ({
     };
   }, [isOpen]);
   
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
+  // Use the custom hook for modal outside click
+  useOutsideClickHandler(modalRef, onClose);
   
-  useEffect(() => {
-    function handleClickOutsideEmoji(event: MouseEvent) {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-        setShowEmojiPicker(false);
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutsideEmoji);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutsideEmoji);
-    };
-  }, []);
+  // Use the custom hook for emoji picker outside click
+  useOutsideClickHandler(emojiPickerRef, () => setShowEmojiPicker(false));
   
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);

@@ -62,7 +62,7 @@ const DemoModal: React.FC<DemoModalProps> = ({
         
         <S.ModalFooter>
           <S.CancelButton onClick={onClose}>Continue with Demo</S.CancelButton>
-          <S.RegisterButton onClick={handleRegister}>Create Account</S.RegisterButton>
+          <S.RegisterButton onClick={handleRegister}>Sign Up for Free</S.RegisterButton>
         </S.ModalFooter>
       </S.ModalContent>
     </S.ModalOverlay>

@@ -91,6 +91,12 @@ class TweetViewSet(viewsets.ModelViewSet):
         logger.info("Creating tweet with data: %s", self.request.data)
         logger.info("Files in request: %s", self.request.FILES)
         
+        # Check if user is a demo user
+        if getattr(self.request.user, 'is_demo_user', False):
+            raise ValidationError(
+                {'error': 'This feature is not available for demo accounts'}
+            )
+        
         # Create the tweet first
         tweet = serializer.save(author=self.request.user)
         logger.info("Created tweet with ID: %s", tweet.id)

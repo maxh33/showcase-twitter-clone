@@ -582,6 +582,13 @@ const handleSuccessfulLogin = (response: { data: AuthTokens }) => {
   return response.data;
 };
 
+// Helper function to attempt login with specific credentials
+const attemptLogin = async (credentials: { email: string, username: string, password: string }) => {
+  console.log(`Attempting login with username: ${credentials.username}`);
+  const response = await axios.post(buildUrl('auth/login/'), credentials);
+  return handleSuccessfulLogin(response);
+};
+
 // Add demo login function
 export const demoLogin = async () => {
   try {
@@ -591,25 +598,21 @@ export const demoLogin = async () => {
     try {
       console.log('Using standard demo credentials');
       
-      const response = await axios.post(buildUrl('auth/login/'), {
+      return await attemptLogin({
         email: 'demo@twitterclone.com',
         username: 'demo_user',
         password: 'Demo@123'
       });
-      
-      return handleSuccessfulLogin(response);
     } catch (loginError) {
       console.error('Standard demo credentials failed, trying with timestamp', loginError);
       
       // Fallback to using a timestamp-based credential as a last resort
       const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 12);
-      const response = await axios.post(buildUrl('auth/login/'), {
+      return await attemptLogin({
         email: `demo+${timestamp}@twitterclone.com`,
         username: `demo_user_${timestamp}`,
         password: 'Demo@123'
       });
-      
-      return handleSuccessfulLogin(response);
     }
   } catch (error) {
     return handleDemoLoginError(error);

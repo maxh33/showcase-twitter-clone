@@ -16,7 +16,7 @@ urlpatterns = [
     path('<int:tweet_pk>/comment/', CommentViewSet.as_view({
         'get': 'list',
         'post': 'create'
-    }), name='tweet-comment-singular'),
+    }), name='tweet-single-comment'),
     path('<int:tweet_pk>/comments/<int:pk>/', CommentViewSet.as_view({
         'get': 'retrieve',
         'put': 'update',
