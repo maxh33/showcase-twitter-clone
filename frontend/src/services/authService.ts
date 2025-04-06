@@ -186,6 +186,28 @@ const formatLoginData = (data: LoginData) => {
 };
 
 // Helper function to handle login error responses
+const extractVerificationError = (errorData: any): string | null => {
+  if ('requires_verification' in errorData && errorData.requires_verification) {
+    return typeof errorData.detail === 'string'
+      ? errorData.detail
+      : 'Your account has not been verified. Please check your email for the verification link.';
+  }
+  return null;
+};
+
+const extractFieldError = (errorData: any, field: string): string | null => {
+  if (errorData[field]) {
+    return Array.isArray(errorData[field]) ? errorData[field][0] : errorData[field];
+  }
+  return null;
+};
+
+const extractFirstError = (errorData: any): string => {
+  const firstError = Object.values(errorData)[0];
+  return Array.isArray(firstError) ? firstError[0] : firstError;
+};
+
+// Helper function to handle login error responses
 const handleLoginError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiErrorResponse>;
@@ -194,27 +216,23 @@ const handleLoginError = (error: unknown): never => {
       const errorData = axiosError.response.data;
       if (typeof errorData === 'object') {
         // Check for account verification errors (status 403)
-        if ('requires_verification' in errorData && errorData.requires_verification) {
-          throw new Error(
-            typeof errorData.detail === 'string' 
-              ? errorData.detail 
-              : 'Your account has not been verified. Please check your email for the verification link.'
-          );
+        const verificationError = extractVerificationError(errorData);
+        if (verificationError) {
+          throw new Error(verificationError);
         }
         
         // Check for specific error fields
-        if (errorData.email) {
-          throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
-        }
-        if (errorData.password) {
-          throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
-        }
-        if (errorData.error) {
-          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
-        }
+        const emailError = extractFieldError(errorData, 'email');
+        if (emailError) throw new Error(emailError);
+        
+        const passwordError = extractFieldError(errorData, 'password');
+        if (passwordError) throw new Error(passwordError);
+        
+        const generalError = extractFieldError(errorData, 'error');
+        if (generalError) throw new Error(generalError);
+        
         // If no specific field error, get the first error message
-        const firstError = Object.values(errorData)[0];
-        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+        throw new Error(extractFirstError(errorData));
       }
     }
     throw new Error('Login failed. Please check your credentials and try again.');

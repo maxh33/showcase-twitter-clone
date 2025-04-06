@@ -278,9 +278,26 @@ const CommentModal: React.FC<CommentModalProps> = ({
     }, 0);
   };
   
-  const handleSubmit = async () => {
+  const validateComment = (): string | null => {
     if (content.trim() === '' && !selectedFile && !previewUrl) {
-      setErrorMessage('Please enter some content or add an image before commenting.');
+      return 'Please enter some content or add an image before commenting.';
+    }
+    return null;
+  };
+  
+  const resetForm = () => {
+    setContent('');
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setShowImageSearch(false);
+    setShowEmojiPicker(false);
+    onClose();
+  };
+  
+  const handleSubmit = async () => {
+    const validationError = validateComment();
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
     
@@ -289,14 +306,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     
     try {
       onSubmit(content, selectedFile || undefined);
-      
-      // Reset form
-      setContent('');
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setShowImageSearch(false);
-      setShowEmojiPicker(false);
-      onClose();
+      resetForm();
     } catch (error) {
       console.error('Error creating comment:', error);
       setErrorMessage('Failed to create comment. Please try again.');
