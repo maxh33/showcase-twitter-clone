@@ -282,6 +282,31 @@ export const logout = async (skipApiCall = false) => {
   }
 };
 
+// Define an interface for token refresh response
+interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+  [key: string]: unknown;
+}
+
+// Handle waiting for existing refresh to complete
+const waitForPendingRefresh = (): Promise<TokenRefreshResponse> => {
+  console.log('Token refresh already in progress');
+  return new Promise((resolve, reject) => {
+    const checkComplete = setInterval(() => {
+      if (!refreshInProgress) {
+        clearInterval(checkComplete);
+        const token = localStorage.getItem('token');
+        if (token) {
+          resolve({ access: token });
+        } else {
+          reject(new Error('Refresh completed but no token available'));
+        }
+      }
+    }, 100);
+  });
+};
+
 // Check if refresh token needs to be throttled
 const shouldThrottleRefresh = async (lastRefreshTime: number): Promise<void> => {
   const now = Date.now();
@@ -293,13 +318,6 @@ const shouldThrottleRefresh = async (lastRefreshTime: number): Promise<void> => 
     await sleep(waitTime);
   }
 };
-
-// Define an interface for token refresh response
-interface TokenRefreshResponse {
-  access: string;
-  refresh?: string;
-  [key: string]: unknown;
-}
 
 // Handle refresh token request
 const performTokenRefresh = async (refreshTokenValue: string): Promise<TokenRefreshResponse> => {
@@ -331,7 +349,20 @@ const checkMaxRefreshAttempts = (): boolean => {
   return false;
 };
 
-export const refreshToken = async () => {
+// Simple function to get refresh token value
+const getRefreshTokenValue = (): string => {
+  const refreshTokenValue = localStorage.getItem('refreshToken');
+  if (!refreshTokenValue) {
+    throw new Error('No refresh token available');
+  }
+  return refreshTokenValue;
+};
+
+/**
+ * Attempts to refresh the authentication token
+ * Core function delegating to helpers to keep complexity low
+ */
+export const refreshToken = async (): Promise<TokenRefreshResponse> => {
   // Check if we've exceeded max refresh attempts
   if (checkMaxRefreshAttempts()) {
     throw new Error('Maximum refresh attempts exceeded');
@@ -339,42 +370,27 @@ export const refreshToken = async () => {
 
   // Prevent concurrent refresh calls
   if (refreshInProgress) {
-    console.log('Token refresh already in progress');
-    return new Promise((resolve, reject) => {
-      const checkComplete = setInterval(() => {
-        if (!refreshInProgress) {
-          clearInterval(checkComplete);
-          const token = localStorage.getItem('token');
-          if (token) {
-            resolve({ access: token });
-          } else {
-            reject(new Error('Refresh completed but no token available'));
-          }
-        }
-      }, 100);
-    });
+    return waitForPendingRefresh();
   }
 
-  // Apply rate limiting
-  await shouldThrottleRefresh(lastRefreshTime);
-
-  refreshInProgress = true;
-  lastRefreshTime = Date.now();
-  refreshAttempts++;
-
   try {
-    const refreshTokenValue = localStorage.getItem('refreshToken');
-    if (!refreshTokenValue) {
-      refreshInProgress = false;
-      throw new Error('No refresh token available');
-    }
+    // Apply rate limiting
+    await shouldThrottleRefresh(lastRefreshTime);
     
-    const result = await performTokenRefresh(refreshTokenValue);
-    refreshInProgress = false;
+    // Set flags and counters
+    refreshInProgress = true;
+    lastRefreshTime = Date.now();
+    refreshAttempts++;
+    
+    // Get token and perform refresh
+    const token = getRefreshTokenValue();
+    const result = await performTokenRefresh(token);
+    
     return result;
   } catch (error) {
-    refreshInProgress = false;
     throw error;
+  } finally {
+    refreshInProgress = false;
   }
 };
 

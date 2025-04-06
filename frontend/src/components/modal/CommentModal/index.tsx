@@ -1,8 +1,23 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { EMOJI_LIST } from '../../common/constants';
 import { fetchRandomImages, UnsplashImage } from '../../../services/imageService';
 import { Tweet } from '../../../services/tweetService';
 import * as S from './styles';
+
+// Custom hook to handle modal state and body overflow
+const useModalState = (isOpen: boolean) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+};
 
 // Custom hook to handle outside clicks
 const useOutsideClickHandler = (ref: React.RefObject<HTMLElement>, callback: () => void) => {
@@ -47,39 +62,39 @@ const CommentModal: React.FC<CommentModalProps> = ({
   replyingTo,
   userProfilePicture = '/logo192.png'
 }) => {
+  // Use the custom hook for modal state
+  useModalState(isOpen);
+  
+  // Form state
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Media state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
+  // UI state
   const [showImageSearch, setShowImageSearch] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [imageSearchQuery, setImageSearchQuery] = useState('');
   
+  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  // Memoize callback to avoid recreating it on each render
+  const handleCloseEmojiPicker = useCallback(() => setShowEmojiPicker(false), []);
   
   // Use the custom hook for modal outside click
   useOutsideClickHandler(modalRef, onClose);
   
   // Use the custom hook for emoji picker outside click
-  useOutsideClickHandler(emojiPickerRef, () => setShowEmojiPicker(false));
+  useOutsideClickHandler(emojiPickerRef, handleCloseEmojiPicker);
   
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
