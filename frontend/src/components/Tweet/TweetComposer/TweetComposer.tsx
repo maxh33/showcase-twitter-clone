@@ -5,6 +5,8 @@ import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../../common/IconWrapper';
 import { refreshToken, setupAuthHeaders } from '../../../services/authService';
+import { useAuth } from '../../../contexts/AuthContext';
+import DemoModal from '../../modal/DemoModal';
 
 // Simple emoji array for the custom emoji picker
 const EMOJI_LIST = [
@@ -29,6 +31,7 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
   onTweetCreated,
   userProfilePicture = '/logo192.png'
 }) => {
+  const { isDemoUser } = useAuth();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -39,6 +42,7 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
   const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [imageSearchQuery, setImageSearchQuery] = useState('');
+  const [showDemoModal, setShowDemoModal] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
@@ -240,6 +244,12 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       return;
     }
     
+    // Show demo modal instead of submitting if user is a demo user
+    if (isDemoUser) {
+      setShowDemoModal(true);
+      return;
+    }
+    
     setIsSubmitting(true);
     setErrorMessage(null);
     
@@ -388,6 +398,13 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
           style={{ display: 'none' }}
         />
       </S.ComposerContent>
+      
+      {/* Demo Modal */}
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)} 
+        actionType="tweet" 
+      />
     </S.TweetComposerWrapper>
   );
 };

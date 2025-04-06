@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as S from './styles';
 import tweetService from '../../../services/tweetService';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '../../../contexts/AuthContext';
+import DemoModal from '../../modal/DemoModal';
 
 // Types
 interface Comment {
@@ -24,10 +26,12 @@ interface CommentsContainerProps {
 }
 
 const CommentsContainer: React.FC<CommentsContainerProps> = ({ tweetId, isOpen, onClose }) => {
+  const { isDemoUser } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   // Fetch comments
   const fetchComments = useCallback(async () => {
@@ -56,6 +60,12 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ tweetId, isOpen, 
     e.preventDefault();
     
     if (!newComment.trim()) return;
+    
+    // Show demo modal for demo users
+    if (isDemoUser) {
+      setShowDemoModal(true);
+      return;
+    }
     
     setSubmitting(true);
     try {
@@ -116,6 +126,13 @@ const CommentsContainer: React.FC<CommentsContainerProps> = ({ tweetId, isOpen, 
           <S.NoComments>No comments yet. Be the first to comment!</S.NoComments>
         )}
       </S.CommentsList>
+      
+      {/* Demo Modal */}
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)} 
+        actionType="comment" 
+      />
     </S.Container>
   );
 };

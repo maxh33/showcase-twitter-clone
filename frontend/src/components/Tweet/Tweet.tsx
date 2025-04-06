@@ -4,7 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { FaRegComment, FaRetweet, FaRegHeart, FaHeart, FaShareAlt } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../common/IconWrapper';
-import CommentModal from '../Comment/CommentModal';
+import CommentModal from '../modal/CommentModal';
 
 // Allow for flexible author ID type (string or number)
 interface FlexibleTweet extends Omit<TweetType, 'author'> {
