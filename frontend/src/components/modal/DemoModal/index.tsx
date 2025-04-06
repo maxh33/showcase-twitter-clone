@@ -32,7 +32,9 @@ const DemoModal: React.FC<DemoModalProps> = ({
 
   const handleRegister = () => {
     onClose();
-    navigate('/signup');
+    setTimeout(() => {
+      navigate('/signup');
+    }, 50);
   };
 
   return (
