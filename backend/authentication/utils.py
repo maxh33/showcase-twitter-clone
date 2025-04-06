@@ -19,7 +19,7 @@ def send_password_reset_email(user_email, reset_url):
     """
     try:
         subject = 'Reset your password'
-        from_email = f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>'
+        from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [user_email]
         
         # Render HTML content
@@ -54,7 +54,7 @@ def send_verification_email(user_email, verification_url):
     """
     try:
         subject = 'Verify your email address'
-        from_email = f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>'
+        from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [user_email]
         
         # Render HTML content
