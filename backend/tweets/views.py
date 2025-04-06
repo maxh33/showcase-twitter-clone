@@ -344,6 +344,12 @@ class CommentViewSet(viewsets.ModelViewSet):
     }
     
     def perform_create(self, serializer):
+        # Check if user is a demo user
+        if getattr(self.request.user, 'is_demo_user', False):
+            raise serializers.ValidationError(
+                {'error': 'This feature is not available for demo accounts'}
+            )
+            
         # Get the tweet ID from the URL or request data
         tweet_id = self.kwargs.get('tweet_pk') or self.request.data.get('tweet_id')
         if not tweet_id:

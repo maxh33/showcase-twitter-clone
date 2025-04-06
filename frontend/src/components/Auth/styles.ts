@@ -136,7 +136,29 @@ export const ErrorMessage = styled.div`
   padding: 12px;
   margin-bottom: 16px;
   font-size: 14px;
-  text-align: center;
+  text-align: left;
+  white-space: pre-line;
+  
+  /* Styling for verification error messages with check marks */
+  & strong {
+    font-weight: 600;
+  }
+  
+  & em {
+    font-style: italic;
+    font-weight: 500;
+  }
+  
+  /* Format verification steps nicely */
+  & ul {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    padding-left: 20px;
+  }
+  
+  & li {
+    margin-bottom: 4px;
+  }
 `;
 
 export const SuccessMessage = styled.div`

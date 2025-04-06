@@ -192,7 +192,7 @@ export const tweetService = {
         formData.append('media', media);
       }
       
-      const response = await axiosInstance.post(`/tweets/${tweetId}/comments/`, formData, {
+      const response = await axiosInstance.post(`/tweets/${tweetId}/add_comment/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Accept': 'application/json',

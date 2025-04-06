@@ -193,6 +193,15 @@ const handleLoginError = (error: unknown): never => {
     if (axiosError.response?.data) {
       const errorData = axiosError.response.data;
       if (typeof errorData === 'object') {
+        // Check for account verification errors (status 403)
+        if ('requires_verification' in errorData && errorData.requires_verification) {
+          throw new Error(
+            typeof errorData.detail === 'string' 
+              ? errorData.detail 
+              : 'Your account has not been verified. Please check your email for the verification link.'
+          );
+        }
+        
         // Check for specific error fields
         if (errorData.email) {
           throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);

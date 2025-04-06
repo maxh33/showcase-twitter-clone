@@ -397,11 +397,27 @@ class EmailVerificationView(APIView):
                     user.is_active = True
                     user.save()
                     
-                    # Send success email only if the user was previously inactive
-                    if was_inactive:
+                    # Check for duplicate activations within 10 seconds
+                    # We use 'last_activation' key to store the timestamp of the last activation
+                    now = timezone.now()
+                    last_activation = getattr(user, 'last_activation', None)
+                    should_send_email = was_inactive
+                    
+                    if last_activation and (now - last_activation).total_seconds() < 10:
+                        # Duplicate activation detected within 10 seconds - don't send another email
+                        should_send_email = False
+                        logger.info(f"Duplicate activation detected for user: {user.email} - skipping email")
+                    
+                    if should_send_email:
+                        # Set last activation time
+                        user.last_activation = now
+                        user.save(update_fields=['last_activation'])
+                        
+                        # Send success email only if the user was previously inactive
                         login_url = f"{settings.FRONTEND_URL}/login"
                         try:
                             send_account_activation_success_email(user.email, login_url)
+                            logger.info(f"Sent activation success email to: {user.email}")
                         except Exception as e:
                             logger.error(f"Failed to send account activation success email: {str(e)}")
                             # Continue with the response even if email fails

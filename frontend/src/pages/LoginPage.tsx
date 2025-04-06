@@ -76,22 +76,36 @@ const LoginPage: React.FC = () => {
   // Check if the error response indicates an unverified account
   const checkForUnverifiedAccount = (errorData: Record<string, unknown>, isEmail: boolean): boolean => {
     if (
-      errorData.requires_verification === true || 
+      'requires_verification' in errorData ||
       (typeof errorData.detail === 'string' && errorData.detail.includes('not been verified')) ||
       (errorData.detail === 'Email not verified.') || 
       (typeof errorData.non_field_errors === 'string' && errorData.non_field_errors.includes('not verified')) ||
       (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors[0]?.includes('not verified'))
     ) {
       const emailFromResponse = errorData.email as string;
-      setUnverifiedEmail(emailFromResponse || (isEmail ? formData.identifier : null));
+      const emailToDisplay = emailFromResponse || (isEmail ? formData.identifier : null);
+      setUnverifiedEmail(emailToDisplay);
       
-      // Use the detailed message from the backend if available
-      const detailMessage = typeof errorData.detail === 'string' 
-        ? errorData.detail 
-        : '📧 Your account needs to be verified. We have sent a new verification link to your email address. Please check your inbox (and spam folder) and click the verification link to activate your account.';
+      // Show the unverified account UI
+      setIsUnverified(true);
       
+      // Create a user-friendly message that clearly instructs the user
+      const emailDisplay = emailToDisplay ? ` (${emailToDisplay})` : '';
+      const detailMessage = 
+        `🔑 Account Activation Required${emailDisplay}
+
+A new activation link has been sent to your email address.
+
+✅ Check your inbox and spam folder
+✅ Click the verification link in the email
+✅ Return to this page to log in
+
+If you don't receive the email within a few minutes, you can click the 'Resend Verification Email' button below.`;
+      
+      // Set the formatted error message and success message
       setErrors({ general: detailMessage });
-      setSuccessMessage('A verification email has been sent. Please check your inbox.');
+      setSuccessMessage('A new verification link has been sent to your email address.');
+      
       return true;
     }
     return false;
