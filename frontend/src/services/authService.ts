@@ -113,7 +113,7 @@ interface AuthTokens {
 }
 
 // Helper function to build complete API URLs
-const buildUrl = (endpoint: string): string => {
+export const buildUrl = (endpoint: string): string => {
   try {
     // Remove leading slash from endpoint if present
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
