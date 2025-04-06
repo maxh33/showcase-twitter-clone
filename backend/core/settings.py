@@ -343,8 +343,10 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Twitter Clone <services@maxhaider.dev>')
 
-# Frontend URL for email verification and password reset links
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')  # Use environment variable
+# Frontend URL
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL_PRODUCTION = os.environ.get('FRONTEND_URL_PRODUCTION', 'https://showcase-twitter-clone.vercel.app')
+FRONTEND_URL_PREVIEW = os.environ.get('FRONTEND_URL_PREVIEW', 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app')
 
 # Swagger settings
 SWAGGER_SETTINGS = {
@@ -360,6 +362,3 @@ SWAGGER_SETTINGS = {
 
 # Disable deprecated Swagger renderers
 SWAGGER_USE_COMPAT_RENDERERS = False
-
-FRONTEND_URL_PREVIEW = os.environ.get('FRONTEND_URL_PREVIEW', 'http://localhost:3000')
-FRONTEND_URL_PRODUCTION = os.environ.get('FRONTEND_URL_PRODUCTION', 'http://localhost:3000')
