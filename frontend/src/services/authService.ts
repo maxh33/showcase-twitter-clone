@@ -131,7 +131,7 @@ export const buildUrl = (endpoint: string): string => {
     // Check if the API URL already contains the v1 part
     const hasV1InBaseUrl = baseUrl.includes('/v1');
     
-    // If the endpoint already includes v1/, don't add it again
+    // If the endpoint already starts with v1/, ensure we don't duplicate it
     if (cleanEndpoint.startsWith('v1/')) {
       if (hasV1InBaseUrl) {
         // If baseUrl has v1, remove v1 from endpoint to avoid duplication
@@ -141,7 +141,7 @@ export const buildUrl = (endpoint: string): string => {
         return `${baseUrl}/${cleanEndpoint}`;
       }
     } else {
-      // If baseUrl doesn't have v1, add it to the endpoint
+      // If baseUrl doesn't have v1, add it to the endpoint (unless the endpoint is already v1-prefixed)
       if (hasV1InBaseUrl) {
         return `${baseUrl}/${cleanEndpoint}`;
       } else {
@@ -150,8 +150,10 @@ export const buildUrl = (endpoint: string): string => {
     }
   } catch (error) {
     console.error('Error building URL:', error);
-    // In case of any error, ensure we return a valid URL
-    return `${FINAL_API_URL}/v1/${endpoint}`;
+    // In case of any error, ensure we return a valid URL without duplicating v1
+    return FINAL_API_URL.includes('/v1') 
+      ? `${FINAL_API_URL}/${endpoint}`
+      : `${FINAL_API_URL}/v1/${endpoint}`;
   }
 };
 
@@ -185,8 +187,15 @@ const formatLoginData = (data: LoginData) => {
   };
 };
 
+// Define a more specific type for error data
+interface ErrorData {
+  [key: string]: unknown;
+  requires_verification?: boolean;
+  detail?: string;
+}
+
 // Helper function to handle login error responses
-const extractVerificationError = (errorData: any): string | null => {
+const extractVerificationError = (errorData: ErrorData): string | null => {
   if ('requires_verification' in errorData && errorData.requires_verification) {
     return typeof errorData.detail === 'string'
       ? errorData.detail
@@ -195,16 +204,18 @@ const extractVerificationError = (errorData: any): string | null => {
   return null;
 };
 
-const extractFieldError = (errorData: any, field: string): string | null => {
+const extractFieldError = (errorData: ErrorData, field: string): string | null => {
   if (errorData[field]) {
-    return Array.isArray(errorData[field]) ? errorData[field][0] : errorData[field];
+    const fieldError = errorData[field];
+    return Array.isArray(fieldError) ? fieldError[0] : String(fieldError);
   }
   return null;
 };
 
-const extractFirstError = (errorData: any): string => {
-  const firstError = Object.values(errorData)[0];
-  return Array.isArray(firstError) ? firstError[0] : firstError;
+const extractFirstError = (errorData: ErrorData): string => {
+  const firstErrorField = Object.keys(errorData)[0];
+  const firstError = errorData[firstErrorField];
+  return Array.isArray(firstError) ? firstError[0] : String(firstError);
 };
 
 // Helper function to handle login error responses
@@ -216,7 +227,7 @@ const handleLoginError = (error: unknown): never => {
       const errorData = axiosError.response.data;
       if (typeof errorData === 'object') {
         // Check for account verification errors (status 403)
-        const verificationError = extractVerificationError(errorData);
+        const verificationError = extractVerificationError(errorData as ErrorData);
         if (verificationError) {
           throw new Error(verificationError);
         }
@@ -232,7 +243,7 @@ const handleLoginError = (error: unknown): never => {
         if (generalError) throw new Error(generalError);
         
         // If no specific field error, get the first error message
-        throw new Error(extractFirstError(errorData));
+        throw new Error(extractFirstError(errorData as ErrorData));
       }
     }
     throw new Error('Login failed. Please check your credentials and try again.');

@@ -68,8 +68,14 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     "https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app",  # Vercel preview
+    "https://showcase-twitter-clone-hwcihi4f1-maxh33s-projects.vercel.app", # Current preview
     "https://showcase-twitter-clone.vercel.app",  # Vercel production
     "https://showcase-twitter-clone-git-staging-maxh33s-projects.vercel.app",  # Vercel staging
+]
+
+# For future Vercel preview deployments, allow any subdomain matching the pattern
+CORS_ORIGIN_REGEX_WHITELIST = [
+    r"^https://showcase-twitter-clone-.*-maxh33s-projects\.vercel\.app$",
 ]
 
 # For any other preview deployments we might create

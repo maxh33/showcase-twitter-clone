@@ -244,12 +244,6 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
       return;
     }
     
-    // Show demo modal instead of submitting if user is a demo user
-    if (isDemoUser) {
-      setShowDemoModal(true);
-      return;
-    }
-    
     setIsSubmitting(true);
     setErrorMessage(null);
     
