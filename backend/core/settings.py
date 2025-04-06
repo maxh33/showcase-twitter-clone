@@ -75,7 +75,7 @@ CORS_ALLOWED_ORIGINS = [
 
 # For future Vercel preview deployments, allow any subdomain matching the pattern
 CORS_ORIGIN_REGEX_WHITELIST = [
-    r"^https://showcase-twitter-clone-.*-maxh33s-projects\.vercel\.app$",
+    r"^https://showcase-twitter-clone.*\.vercel\.app$",
 ]
 
 # For any other preview deployments we might create
