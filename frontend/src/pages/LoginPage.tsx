@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../components/Button';
-import { login, resendVerification } from '../services/authService';
+import { resendVerification } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
 import * as S from '../components/Auth/styles';
 import loginBanner from '../assets/images/signupBanner.png';
@@ -32,7 +32,7 @@ const LoginPage: React.FC = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { demoLogin } = useAuth(); // Get demoLogin from auth context
+  const { demoLogin, login: contextLogin } = useAuth(); // Get both login and demoLogin from auth context
   
   // Check for success message from registration or other sources
   useEffect(() => {
@@ -181,11 +181,9 @@ If you don't receive the email within a few minutes, you can click the 'Resend V
     const isEmail = formData.identifier.includes('@');
     
     try {
-      const loginData = isEmail 
-        ? { email: formData.identifier, password: formData.password }
-        : { username: formData.identifier, password: formData.password };
-      
-      await login(loginData);
+      // Use the login from context instead of the imported function
+      await contextLogin(formData.identifier, formData.password);
+      console.log('Login successful, navigating to home page...');
       navigate('/'); // Redirect to home page after successful login
     } catch (error: unknown) {
       handleLoginError(error, isEmail);

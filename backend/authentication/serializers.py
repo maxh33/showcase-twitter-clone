@@ -16,7 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'bio', 'location', 'profile_picture',
-                  'followers_count', 'following_count', 'created_at')
+                  'followers_count', 'following_count', 'created_at', 'is_demo_user')
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -92,6 +92,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'profile_picture': user.profile_picture.url if user.profile_picture else None,
                 'followers_count': user.followers_count,
                 'following_count': user.following_count,
+                'is_demo_user': getattr(user, 'is_demo_user', False),
             }
         })
         return data
