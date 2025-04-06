@@ -24,13 +24,13 @@ const getApiUrl = () => {
     } else {
       // For production deployments
       console.log('Using production API URL');
-      return 'https://maxh33.pythonanywhere.com/api';
+      return 'https://maxh33.pythonanywhere.com/api/v1';
     }
   }
   
   // Fallback for non-browser environments
   console.log('Fallback to production API URL');
-  return 'https://maxh33.pythonanywhere.com/api';
+  return 'https://maxh33.pythonanywhere.com/api/v1';
 };
 
 // Build complete API URL for a given endpoint with improved error handling

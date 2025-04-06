@@ -23,7 +23,7 @@ console.log('Is development API URL:', isDevApiUrl);
 
 // If deployed and using a development API URL, force to PythonAnywhere with HTTPS
 const API_URL = isDeployed && isDevApiUrl 
-  ? 'https://maxh33.pythonanywhere.com/api' 
+  ? 'https://maxh33.pythonanywhere.com/api/v1' 
   : ORIGINAL_API_URL;
 
 // Always use HTTPS for production PythonAnywhere URLs

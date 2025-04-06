@@ -31,9 +31,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem('debug-api-url') || 
-           (window.location.hostname === 'localhost' ? 'http://localhost:8000/api' : 'https://maxh33.pythonanywhere.com/api');
+           (window.location.hostname === 'localhost' ? 'http://localhost:8000/api' : 'https://maxh33.pythonanywhere.com/api/v1');
   }
-  return 'https://maxh33.pythonanywhere.com/api';
+  return 'https://maxh33.pythonanywhere.com/api/v1';
 };
 
 // Helper function to fetch user profile
