@@ -294,8 +294,15 @@ const shouldThrottleRefresh = async (lastRefreshTime: number): Promise<void> => 
   }
 };
 
+// Define an interface for token refresh response
+interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+  [key: string]: unknown;
+}
+
 // Handle refresh token request
-const performTokenRefresh = async (refreshTokenValue: string): Promise<any> => {
+const performTokenRefresh = async (refreshTokenValue: string): Promise<TokenRefreshResponse> => {
   try {
     const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
     if (response.data.access) {
@@ -466,7 +473,7 @@ const handleTokenRefresh = async (originalRequest: {
   
   try {
     // Try to refresh the token
-    const refreshResponse = await refreshToken();
+    const refreshResponse = await refreshToken() as TokenRefreshResponse;
     
     // Update the authorization header
     originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
