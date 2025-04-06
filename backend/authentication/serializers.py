@@ -58,11 +58,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     
     def _check_user_is_active(self, user):
         """Helper method to check if user is active"""
-        if not user.is_active:
-            raise serializers.ValidationError(
-                {'email': 'This account is not active. Please verify your email.'},
-                code='authorization'
-            )
+        # Temporarily disable email verification requirement
+        return
+        
+        # Original code (commented out)
+        # if not user.is_active:
+        #     raise serializers.ValidationError(
+        #         {'email': 'This account is not active. Please verify your email.'},
+        #         code='authorization'
+        #     )
     
     def _authenticate_user(self, attrs_copy):
         """Helper method to authenticate user"""
