@@ -282,14 +282,51 @@ export const logout = async (skipApiCall = false) => {
   }
 };
 
-export const refreshToken = async () => {
-  // Check if we've exceeded max refresh attempts
+// Check if refresh token needs to be throttled
+const shouldThrottleRefresh = async (lastRefreshTime: number): Promise<void> => {
+  const now = Date.now();
+  const timeSinceLastRefresh = now - lastRefreshTime;
+  
+  if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+    const waitTime = MIN_REFRESH_INTERVAL - timeSinceLastRefresh;
+    console.log(`Throttling token refresh, waiting ${waitTime}ms before next attempt`);
+    await sleep(waitTime);
+  }
+};
+
+// Handle refresh token request
+const performTokenRefresh = async (refreshTokenValue: string): Promise<any> => {
+  try {
+    const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
+    if (response.data.access) {
+      localStorage.setItem('token', response.data.access);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+      return response.data;
+    }
+    throw new Error('No access token in refresh response');
+  } catch (error) {
+    // If refresh fails, force silent logout (no API call) to prevent infinite loop
+    silentLogout();
+    throw error;
+  }
+};
+
+// Check if max refresh attempts exceeded
+const checkMaxRefreshAttempts = (): boolean => {
   if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
     console.warn(`Max refresh attempts (${MAX_REFRESH_ATTEMPTS}) reached, forcing logout`);
     silentLogout();
     if (typeof window !== 'undefined') {
       window.location.href = '/login?session=expired';
     }
+    return true;
+  }
+  return false;
+};
+
+export const refreshToken = async () => {
+  // Check if we've exceeded max refresh attempts
+  if (checkMaxRefreshAttempts()) {
     throw new Error('Maximum refresh attempts exceeded');
   }
 
@@ -312,13 +349,7 @@ export const refreshToken = async () => {
   }
 
   // Apply rate limiting
-  const now = Date.now();
-  const timeSinceLastRefresh = now - lastRefreshTime;
-  if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-    const waitTime = MIN_REFRESH_INTERVAL - timeSinceLastRefresh;
-    console.log(`Throttling token refresh, waiting ${waitTime}ms before next attempt`);
-    await sleep(waitTime);
-  }
+  await shouldThrottleRefresh(lastRefreshTime);
 
   refreshInProgress = true;
   lastRefreshTime = Date.now();
@@ -331,19 +362,11 @@ export const refreshToken = async () => {
       throw new Error('No refresh token available');
     }
     
-    const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
-    if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      refreshInProgress = false;
-      return response.data;
-    }
+    const result = await performTokenRefresh(refreshTokenValue);
     refreshInProgress = false;
-    throw new Error('No access token in refresh response');
+    return result;
   } catch (error) {
     refreshInProgress = false;
-    // If refresh fails, force silent logout (no API call) to prevent infinite loop
-    silentLogout();
     throw error;
   }
 };

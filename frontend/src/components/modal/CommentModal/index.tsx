@@ -90,19 +90,32 @@ const CommentModal: React.FC<CommentModalProps> = ({
     fileInputRef.current?.click();
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      
+  // Extract file reading logic to a separate function
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
+        resolve(reader.result as string);
       };
       reader.readAsDataURL(file);
-      
-      setShowImageSearch(false);
-      setShowEmojiPicker(false);
+    });
+  };
+  
+  // Process file selection
+  const processFileSelection = async (file: File) => {
+    setSelectedFile(file);
+    const dataUrl = await readFileAsDataURL(file);
+    setPreviewUrl(dataUrl);
+    
+    // Close other pickers when a file is selected
+    setShowImageSearch(false);
+    setShowEmojiPicker(false);
+  };
+  
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFileSelection(file);
     }
   };
   
