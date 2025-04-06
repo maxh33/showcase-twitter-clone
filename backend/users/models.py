@@ -35,6 +35,8 @@ class User(AbstractUser):
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_activation = models.DateTimeField(null=True, blank=True)
+    is_demo_user = models.BooleanField(default=False)
     
     objects = CustomUserManager()
     

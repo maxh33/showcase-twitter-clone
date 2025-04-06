@@ -19,7 +19,7 @@ def send_password_reset_email(user_email, reset_url):
     """
     try:
         subject = 'Reset your password'
-        from_email = f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>'
+        from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [user_email]
         
         # Render HTML content
@@ -54,7 +54,7 @@ def send_verification_email(user_email, verification_url):
     """
     try:
         subject = 'Verify your email address'
-        from_email = f'Twitter Clone <{settings.DEFAULT_FROM_EMAIL}>'
+        from_email = 'Twitter Clone <services@maxhaider.dev>'
         to_email = [user_email]
         
         # Render HTML content
@@ -74,6 +74,7 @@ def send_verification_email(user_email, verification_url):
         # Log email attempt
         logger.info(f"Attempting to send verification email to {user_email}")
         logger.debug(f"SMTP Settings - Host: {settings.EMAIL_HOST}, Port: {settings.EMAIL_PORT}, User: {settings.EMAIL_HOST_USER}")
+        logger.debug(f"Using From Email: {from_email}")
         
         # Send email with error handling
         msg.send(fail_silently=False)
@@ -107,6 +108,10 @@ def setup_demo_user(session_id=None):
     if not session_id:
         try:
             user = User.objects.get(email=base_email)
+            # Make sure the is_demo_user is set to True
+            if not getattr(user, 'is_demo_user', False):
+                user.is_demo_user = True
+                user.save(update_fields=['is_demo_user'])
             return user, False
         except User.DoesNotExist:
             user = User.objects.create_user(
@@ -114,6 +119,7 @@ def setup_demo_user(session_id=None):
                 email=base_email,
                 password=demo_password,
                 is_active=True,
+                is_demo_user=True,
                 bio='👋 This is a demo account. Some actions are restricted. Sign up to get full access!',
                 location='Demo World 🌍'
             )
@@ -132,6 +138,10 @@ def setup_demo_user(session_id=None):
     # Check if this unique demo user already exists
     try:
         user = User.objects.get(email=email)
+        # Make sure the is_demo_user is set to True
+        if not getattr(user, 'is_demo_user', False):
+            user.is_demo_user = True
+            user.save(update_fields=['is_demo_user'])
         return user, False
     except User.DoesNotExist:
         # Create a new unique demo user
@@ -140,6 +150,7 @@ def setup_demo_user(session_id=None):
             email=email,
             password=demo_password,
             is_active=True,
+            is_demo_user=True,
             bio=f'👋 This is a unique demo account (#{unique_suffix}). Some actions are restricted. Sign up to get full access!',
             location='Demo World 🌍'
         )

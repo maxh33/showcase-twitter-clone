@@ -22,6 +22,8 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("authentication", "0002_remove_failedloginattempt_username_and_more"),
+        ("users", "0003_user_last_activation"),
+        ("users", "0004_user_is_demo_user"),
     ]
 
     operations = [

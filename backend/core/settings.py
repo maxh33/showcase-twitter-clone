@@ -68,8 +68,14 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     "https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app",  # Vercel preview
+    "https://showcase-twitter-clone-hwcihi4f1-maxh33s-projects.vercel.app", # Current preview
     "https://showcase-twitter-clone.vercel.app",  # Vercel production
     "https://showcase-twitter-clone-git-staging-maxh33s-projects.vercel.app",  # Vercel staging
+]
+
+# For future Vercel preview deployments, allow any subdomain matching the pattern
+CORS_ORIGIN_REGEX_WHITELIST = [
+    r"^https://showcase-twitter-clone-.*-maxh33s-projects\.vercel\.app$",
 ]
 
 # For any other preview deployments we might create
@@ -343,8 +349,10 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Twitter Clone <services@maxhaider.dev>')
 
-# Frontend URL for email verification and password reset links
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')  # Use environment variable
+# Frontend URL
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL_PRODUCTION = os.environ.get('FRONTEND_URL_PRODUCTION', 'https://showcase-twitter-clone.vercel.app')
+FRONTEND_URL_PREVIEW = os.environ.get('FRONTEND_URL_PREVIEW', 'https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app')
 
 # Swagger settings
 SWAGGER_SETTINGS = {
@@ -360,6 +368,3 @@ SWAGGER_SETTINGS = {
 
 # Disable deprecated Swagger renderers
 SWAGGER_USE_COMPAT_RENDERERS = False
-
-FRONTEND_URL_PREVIEW = os.environ.get('FRONTEND_URL_PREVIEW', 'http://localhost:3000')
-FRONTEND_URL_PRODUCTION = os.environ.get('FRONTEND_URL_PRODUCTION', 'http://localhost:3000')

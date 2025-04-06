@@ -117,6 +117,7 @@ export const LoadingSpinner = styled.div`
 export const LoadMoreButton = styled.button`
   padding: 10px;
   margin: 15px auto;
+  display: block;
   background-color: ${Colors.primary};
   color: white;
   border: none;

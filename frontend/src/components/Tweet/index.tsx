@@ -5,6 +5,8 @@ import { FaComment, FaRetweet, FaHeart, FaShareAlt } from 'react-icons/fa';
 import CommentsContainer from './Comments';
 import tweetService from '../../services/tweetService';
 import IconWrapper from '../common/IconWrapper';
+import { useAuth } from '../../contexts/AuthContext';
+import DemoModal from '../modal/DemoModal';
 
 interface TweetData {
   id: number;
@@ -32,12 +34,14 @@ interface TweetProps {
 }
 
 const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
+  const { isDemoUser } = useAuth();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [loading, setLoading] = useState({
     like: false,
     retweet: false,
   });
   const [localTweet, setLocalTweet] = useState<TweetData>(tweet);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   const handleLike = async () => {
     if (loading.like) return;
@@ -58,6 +62,11 @@ const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
 
   const handleRetweet = async () => {
     if (loading.retweet) return;
+    
+    if (isDemoUser) {
+      setShowDemoModal(true);
+      return;
+    }
     
     setLoading((prev) => ({ ...prev, retweet: true }));
     try {
@@ -135,6 +144,12 @@ const Tweet: React.FC<TweetProps> = ({ tweet, onTweetUpdated }) => {
         tweetId={localTweet.id} 
         isOpen={isCommentsOpen} 
         onClose={() => setIsCommentsOpen(false)} 
+      />
+      
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)} 
+        actionType="retweet" 
       />
     </>
   );

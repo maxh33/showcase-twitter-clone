@@ -16,7 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'bio', 'location', 'profile_picture',
-                  'followers_count', 'following_count', 'created_at')
+                  'followers_count', 'following_count', 'created_at', 'is_demo_user')
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -58,11 +58,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     
     def _check_user_is_active(self, user):
         """Helper method to check if user is active"""
-        if not user.is_active:
-            raise serializers.ValidationError(
-                {'email': 'This account is not active. Please verify your email.'},
-                code='authorization'
-            )
+        # Temporarily disable email verification requirement
+        return
+        
+        # Original code (commented out)
+        # if not user.is_active:
+        #     raise serializers.ValidationError(
+        #         {'email': 'This account is not active. Please verify your email.'},
+        #         code='authorization'
+        #     )
     
     def _authenticate_user(self, attrs_copy):
         """Helper method to authenticate user"""
@@ -92,6 +96,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'profile_picture': user.profile_picture.url if user.profile_picture else None,
                 'followers_count': user.followers_count,
                 'following_count': user.following_count,
+                'is_demo_user': getattr(user, 'is_demo_user', False),
             }
         })
         return data

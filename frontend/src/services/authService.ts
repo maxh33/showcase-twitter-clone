@@ -23,7 +23,7 @@ console.log('Is development API URL:', isDevApiUrl);
 
 // If deployed and using a development API URL, force to PythonAnywhere with HTTPS
 const API_URL = isDeployed && isDevApiUrl 
-  ? 'https://maxh33.pythonanywhere.com/api' 
+  ? 'https://maxh33.pythonanywhere.com/api/v1' 
   : ORIGINAL_API_URL;
 
 // Always use HTTPS for production PythonAnywhere URLs
@@ -113,7 +113,7 @@ interface AuthTokens {
 }
 
 // Helper function to build complete API URLs
-const buildUrl = (endpoint: string): string => {
+export const buildUrl = (endpoint: string): string => {
   try {
     // Remove leading slash from endpoint if present
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
@@ -131,7 +131,7 @@ const buildUrl = (endpoint: string): string => {
     // Check if the API URL already contains the v1 part
     const hasV1InBaseUrl = baseUrl.includes('/v1');
     
-    // If the endpoint already includes v1/, don't add it again
+    // If the endpoint already starts with v1/, ensure we don't duplicate it
     if (cleanEndpoint.startsWith('v1/')) {
       if (hasV1InBaseUrl) {
         // If baseUrl has v1, remove v1 from endpoint to avoid duplication
@@ -141,7 +141,7 @@ const buildUrl = (endpoint: string): string => {
         return `${baseUrl}/${cleanEndpoint}`;
       }
     } else {
-      // If baseUrl doesn't have v1, add it to the endpoint
+      // If baseUrl doesn't have v1, add it to the endpoint (unless the endpoint is already v1-prefixed)
       if (hasV1InBaseUrl) {
         return `${baseUrl}/${cleanEndpoint}`;
       } else {
@@ -150,8 +150,10 @@ const buildUrl = (endpoint: string): string => {
     }
   } catch (error) {
     console.error('Error building URL:', error);
-    // In case of any error, ensure we return a valid URL
-    return `${FINAL_API_URL}/v1/${endpoint}`;
+    // In case of any error, ensure we return a valid URL without duplicating v1
+    return FINAL_API_URL.includes('/v1') 
+      ? `${FINAL_API_URL}/${endpoint}`
+      : `${FINAL_API_URL}/v1/${endpoint}`;
   }
 };
 
@@ -185,6 +187,37 @@ const formatLoginData = (data: LoginData) => {
   };
 };
 
+// Define a more specific type for error data
+interface ErrorData {
+  [key: string]: unknown;
+  requires_verification?: boolean;
+  detail?: string;
+}
+
+// Helper function to handle login error responses
+const extractVerificationError = (errorData: ErrorData): string | null => {
+  if ('requires_verification' in errorData && errorData.requires_verification) {
+    return typeof errorData.detail === 'string'
+      ? errorData.detail
+      : 'Your account has not been verified. Please check your email for the verification link.';
+  }
+  return null;
+};
+
+const extractFieldError = (errorData: ErrorData, field: string): string | null => {
+  if (errorData[field]) {
+    const fieldError = errorData[field];
+    return Array.isArray(fieldError) ? fieldError[0] : String(fieldError);
+  }
+  return null;
+};
+
+const extractFirstError = (errorData: ErrorData): string => {
+  const firstErrorField = Object.keys(errorData)[0];
+  const firstError = errorData[firstErrorField];
+  return Array.isArray(firstError) ? firstError[0] : String(firstError);
+};
+
 // Helper function to handle login error responses
 const handleLoginError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {
@@ -193,19 +226,24 @@ const handleLoginError = (error: unknown): never => {
     if (axiosError.response?.data) {
       const errorData = axiosError.response.data;
       if (typeof errorData === 'object') {
+        // Check for account verification errors (status 403)
+        const verificationError = extractVerificationError(errorData as ErrorData);
+        if (verificationError) {
+          throw new Error(verificationError);
+        }
+        
         // Check for specific error fields
-        if (errorData.email) {
-          throw new Error(Array.isArray(errorData.email) ? errorData.email[0] : errorData.email);
-        }
-        if (errorData.password) {
-          throw new Error(Array.isArray(errorData.password) ? errorData.password[0] : errorData.password);
-        }
-        if (errorData.error) {
-          throw new Error(Array.isArray(errorData.error) ? errorData.error[0] : errorData.error);
-        }
+        const emailError = extractFieldError(errorData, 'email');
+        if (emailError) throw new Error(emailError);
+        
+        const passwordError = extractFieldError(errorData, 'password');
+        if (passwordError) throw new Error(passwordError);
+        
+        const generalError = extractFieldError(errorData, 'error');
+        if (generalError) throw new Error(generalError);
+        
         // If no specific field error, get the first error message
-        const firstError = Object.values(errorData)[0];
-        throw new Error(Array.isArray(firstError) ? firstError[0] : firstError);
+        throw new Error(extractFirstError(errorData as ErrorData));
       }
     }
     throw new Error('Login failed. Please check your credentials and try again.');
@@ -273,69 +311,117 @@ export const logout = async (skipApiCall = false) => {
   }
 };
 
-export const refreshToken = async () => {
-  // Check if we've exceeded max refresh attempts
+// Define an interface for token refresh response
+interface TokenRefreshResponse {
+  access: string;
+  refresh?: string;
+  [key: string]: unknown;
+}
+
+// Handle waiting for existing refresh to complete
+const waitForPendingRefresh = (): Promise<TokenRefreshResponse> => {
+  console.log('Token refresh already in progress');
+  return new Promise((resolve, reject) => {
+    const checkComplete = setInterval(() => {
+      if (!refreshInProgress) {
+        clearInterval(checkComplete);
+        const token = localStorage.getItem('token');
+        if (token) {
+          resolve({ access: token });
+        } else {
+          reject(new Error('Refresh completed but no token available'));
+        }
+      }
+    }, 100);
+  });
+};
+
+// Check if refresh token needs to be throttled
+const shouldThrottleRefresh = async (lastRefreshTime: number): Promise<void> => {
+  const now = Date.now();
+  const timeSinceLastRefresh = now - lastRefreshTime;
+  
+  if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+    const waitTime = MIN_REFRESH_INTERVAL - timeSinceLastRefresh;
+    console.log(`Throttling token refresh, waiting ${waitTime}ms before next attempt`);
+    await sleep(waitTime);
+  }
+};
+
+// Handle refresh token request
+const performTokenRefresh = async (refreshTokenValue: string): Promise<TokenRefreshResponse> => {
+  try {
+    const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
+    if (response.data.access) {
+      localStorage.setItem('token', response.data.access);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+      return response.data;
+    }
+    throw new Error('No access token in refresh response');
+  } catch (error) {
+    // If refresh fails, force silent logout (no API call) to prevent infinite loop
+    silentLogout();
+    throw error;
+  }
+};
+
+// Check if max refresh attempts exceeded
+const checkMaxRefreshAttempts = (): boolean => {
   if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
     console.warn(`Max refresh attempts (${MAX_REFRESH_ATTEMPTS}) reached, forcing logout`);
     silentLogout();
     if (typeof window !== 'undefined') {
       window.location.href = '/login?session=expired';
     }
+    return true;
+  }
+  return false;
+};
+
+// Simple function to get refresh token value
+const getRefreshTokenValue = (): string => {
+  const refreshTokenValue = localStorage.getItem('refreshToken');
+  if (!refreshTokenValue) {
+    throw new Error('No refresh token available');
+  }
+  return refreshTokenValue;
+};
+
+/**
+ * Attempts to refresh the authentication token
+ * Core function delegating to helpers to keep complexity low
+ */
+export const refreshToken = async (): Promise<TokenRefreshResponse> => {
+  // Check if we've exceeded max refresh attempts
+  if (checkMaxRefreshAttempts()) {
     throw new Error('Maximum refresh attempts exceeded');
   }
 
   // Prevent concurrent refresh calls
   if (refreshInProgress) {
-    console.log('Token refresh already in progress');
-    return new Promise((resolve, reject) => {
-      const checkComplete = setInterval(() => {
-        if (!refreshInProgress) {
-          clearInterval(checkComplete);
-          const token = localStorage.getItem('token');
-          if (token) {
-            resolve({ access: token });
-          } else {
-            reject(new Error('Refresh completed but no token available'));
-          }
-        }
-      }, 100);
-    });
+    return waitForPendingRefresh();
   }
-
-  // Apply rate limiting
-  const now = Date.now();
-  const timeSinceLastRefresh = now - lastRefreshTime;
-  if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-    const waitTime = MIN_REFRESH_INTERVAL - timeSinceLastRefresh;
-    console.log(`Throttling token refresh, waiting ${waitTime}ms before next attempt`);
-    await sleep(waitTime);
-  }
-
-  refreshInProgress = true;
-  lastRefreshTime = Date.now();
-  refreshAttempts++;
 
   try {
-    const refreshTokenValue = localStorage.getItem('refreshToken');
-    if (!refreshTokenValue) {
-      refreshInProgress = false;
-      throw new Error('No refresh token available');
-    }
+    // Apply rate limiting
+    await shouldThrottleRefresh(lastRefreshTime);
     
-    const response = await axios.post(buildUrl('auth/token/refresh/'), { refresh: refreshTokenValue });
-    if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
-      refreshInProgress = false;
-      return response.data;
-    }
-    refreshInProgress = false;
-    throw new Error('No access token in refresh response');
+    // Set flags and counters
+    refreshInProgress = true;
+    lastRefreshTime = Date.now();
+    refreshAttempts++;
+    
+    // Get token and perform refresh
+    const token = getRefreshTokenValue();
+    const result = await performTokenRefresh(token);
+    
+    return result;
   } catch (error) {
-    refreshInProgress = false;
-    // If refresh fails, force silent logout (no API call) to prevent infinite loop
-    silentLogout();
+    // Log the error but still propagate it
+    console.error('Token refresh failed:', error);
     throw error;
+  } finally {
+    refreshInProgress = false;
   }
 };
 
@@ -434,7 +520,7 @@ const handleTokenRefresh = async (originalRequest: {
   
   try {
     // Try to refresh the token
-    const refreshResponse = await refreshToken();
+    const refreshResponse = await refreshToken() as TokenRefreshResponse;
     
     // Update the authorization header
     originalRequest.headers['Authorization'] = `Bearer ${refreshResponse.access}`;
@@ -573,6 +659,13 @@ const handleSuccessfulLogin = (response: { data: AuthTokens }) => {
   return response.data;
 };
 
+// Helper function to attempt login with specific credentials
+const attemptLogin = async (credentials: { email: string, username: string, password: string }) => {
+  console.log(`Attempting login with username: ${credentials.username}`);
+  const response = await axios.post(buildUrl('auth/login/'), credentials);
+  return handleSuccessfulLogin(response);
+};
+
 // Add demo login function
 export const demoLogin = async () => {
   try {
@@ -582,25 +675,21 @@ export const demoLogin = async () => {
     try {
       console.log('Using standard demo credentials');
       
-      const response = await axios.post(buildUrl('auth/login/'), {
+      return await attemptLogin({
         email: 'demo@twitterclone.com',
         username: 'demo_user',
         password: 'Demo@123'
       });
-      
-      return handleSuccessfulLogin(response);
     } catch (loginError) {
       console.error('Standard demo credentials failed, trying with timestamp', loginError);
       
       // Fallback to using a timestamp-based credential as a last resort
       const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 12);
-      const response = await axios.post(buildUrl('auth/login/'), {
+      return await attemptLogin({
         email: `demo+${timestamp}@twitterclone.com`,
         username: `demo_user_${timestamp}`,
         password: 'Demo@123'
       });
-      
-      return handleSuccessfulLogin(response);
     }
   } catch (error) {
     return handleDemoLoginError(error);

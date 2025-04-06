@@ -11,7 +11,7 @@ const isDeployed = typeof window !== 'undefined' &&
 
 // If deployed and still using localhost, force to PythonAnywhere
 const API_URL = isDeployed && ORIGINAL_API_URL.includes('localhost') 
-  ? 'https://maxh33.pythonanywhere.com/api' 
+  ? 'https://maxh33.pythonanywhere.com/api/v1' 
   : ORIGINAL_API_URL;
 
 // Define interfaces for tweets
@@ -192,7 +192,7 @@ export const tweetService = {
         formData.append('media', media);
       }
       
-      const response = await axiosInstance.post(`/tweets/${tweetId}/comments/`, formData, {
+      const response = await axiosInstance.post(`/tweets/${tweetId}/add_comment/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Accept': 'application/json',

@@ -23,7 +23,7 @@ This document provides high-level instructions for deploying the Twitter Clone a
    - Select Python 3.10
 
 3. **Follow the detailed setup guide**
-   - For step-by-step instructions, see [pythonanywhere_setup.md](pythonanywhere_setup.md)
+   - For step-by-step instructions, see [PYTHONANYWHERE_DEPLOYMENT.md](PYTHONANYWHERE_DEPLOYMENT.md)
 
 ### MySQL Database Configuration
 
@@ -103,26 +103,4 @@ Our current workflow pre-builds the frontend files before deployment, so you sho
 
 ## Troubleshooting
 
-### Backend Deployment Issues
-
-1. **WSGI Import Errors**
-   - Check the error logs in PythonAnywhere dashboard
-   - Verify the paths in your WSGI file
-
-2. **Database Connection Issues**
-   - Check your MySQL credentials
-   - Ensure the correct database settings in Django
-
-3. **Static Files Not Loading**
-   - Verify the static file mappings in PythonAnywhere
-   - Run `collectstatic` again
-
-### Frontend Deployment Issues
-
-1. **API Connection Issues**
-   - Check the `REACT_APP_API_URL` environment variable
-   - Verify CORS settings in Django
-
-2. **Build Failures**
-   - Review the build logs in Vercel
-   - Test the build locally with `npm run build` 
+For detailed troubleshooting of PythonAnywhere deployment issues, please refer to the [PYTHONANYWHERE_DEPLOYMENT.md](PYTHONANYWHERE_DEPLOYMENT.md) document. 

@@ -13,6 +13,7 @@ The `auth_endpoints_test.py` script validates that all authentication-related en
 1. **NEVER** commit credentials to the repository
 2. **NEVER** hardcode credentials in scripts
 3. **ALWAYS** use environment variables for sensitive information
+4. For PythonAnywhere deployment details, see [PYTHONANYWHERE_DEPLOYMENT.md](../PYTHONANYWHERE_DEPLOYMENT.md)
 
 ### Running the Test
 

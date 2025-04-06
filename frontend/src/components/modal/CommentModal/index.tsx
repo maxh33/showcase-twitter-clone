@@ -1,8 +1,39 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { EMOJI_LIST } from '../../common/constants';
 import { fetchRandomImages, UnsplashImage } from '../../../services/imageService';
 import { Tweet } from '../../../services/tweetService';
 import * as S from './styles';
+
+// Custom hook to handle modal state and body overflow
+const useModalState = (isOpen: boolean) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+};
+
+// Custom hook to handle outside clicks
+const useOutsideClickHandler = (ref: React.RefObject<HTMLElement>, callback: () => void) => {
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        callback();
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [ref, callback]);
+};
 
 // Allow for flexible author ID type (string or number)
 interface FlexibleTweet extends Omit<Tweet, 'author'> {
@@ -24,115 +55,14 @@ interface CommentModalProps {
   userProfilePicture?: string;
 }
 
-const CommentModal: React.FC<CommentModalProps> = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  replyingTo,
-  userProfilePicture = '/logo192.png'
-}) => {
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [showImageSearch, setShowImageSearch] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>([]);
+// Media and UI-related hooks
+const useImageSearch = (initialImages: UnsplashImage[] = [], setExternalPreviewUrl: (url: string) => void) => {
+  const [unsplashImages, setUnsplashImages] = useState<UnsplashImage[]>(initialImages);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [imageSearchQuery, setImageSearchQuery] = useState('');
+  const [showImageSearch, setShowImageSearch] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const textInputRef = useRef<HTMLTextAreaElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
-  
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
-  
-  useEffect(() => {
-    function handleClickOutsideEmoji(event: MouseEvent) {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
-        setShowEmojiPicker(false);
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutsideEmoji);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutsideEmoji);
-    };
-  }, []);
-  
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-    if (errorMessage) setErrorMessage(null);
-  };
-  
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      
-      setShowImageSearch(false);
-      setShowEmojiPicker(false);
-    }
-  };
-  
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-  
-  const toggleImageSearch = async () => {
-    setShowEmojiPicker(false);
-    
-    const newState = !showImageSearch;
-    setShowImageSearch(newState);
-    
-    if (newState && unsplashImages.length === 0) {
-      await fetchImages();
-    }
-  };
-  
-  const fetchImages = async (query = '') => {
+  const fetchImages = useCallback(async (query = '') => {
     setIsLoadingImages(true);
     try {
       const images = await fetchRandomImages(query || undefined);
@@ -142,25 +72,191 @@ const CommentModal: React.FC<CommentModalProps> = ({
     } finally {
       setIsLoadingImages(false);
     }
-  };
+  }, []);
   
-  const handleImageSearchSubmit = (e: React.FormEvent) => {
+  const toggleImageSearch = useCallback(async () => {
+    const newState = !showImageSearch;
+    setShowImageSearch(newState);
+    
+    if (newState && unsplashImages.length === 0) {
+      await fetchImages();
+    }
+  }, [showImageSearch, unsplashImages.length, fetchImages]);
+  
+  const handleImageSearchSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (imageSearchQuery.trim()) {
       fetchImages(imageSearchQuery);
     }
-  };
+  }, [imageSearchQuery, fetchImages]);
   
-  const handleUnsplashImageSelect = (image: UnsplashImage) => {
-    setPreviewUrl(image.url);
+  const handleUnsplashImageSelect = useCallback((image: UnsplashImage) => {
+    setExternalPreviewUrl(image.url);
     setShowImageSearch(false);
-  };
+  }, [setExternalPreviewUrl, setShowImageSearch]);
   
-  const toggleEmojiPicker = (e: React.MouseEvent) => {
+  return {
+    unsplashImages,
+    isLoadingImages,
+    imageSearchQuery,
+    showImageSearch,
+    setImageSearchQuery,
+    setShowImageSearch,
+    toggleImageSearch,
+    handleImageSearchSubmit,
+    handleUnsplashImageSelect
+  };
+};
+
+const useFileHandler = () => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const readFileAsDataURL = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+  
+  const processFileSelection = useCallback(async (file: File) => {
+    setSelectedFile(file);
+    const dataUrl = await readFileAsDataURL(file);
+    setPreviewUrl(dataUrl);
+  }, [readFileAsDataURL]);
+  
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFileSelection(file);
+    }
+  }, [processFileSelection]);
+  
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+  
+  return {
+    selectedFile,
+    previewUrl,
+    fileInputRef,
+    setSelectedFile,
+    setPreviewUrl,
+    handleFileChange,
+    handleFileSelect,
+    handleRemoveFile
+  };
+};
+
+const CommentModal: React.FC<CommentModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  replyingTo,
+  userProfilePicture = '/logo192.png'
+}) => {
+  // Use the custom hook for modal state
+  useModalState(isOpen);
+  
+  // Form state
+  const [content, setContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Media state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Use file handler functions
+  const readFileAsDataURL = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+  
+  const processFileSelection = useCallback(async (file: File) => {
+    setSelectedFile(file);
+    const dataUrl = await readFileAsDataURL(file);
+    setPreviewUrl(dataUrl);
+  }, [readFileAsDataURL]);
+  
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFileSelection(file);
+    }
+  }, [processFileSelection]);
+  
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+  
+  // Emoji picker state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
+  // Use image search with setPreviewUrl dependency
+  const {
+    unsplashImages,
+    isLoadingImages,
+    imageSearchQuery,
+    showImageSearch,
+    setImageSearchQuery,
+    setShowImageSearch,
+    toggleImageSearch,
+    handleImageSearchSubmit,
+    handleUnsplashImageSelect
+  } = useImageSearch([], setPreviewUrl);
+  
+  // Refs
+  const textInputRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  
+  // Memoize callback to avoid recreating it on each render
+  const handleCloseEmojiPicker = useCallback(() => setShowEmojiPicker(false), []);
+  
+  // Use the custom hook for modal outside click
+  useOutsideClickHandler(modalRef, onClose);
+  
+  // Use the custom hook for emoji picker outside click
+  useOutsideClickHandler(emojiPickerRef, handleCloseEmojiPicker);
+  
+  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    if (errorMessage) setErrorMessage(null);
+  }, [errorMessage]);
+  
+  // Memoized handler for toggling emoji picker
+  const toggleEmojiPicker = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setShowImageSearch(false);
     setShowEmojiPicker(!showEmojiPicker);
-  };
+  }, [showEmojiPicker, setShowImageSearch]);
   
   const handleEmojiSelect = (emoji: string) => {
     const cursorPosition = textInputRef.current?.selectionStart || content.length;
@@ -182,9 +278,26 @@ const CommentModal: React.FC<CommentModalProps> = ({
     }, 0);
   };
   
-  const handleSubmit = async () => {
+  const validateComment = (): string | null => {
     if (content.trim() === '' && !selectedFile && !previewUrl) {
-      setErrorMessage('Please enter some content or add an image before commenting.');
+      return 'Please enter some content or add an image before commenting.';
+    }
+    return null;
+  };
+  
+  const resetForm = () => {
+    setContent('');
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setShowImageSearch(false);
+    setShowEmojiPicker(false);
+    onClose();
+  };
+  
+  const handleSubmit = async () => {
+    const validationError = validateComment();
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
     
@@ -193,14 +306,7 @@ const CommentModal: React.FC<CommentModalProps> = ({
     
     try {
       onSubmit(content, selectedFile || undefined);
-      
-      // Reset form
-      setContent('');
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setShowImageSearch(false);
-      setShowEmojiPicker(false);
-      onClose();
+      resetForm();
     } catch (error) {
       console.error('Error creating comment:', error);
       setErrorMessage('Failed to create comment. Please try again.');

@@ -70,7 +70,21 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             # Generate verification token
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
-            verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+            
+            # Determine correct frontend URL based on request origin
+            frontend_url = settings.FRONTEND_URL
+            request_origin = request.headers.get('Origin', '')
+
+            # If request is from production or preview Vercel deployments, use that URL
+            if 'showcase-twitter-clone.vercel.app' in request_origin:
+                frontend_url = settings.FRONTEND_URL_PRODUCTION
+            elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                frontend_url = settings.FRONTEND_URL_PREVIEW
+            elif request_origin and 'localhost' not in request_origin:
+                # If it's not localhost and we have an origin, use it
+                frontend_url = request_origin
+
+            verification_url = f"{frontend_url}/verify-email/{uid}/{token}/"
             
             # Send new verification email
             html_content = render_to_string('email/email_verification.html', {
@@ -128,7 +142,21 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 # Generate verification token
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+                
+                # Determine correct frontend URL based on request origin
+                frontend_url = settings.FRONTEND_URL
+                request_origin = request.headers.get('Origin', '')
+
+                # If request is from production or preview Vercel deployments, use that URL
+                if 'showcase-twitter-clone.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PRODUCTION
+                elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PREVIEW
+                elif request_origin and 'localhost' not in request_origin:
+                    # If it's not localhost and we have an origin, use it
+                    frontend_url = request_origin
+
+                verification_url = f"{frontend_url}/verify-email/{uid}/{token}/"
                 
                 # Send new verification email
                 html_content = render_to_string('email/email_verification.html', {
@@ -323,8 +351,20 @@ class RegistrationView(generics.CreateAPIView):
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             
-            # Send verification email
-            verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+            # Determine correct frontend URL based on request origin
+            frontend_url = settings.FRONTEND_URL
+            request_origin = request.headers.get('Origin', '')
+
+            # If request is from production or preview Vercel deployments, use that URL
+            if 'showcase-twitter-clone.vercel.app' in request_origin:
+                frontend_url = settings.FRONTEND_URL_PRODUCTION
+            elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                frontend_url = settings.FRONTEND_URL_PREVIEW
+            elif request_origin and 'localhost' not in request_origin:
+                # If it's not localhost and we have an origin, use it
+                frontend_url = request_origin
+
+            verification_url = f"{frontend_url}/verify-email/{uid}/{token}/"
             
             # Render email template
             html_content = render_to_string('email/email_verification.html', {
@@ -397,11 +437,40 @@ class EmailVerificationView(APIView):
                     user.is_active = True
                     user.save()
                     
-                    # Send success email only if the user was previously inactive
-                    if was_inactive:
-                        login_url = f"{settings.FRONTEND_URL}/login"
+                    # Check for duplicate activations within 10 seconds
+                    # We use 'last_activation' key to store the timestamp of the last activation
+                    now = timezone.now()
+                    last_activation = getattr(user, 'last_activation', None)
+                    should_send_email = was_inactive
+                    
+                    if last_activation and (now - last_activation).total_seconds() < 10:
+                        # Duplicate activation detected within 10 seconds - don't send another email
+                        should_send_email = False
+                        logger.info(f"Duplicate activation detected for user: {user.email} - skipping email")
+                    
+                    if should_send_email:
+                        # Set last activation time
+                        user.last_activation = now
+                        user.save(update_fields=['last_activation'])
+                        
+                        # Determine correct frontend URL based on request origin
+                        frontend_url = settings.FRONTEND_URL
+                        request_origin = request.headers.get('Origin', '')
+
+                        # If request is from production or preview Vercel deployments, use that URL
+                        if 'showcase-twitter-clone.vercel.app' in request_origin:
+                            frontend_url = settings.FRONTEND_URL_PRODUCTION
+                        elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                            frontend_url = settings.FRONTEND_URL_PREVIEW
+                        elif request_origin and 'localhost' not in request_origin:
+                            # If it's not localhost and we have an origin, use it
+                            frontend_url = request_origin
+                        
+                        # Send success email only if the user was previously inactive
+                        login_url = f"{frontend_url}/login"
                         try:
                             send_account_activation_success_email(user.email, login_url)
+                            logger.info(f"Sent activation success email to: {user.email}")
                         except Exception as e:
                             logger.error(f"Failed to send account activation success email: {str(e)}")
                             # Continue with the response even if email fails
@@ -460,7 +529,21 @@ class PasswordResetRequestView(APIView):
                 logger.debug("User is active, generating reset token")
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                reset_url = f"{settings.FRONTEND_URL}/reset-password/confirm/{uid}/{token}"
+                
+                # Determine correct frontend URL based on request origin
+                frontend_url = settings.FRONTEND_URL
+                request_origin = request.headers.get('Origin', '')
+
+                # If request is from production or preview Vercel deployments, use that URL
+                if 'showcase-twitter-clone.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PRODUCTION
+                elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PREVIEW
+                elif request_origin and 'localhost' not in request_origin:
+                    # If it's not localhost and we have an origin, use it
+                    frontend_url = request_origin
+                
+                reset_url = f"{frontend_url}/reset-password/confirm/{uid}/{token}"
                 logger.debug(f"Generated reset URL: {reset_url}")
                 
                 try:
@@ -484,7 +567,21 @@ class PasswordResetRequestView(APIView):
                 # Generate verification token for inactive user
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}"
+                
+                # Determine correct frontend URL based on request origin
+                frontend_url = settings.FRONTEND_URL
+                request_origin = request.headers.get('Origin', '')
+
+                # If request is from production or preview Vercel deployments, use that URL
+                if 'showcase-twitter-clone.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PRODUCTION
+                elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PREVIEW
+                elif request_origin and 'localhost' not in request_origin:
+                    # If it's not localhost and we have an origin, use it
+                    frontend_url = request_origin
+                
+                verification_url = f"{frontend_url}/verify-email/{uid}/{token}"
                 
                 try:
                     # Send verification email
@@ -551,8 +648,21 @@ class PasswordResetConfirmView(APIView):
                     user.set_password(serializer.validated_data['password'])
                     user.save()
                     
+                    # Determine correct frontend URL based on request origin
+                    frontend_url = settings.FRONTEND_URL
+                    request_origin = request.headers.get('Origin', '')
+
+                    # If request is from production or preview Vercel deployments, use that URL
+                    if 'showcase-twitter-clone.vercel.app' in request_origin:
+                        frontend_url = settings.FRONTEND_URL_PRODUCTION
+                    elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                        frontend_url = settings.FRONTEND_URL_PREVIEW
+                    elif request_origin and 'localhost' not in request_origin:
+                        # If it's not localhost and we have an origin, use it
+                        frontend_url = request_origin
+                    
                     # Send success email
-                    login_url = f"{settings.FRONTEND_URL}/login"
+                    login_url = f"{frontend_url}/login"
                     try:
                         send_password_reset_success_email(user.email, login_url)
                     except Exception as e:
@@ -607,7 +717,21 @@ class ResendVerificationView(APIView):
                 # Generate verification token
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                verification_url = f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+                
+                # Determine correct frontend URL based on request origin
+                frontend_url = settings.FRONTEND_URL
+                request_origin = request.headers.get('Origin', '')
+
+                # If request is from production or preview Vercel deployments, use that URL
+                if 'showcase-twitter-clone.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PRODUCTION
+                elif 'showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app' in request_origin:
+                    frontend_url = settings.FRONTEND_URL_PREVIEW
+                elif request_origin and 'localhost' not in request_origin:
+                    # If it's not localhost and we have an origin, use it
+                    frontend_url = request_origin
+
+                verification_url = f"{frontend_url}/verify-email/{uid}/{token}/"
                 
                 # Send verification email
                 html_content = render_to_string('email/email_verification.html', {
@@ -619,7 +743,7 @@ class ResendVerificationView(APIView):
                 email = EmailMultiAlternatives(
                     'Verify your email address',
                     text_content,
-                    settings.DEFAULT_FROM_EMAIL,
+                    'Twitter Clone <services@maxhaider.dev>',
                     [user.email]
                 )
                 email.attach_alternative(html_content, "text/html")
