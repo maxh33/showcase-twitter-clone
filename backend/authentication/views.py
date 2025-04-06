@@ -743,7 +743,7 @@ class ResendVerificationView(APIView):
                 email = EmailMultiAlternatives(
                     'Verify your email address',
                     text_content,
-                    settings.DEFAULT_FROM_EMAIL,
+                    'Twitter Clone <services@maxhaider.dev>',
                     [user.email]
                 )
                 email.attach_alternative(html_content, "text/html")

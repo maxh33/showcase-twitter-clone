@@ -54,7 +54,7 @@ def send_verification_email(user_email, verification_url):
     """
     try:
         subject = 'Verify your email address'
-        from_email = settings.DEFAULT_FROM_EMAIL
+        from_email = 'Twitter Clone <services@maxhaider.dev>'
         to_email = [user_email]
         
         # Render HTML content
@@ -74,6 +74,7 @@ def send_verification_email(user_email, verification_url):
         # Log email attempt
         logger.info(f"Attempting to send verification email to {user_email}")
         logger.debug(f"SMTP Settings - Host: {settings.EMAIL_HOST}, Port: {settings.EMAIL_PORT}, User: {settings.EMAIL_HOST_USER}")
+        logger.debug(f"Using From Email: {from_email}")
         
         # Send email with error handling
         msg.send(fail_silently=False)
