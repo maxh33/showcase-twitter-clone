@@ -1,42 +1,48 @@
 #!/bin/bash
-# Twitter Clone PythonAnywhere Update Script
-# Run this script on PythonAnywhere Bash console
+# Simple deployment script for PythonAnywhere
+# Run this from a PythonAnywhere bash console
 
-echo "===== Twitter Clone Update Script ====="
-echo "This script will update your PythonAnywhere deployment"
+echo "=== Twitter Clone Deployment ==="
+echo "Starting deployment process..."
 
-# Go to project directory
-cd ~/showcase-twitter-clone
+# Go to project directory (create if not exists)
+cd ~
+if [ ! -d "showcase-twitter-clone" ]; then
+  echo "Cloning repository..."
+  git clone https://github.com/maxh33/showcase-twitter-clone.git
+  cd showcase-twitter-clone
+else
+  echo "Repository exists, pulling latest changes..."
+  cd showcase-twitter-clone
+  git pull origin staging
+fi
 
-# Fetch latest changes
-echo -e "\n===== Fetching latest changes ====="
-git fetch
-git status
-
-# Pull the latest changes
-echo -e "\n===== Pulling latest changes ====="
-git pull
-
-# Install required packages
-echo -e "\n===== Installing required packages ====="
+# Set up backend
 cd backend
+echo "Installing dependencies..."
 pip install --user -r requirements.txt
 
-# Run debug script for CORS
-echo -e "\n===== Checking CORS configuration ====="
-python manage.py shell < core/debug_cors.py
+# Ensure directories exist
+mkdir -p showcase_twitter_clone/static showcase_twitter_clone/media
+chmod 755 showcase_twitter_clone/static showcase_twitter_clone/media
 
-# Make migrations and migrate
-echo -e "\n===== Running database migrations ====="
-python manage.py makemigrations
+# Set environment variables
+export DJANGO_SETTINGS_MODULE=core.settings
+export PYTHONANYWHERE=true
+export DEBUG=False
+export MYSQL_PASSWORD='your_mysql_password_here'  # Replace with your actual MySQL password
+
+# Run migrations
+echo "Running database migrations..."
 python manage.py migrate
 
-# Restart the web app
-echo -e "\n===== Restarting the web app ====="
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput --clear
+
+# Touch WSGI file to reload web app
+echo "Reloading web application..."
 touch /var/www/maxh33_pythonanywhere_com_wsgi.py
 
-echo -e "\n===== Update completed! ====="
-echo "Your application should now be running with the latest changes."
-echo "If you encounter any issues, please check the error log at:"
-echo "/var/log/maxh33.pythonanywhere.com.error.log"
-echo "You can also run: tail -f /var/log/maxh33.pythonanywhere.com.error.log" 
+echo "=== Deployment completed! ==="
+echo "Your application should now be live at https://maxh33.pythonanywhere.com/" 
