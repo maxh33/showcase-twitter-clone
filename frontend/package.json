@@ -36,7 +36,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "set GENERATE_SOURCEMAP=false && react-scripts build",
+    "build": "mkdir -p build && cp -r public/* build/ && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "tailwind": "tailwindcss -i ./src/index.css -o ./src/output.css --watch",
@@ -46,7 +46,7 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "test:e2e": "cypress run",
-    "vercel-build": "npm install --legacy-peer-deps && npm run build --legacy-peer-deps"
+    "vercel-build": "mkdir -p build && cp -r public/* build/ && npm run build --legacy-peer-deps"
   },
   "eslintConfig": {
     "extends": [
