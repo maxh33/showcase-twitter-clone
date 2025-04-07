@@ -1,6 +1,5 @@
 import axios, { AxiosError } from 'axios';
 import { LoginResponse, RegisterData, RegisterResponse, AuthResponse } from '../types/auth';
-import { User } from '../types/user';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
