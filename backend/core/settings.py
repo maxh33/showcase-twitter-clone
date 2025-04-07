@@ -80,13 +80,7 @@ CORS_ORIGIN_REGEX_WHITELIST = [
 
 # For any other preview deployments we might create
 # Get CORS settings from environment variable or use development defaults
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
-    # If not allowing all origins, get the specific allowed origins from environment
-    if not CORS_ALLOW_ALL_ORIGINS and os.environ.get('CORS_ALLOWED_ORIGINS'):
-        CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Required for cookies, authorization headers with HTTPS
 CORS_ALLOW_CREDENTIALS = True
