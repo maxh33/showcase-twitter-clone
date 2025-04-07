@@ -16,7 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'bio', 'location', 'profile_picture',
-                  'followers_count', 'following_count', 'created_at', 'is_demo_user')
+                  'followers_count', 'following_count', 'tweets_count', 'created_at', 'is_demo_user', 'is_verified')
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

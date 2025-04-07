@@ -906,7 +906,8 @@ class DemoLoginView(APIView):
     
     def post(self, request):
         try:
-            demo_user = User.objects.get(email='demo@twitterclone.com')
+            session_id = request.data.get('session_id')
+            demo_user, created = setup_demo_user(session_id)
             refresh = RefreshToken.for_user(demo_user)
             
             return Response({
@@ -916,11 +917,23 @@ class DemoLoginView(APIView):
                     'id': demo_user.id,
                     'username': demo_user.username,
                     'email': demo_user.email,
-                    'is_demo_user': True
+                    'bio': demo_user.bio,
+                    'location': demo_user.location,
+                    'profile_picture': demo_user.profile_picture or None,
+                    'followers_count': demo_user.followers_count,
+                    'following_count': demo_user.following_count,
+                    'tweets_count': demo_user.tweets_count,
+                    'is_verified': demo_user.is_verified,
+                    'is_demo_user': True,
+                    'created_at': demo_user.created_at.isoformat() if demo_user.created_at else None,
+                    'updated_at': demo_user.updated_at.isoformat() if demo_user.updated_at else None,
+                    'is_deleted': demo_user.is_deleted,
+                    'last_activation': demo_user.last_activation.isoformat() if demo_user.last_activation else None
                 }
             })
-        except User.DoesNotExist:
+        except Exception as e:
+            logger.error(f"Demo login failed: {str(e)}")
             return Response(
-                {"detail": "Demo user not found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "Failed to create demo user"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
