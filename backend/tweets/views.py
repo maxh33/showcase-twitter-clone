@@ -249,13 +249,6 @@ class TweetViewSet(viewsets.ModelViewSet):
         tweet = self.get_object()
         user = request.user
 
-        # Check if user is a demo user
-        if getattr(user, 'is_demo_user', False):
-            return Response(
-                {'error': 'This feature is not available for demo accounts'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         # Check if user has already retweeted the tweet
         if Retweet.objects.filter(tweet=tweet, user=user).exists():
             return Response(
@@ -283,13 +276,6 @@ class TweetViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_comment(self, request, pk=None):
         """Add a comment to a tweet"""
-        # Check if user is a demo user
-        if getattr(request.user, 'is_demo_user', False):
-            return Response(
-                {'error': 'This feature is not available for demo accounts'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         tweet = self.get_object()
         serializer = CommentSerializer(data=request.data, context={'request': request})
         
@@ -344,12 +330,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     }
     
     def perform_create(self, serializer):
-        # Check if user is a demo user
-        if getattr(self.request.user, 'is_demo_user', False):
-            raise serializers.ValidationError(
-                {'error': 'This feature is not available for demo accounts'}
-            )
-            
         # Get the tweet ID from the URL or request data
         tweet_id = self.kwargs.get('tweet_pk') or self.request.data.get('tweet_id')
         if not tweet_id:

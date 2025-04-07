@@ -55,7 +55,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'core.middleware.CustomCorsMiddleware',  # Our custom failsafe middleware MUST be first
+    'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -71,22 +72,18 @@ CORS_ALLOWED_ORIGINS = [
     "https://showcase-twitter-clone-hwcihi4f1-maxh33s-projects.vercel.app", # Current preview
     "https://showcase-twitter-clone.vercel.app",  # Vercel production
     "https://showcase-twitter-clone-git-staging-maxh33s-projects.vercel.app",  # Vercel staging
+    "https://showcase-twitter-clone-maxh33-maxh33s-projects.vercel.app",  # Another preview domain
+    "https://showcase-twitter-clone-git-main-maxh33s-projects.vercel.app",  # Main branch preview
 ]
 
 # For future Vercel preview deployments, allow any subdomain matching the pattern
 CORS_ORIGIN_REGEX_WHITELIST = [
-    r"^https://showcase-twitter-clone-.*-maxh33s-projects\.vercel\.app$",
+    r"^https://showcase-twitter-clone.*\.vercel\.app$",
 ]
 
 # For any other preview deployments we might create
 # Get CORS settings from environment variable or use development defaults
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
-    # If not allowing all origins, get the specific allowed origins from environment
-    if not CORS_ALLOW_ALL_ORIGINS and os.environ.get('CORS_ALLOWED_ORIGINS'):
-        CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Required for cookies, authorization headers with HTTPS
 CORS_ALLOW_CREDENTIALS = True
