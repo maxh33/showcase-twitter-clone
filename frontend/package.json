@@ -46,7 +46,7 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "test:e2e": "cypress run",
-    "vercel-build": "echo 'Using pre-built files'"
+    "vercel-build": "npm install --legacy-peer-deps && npm run build --legacy-peer-deps"
   },
   "eslintConfig": {
     "extends": [

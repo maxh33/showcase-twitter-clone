@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": null,
+  "buildCommand": "CI=false npm run build --legacy-peer-deps",
   "devCommand": null,
-  "installCommand": null,
+  "installCommand": "npm install --legacy-peer-deps",
   "outputDirectory": "build",
   "framework": null,
   "rewrites": [
