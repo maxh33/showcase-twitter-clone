@@ -315,9 +315,12 @@ jobs:
               "export DJANGO_SETTINGS_MODULE=core.settings && "
               "export PYTHONANYWHERE=true && "
               "export MYSQL_PASSWORD='" + mysql_password + "' && "
-              "python manage.py makemigrations --noinput && "  # First create any new migrations
-              "python manage.py migrate --noinput && "         # Apply migrations
-              "python manage.py collectstatic --noinput --clear"  # Then collect static files
+              # Add MySQL character encoding commands
+              "mysql -u maxh33 -p$MYSQL_PASSWORD -e 'ALTER DATABASE maxh33\$showcase_twitter_clone CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;' && "
+              "mysql -u maxh33 -p$MYSQL_PASSWORD -e 'USE maxh33\$showcase_twitter_clone; ALTER TABLE users_user CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' && "
+              "python manage.py makemigrations --noinput && "
+              "python manage.py migrate --noinput && "
+              "python manage.py collectstatic --noinput --clear"
           )
           
           # Configure static and media files in PythonAnywhere
@@ -615,6 +618,9 @@ jobs:
               "export DJANGO_SETTINGS_MODULE=core.settings && "
               "export PYTHONANYWHERE=true && "
               "export MYSQL_PASSWORD='" + mysql_password + "' && "
+              # Add MySQL character encoding commands
+              "mysql -u maxh33 -p$MYSQL_PASSWORD -e 'ALTER DATABASE maxh33\$showcase_twitter_clone CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;' && "
+              "mysql -u maxh33 -p$MYSQL_PASSWORD -e 'USE maxh33\$showcase_twitter_clone; ALTER TABLE users_user CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' && "
               "python manage.py collectstatic --noinput --clear"
           )
           
