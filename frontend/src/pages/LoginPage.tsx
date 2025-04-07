@@ -11,16 +11,9 @@ interface LocationState {
   message?: string;
 }
 
-interface ErrorResponse {
-  response?: {
-    data?: Record<string, unknown>;
-  };
-  message?: string;
-}
-
-const LoginPage: React.FC = () => {
+const LoginPage: React.FC = (): JSX.Element => {
   const [formData, setFormData] = useState({
-    identifier: '', // This can be either username or email
+    username: '',
     password: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,7 +25,7 @@ const LoginPage: React.FC = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { demoLogin, login: contextLogin } = useAuth(); // Get both login and demoLogin from auth context
+  const { login, demoLogin } = useAuth();
   
   // Check for success message from registration or other sources
   useEffect(() => {
@@ -61,8 +54,8 @@ const LoginPage: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.identifier.trim()) {
-      newErrors.identifier = 'Username or email is required';
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
     }
     
     if (!formData.password) {
@@ -71,100 +64,6 @@ const LoginPage: React.FC = () => {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  // Check if the error response indicates an unverified account
-  const checkForUnverifiedAccount = (errorData: Record<string, unknown>, isEmail: boolean): boolean => {
-    if (
-      'requires_verification' in errorData ||
-      (typeof errorData.detail === 'string' && errorData.detail.includes('not been verified')) ||
-      (errorData.detail === 'Email not verified.') || 
-      (typeof errorData.non_field_errors === 'string' && errorData.non_field_errors.includes('not verified')) ||
-      (Array.isArray(errorData.non_field_errors) && errorData.non_field_errors[0]?.includes('not verified'))
-    ) {
-      const emailFromResponse = errorData.email as string;
-      const emailToDisplay = emailFromResponse || (isEmail ? formData.identifier : null);
-      setUnverifiedEmail(emailToDisplay);
-      
-      // Show the unverified account UI
-      setIsUnverified(true);
-      
-      // Create a user-friendly message that clearly instructs the user
-      const emailDisplay = emailToDisplay ? ` (${emailToDisplay})` : '';
-      const detailMessage = 
-        `🔑 Account Activation Required${emailDisplay}
-
-A new activation link has been sent to your email address.
-
-✅ Check your inbox and spam folder
-✅ Click the verification link in the email
-✅ Return to this page to log in
-
-If you don't receive the email within a few minutes, you can click the 'Resend Verification Email' button below.`;
-      
-      // Set the formatted error message and success message
-      setErrors({ general: detailMessage });
-      setSuccessMessage('A new verification link has been sent to your email address.');
-      
-      return true;
-    }
-    return false;
-  };
-
-  // Process various error types from the API response
-  const processApiErrors = (errorData: Record<string, unknown>): void => {
-    if (errorData.email || errorData.username) {
-      setErrors({ 
-        identifier: String(errorData.email || errorData.username) 
-      });
-    } else if (errorData.detail) {
-      setErrors({ general: String(errorData.detail) });
-    } else if (errorData.non_field_errors) {
-      const nonFieldErrors = errorData.non_field_errors;
-      if (Array.isArray(nonFieldErrors) && nonFieldErrors.length > 0) {
-        setErrors({ general: String(nonFieldErrors[0]) });
-      } else {
-        setErrors({ general: String(nonFieldErrors) });
-      }
-    } else {
-      // Convert all values to strings
-      const stringErrors: Record<string, string> = {};
-      Object.entries(errorData).forEach(([key, value]) => {
-        if (Array.isArray(value) && value.length > 0) {
-          stringErrors[key] = String(value[0]);
-        } else {
-          stringErrors[key] = String(value);
-        }
-      });
-      setErrors(stringErrors);
-    }
-  };
-
-  // Handle login errors by processing the error response
-  const handleLoginError = (error: unknown, isEmail: boolean): void => {
-    console.error('Login error:', error);
-    
-    // Cast to a type with the expected shape for easier handling
-    const errorObj = error as ErrorResponse;
-    
-    if (errorObj?.response?.data && typeof errorObj.response.data === 'object') {
-      const errorData = errorObj.response.data as Record<string, unknown>;
-      
-      // Check for unverified account first
-      const isUnverifiedAccount = checkForUnverifiedAccount(errorData, isEmail);
-      setIsUnverified(isUnverifiedAccount);
-      
-      if (!isUnverifiedAccount) {
-        // Process other API error types
-        processApiErrors(errorData);
-      }
-    } else if (errorObj?.message) {
-      // Handle errors with just a message property
-      setErrors({ general: errorObj.message });
-    } else {
-      // Generic fallback error
-      setErrors({ general: 'Unable to log in. Please check your credentials and try again.' });
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,72 +76,57 @@ If you don't receive the email within a few minutes, you can click the 'Resend V
     setIsUnverified(false);
     setUnverifiedEmail(null);
     
-    // Determine if identifier is an email or username
-    const isEmail = formData.identifier.includes('@');
-    
     try {
-      // Use the login from context instead of the imported function
-      await contextLogin(formData.identifier, formData.password);
-      console.log('Login successful, navigating to home page...');
-      navigate('/'); // Redirect to home page after successful login
-    } catch (error: unknown) {
-      handleLoginError(error, isEmail);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    setErrors({});
-    
-    try {
-      console.log('Starting demo login process from LoginPage');
-      const user = await demoLogin();
-      console.log('Demo login successful, user:', user?.username);
-      navigate('/'); // Redirect to home page after successful demo login
-    } catch (error: unknown) {
-      console.error('Demo login error:', error);
+      const response = await login({ username: formData.username, password: formData.password });
       
-      if (error instanceof Error) {
-        setErrors({ general: `Demo login error: ${error.message}` });
+      if (response.requires_verification) {
+        setIsUnverified(true);
+        setUnverifiedEmail(response.email || null);
+        setSuccessMessage('A verification link has been sent to your email address.');
+      } else if (response.success) {
+        navigate('/home');
       } else {
-        setErrors({ 
-          general: 'An error occurred during demo login. Please try again later. The application will still function in demo mode but tweets may not be saved.'
-        });
+        setErrors({ general: response.error || 'Login failed' });
       }
-      
-      // Even if backend login failed, we can still navigate to home as the local demo mode
-      // will provide a read-only experience
-      setTimeout(() => {
-        navigate('/');
-      }, 3000);
+    } catch (error) {
+      setErrors({ general: error instanceof Error ? error.message : 'An error occurred during login' });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendVerification = async () => {
-    if (!unverifiedEmail) {
-      setErrors({ general: 'Please enter your email address to resend verification.' });
-      return;
-    }
-
+    if (!unverifiedEmail) return;
+    
     setIsResendingVerification(true);
-    setErrors({});
-    setSuccessMessage(null);
-
     try {
-      await resendVerification({ email: unverifiedEmail });
-      setSuccessMessage('Verification email has been resent. Please check your inbox.');
-    } catch (error) {
-      if (error instanceof Error) {
-        setErrors({ general: error.message });
+      const response = await resendVerification(unverifiedEmail);
+      if (response.success) {
+        setSuccessMessage('A new verification link has been sent to your email address.');
       } else {
-        setErrors({ general: 'Failed to resend verification email. Please try again.' });
+        setErrors({ general: response.error || 'Failed to resend verification email' });
       }
+    } catch (error) {
+      setErrors({ general: error instanceof Error ? error.message : 'Failed to resend verification email' });
     } finally {
       setIsResendingVerification(false);
+    }
+  };
+
+  const handleDemoLogin = async (): Promise<void> => {
+    setIsLoading(true);
+    setErrors({});
+    try {
+      const result = await demoLogin();
+      if (result.success) {
+        navigate('/home');
+      } else {
+        setErrors({ general: result.error || 'Demo login failed' });
+      }
+    } catch (error) {
+      setErrors({ general: error instanceof Error ? error.message : 'Failed to login with demo account' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -251,29 +135,33 @@ If you don't receive the email within a few minutes, you can click the 'Resend V
       <S.BannerContainer>
         <S.BannerImage src={loginBanner} alt="Login banner" />
       </S.BannerContainer>
-      
       <S.FormContainer>
         <S.LogoContainer>
           <S.Logo src={blackLogo} alt="Twitter Clone Logo" />
         </S.LogoContainer>
-        
         <S.FormTitle>Log in to Twitter Clone</S.FormTitle>
         
-        {successMessage && <S.SuccessMessage>{successMessage}</S.SuccessMessage>}
-        {errors.general && <S.ErrorMessage>{errors.general}</S.ErrorMessage>}
+        {successMessage && (
+          <S.SuccessMessage>{successMessage}</S.SuccessMessage>
+        )}
+        
+        {errors.general && (
+          <S.ErrorMessage>{errors.general}</S.ErrorMessage>
+        )}
         
         <S.Form onSubmit={handleSubmit}>
           <S.FormGroup>
-            <S.Label htmlFor="identifier">Username or Email</S.Label>
+            <S.Label htmlFor="username">Username</S.Label>
             <S.Input
               type="text"
-              id="identifier"
-              name="identifier"
-              value={formData.identifier}
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="Enter your username or email"
             />
-            {errors.identifier && <S.ErrorMessage>{errors.identifier}</S.ErrorMessage>}
+            {errors.username && (
+              <S.ErrorMessage>{errors.username}</S.ErrorMessage>
+            )}
           </S.FormGroup>
           
           <S.FormGroup>
@@ -284,47 +172,46 @@ If you don't receive the email within a few minutes, you can click the 'Resend V
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter your password"
             />
-            {errors.password && <S.ErrorMessage>{errors.password}</S.ErrorMessage>}
+            {errors.password && (
+              <S.ErrorMessage>{errors.password}</S.ErrorMessage>
+            )}
           </S.FormGroup>
           
           <S.ButtonContainer>
             <Button
               type="submit"
-              variant="primary"
-              fullWidth
               disabled={isLoading}
+              fullWidth
             >
               {isLoading ? 'Logging in...' : 'Log in'}
             </Button>
+            
+            {isUnverified && unverifiedEmail && (
+              <div style={{ margin: '10px 0' }}>
+                <Button
+                  onClick={handleResendVerification}
+                  disabled={isResendingVerification}
+                  variant="secondary"
+                  fullWidth
+                >
+                  {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+                </Button>
+              </div>
+            )}
+            
+            <div style={{ margin: '10px 0' }}>
+              <Button
+                onClick={handleDemoLogin}
+                disabled={isLoading}
+                variant="secondary"
+                fullWidth
+              >
+                {isLoading ? 'Loading demo...' : 'Try Demo Account'}
+              </Button>
+            </div>
           </S.ButtonContainer>
         </S.Form>
-
-        <S.ButtonContainer style={{ marginTop: '16px' }}>
-          {isUnverified && (
-            <Button
-              type="button"
-              variant="secondary"
-              fullWidth
-              onClick={handleResendVerification}
-              disabled={isResendingVerification || !unverifiedEmail}
-              style={{ marginBottom: '10px' }}
-            >
-              {isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
-            </Button>
-          )}
-
-          <Button
-            type="button"
-            variant="secondary"
-            fullWidth
-            onClick={handleDemoLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Try Demo Account'}
-          </Button>
-        </S.ButtonContainer>
         
         <S.LinkContainer>
           <S.LinkText>

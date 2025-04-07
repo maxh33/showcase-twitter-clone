@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { buildUrl } from './authService';
+import { apiV1 } from './authService';
 
 interface VerifyEmailParams {
   uidb64: string;
@@ -16,7 +16,7 @@ interface ResetPasswordParams {
 
 export const handleEmailVerification = async ({ uidb64, token }: VerifyEmailParams) => {
   try {
-    await axios.post(buildUrl('auth/verify-email/'), {
+    await apiV1.post('/auth/verify-email/', {
       uidb64,
       token
     });
@@ -31,7 +31,7 @@ export const handleEmailVerification = async ({ uidb64, token }: VerifyEmailPara
 
 export const handlePasswordReset = async ({ token, uidb64, password, password2 }: ResetPasswordParams) => {
   try {
-    await axios.post(buildUrl('auth/password-reset/confirm/'), {
+    await apiV1.post('/auth/password-reset/confirm/', {
       token,
       uidb64,
       password,
@@ -49,7 +49,7 @@ export const handlePasswordReset = async ({ token, uidb64, password, password2 }
 
 export const requestPasswordReset = async (email: string) => {
   try {
-    await axios.post(buildUrl('auth/password-reset/'), {
+    await apiV1.post('/auth/password-reset/', {
       email
     });
     
