@@ -107,23 +107,62 @@ export const tweetService = {
    * Creates a new tweet
    * @param content - The content of the tweet
    */
-  async createTweet(content: string, media?: File) {
-    const axiosInstance = createAxiosInstance();
+  async createTweet(content: string, image?: File | null): Promise<Tweet> {
     try {
+      // Check if this is a demo user
+      const isDemoUser = localStorage.getItem('isDemoUser') === 'true';
+      
+      // For demo users in production, simulate a successful tweet creation
+      if (isDemoUser && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        console.log('Demo user tweet creation (simulated):', content);
+        
+        // Create a mock tweet that will only exist for this session
+        const demoUser = JSON.parse(localStorage.getItem('demoUser') || '{}');
+        const mockTweet: Tweet = {
+          id: Date.now().toString(),
+          content,
+          author: demoUser,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          likes_count: 0,
+          comments_count: 0,
+          retweet_count: 0,
+          is_liked: false,
+          is_retweeted: false,
+          is_bookmarked: false,
+          media_attachments: image ? [{ 
+            id: `media_${Date.now()}`,
+            url: URL.createObjectURL(image),
+            type: 'image',
+            created_at: new Date().toISOString()
+          }] : [],
+        };
+        
+        // Add to local storage for persistence during session
+        const localTweets = JSON.parse(localStorage.getItem('demoTweets') || '[]');
+        localTweets.unshift(mockTweet);
+        localStorage.setItem('demoTweets', JSON.stringify(localTweets.slice(0, 50))); // Keep only 50 latest
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        return mockTweet;
+      }
+      
+      // Normal API flow for real users or local development
       const formData = new FormData();
       formData.append('content', content);
       
-      if (media) {
-        formData.append('media', media);
+      if (image) {
+        formData.append('image', image);
       }
       
-      const response = await axiosInstance.post('/tweets/', formData, {
+      const response = await createAxiosInstance().post('/tweets/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       
-      console.log('Tweet created successfully:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error creating tweet:', error);

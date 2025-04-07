@@ -85,14 +85,18 @@ const createLocalDemoUser = (timestamp: string): User => {
   };
   
   // Store the local user state consistently
-  localStorage.setItem('token', 'demo_mock_token'); // Mock token to satisfy auth checks
-  localStorage.setItem('refreshToken', 'demo_mock_refresh_token');
+  const mockToken = 'demo_mock_token_' + timestamp;
+  const mockRefreshToken = 'demo_mock_refresh_token_' + timestamp;
+  
+  localStorage.setItem('token', mockToken);
+  localStorage.setItem('refreshToken', mockRefreshToken);
   localStorage.setItem('isDemoUser', 'true');
   localStorage.setItem('demoTimestamp', timestamp);
   localStorage.setItem('demoUser', JSON.stringify(fallbackUser));
   
-  // Set auth header to maintain consistency
-  axios.defaults.headers.common['Authorization'] = `Bearer demo_mock_token`;
+  // IMPORTANT: Set auth header to maintain consistency with backend expectations
+  axios.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
+  console.log(`[${timestamp}] Set mock Authorization header: Bearer ${mockToken.substring(0, 10)}...`);
   
   return fallbackUser;
 };
@@ -109,13 +113,17 @@ export const demoLogin = async (): Promise<User> => {
       console.log(`[${timestamp}] Using existing demo user from localStorage`);
       const user = JSON.parse(existingDemoUser) as User;
       
-      // Ensure we have the demo tokens set
+      // Ensure we have the demo tokens set and headers configured
+      const token = localStorage.getItem('token') || `demo_mock_token_${timestamp}`;
       if (!localStorage.getItem('token')) {
-        localStorage.setItem('token', 'demo_mock_token');
-        localStorage.setItem('refreshToken', 'demo_mock_refresh_token');
+        localStorage.setItem('token', token);
+        localStorage.setItem('refreshToken', `demo_mock_refresh_token_${timestamp}`);
         localStorage.setItem('isDemoUser', 'true');
-        axios.defaults.headers.common['Authorization'] = `Bearer demo_mock_token`;
       }
+      
+      // ALWAYS set the Authorization header with whatever token we have
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log(`[${timestamp}] Restored Authorization header: Bearer ${token.substring(0, 10)}...`);
       
       return user;
     } catch (error) {

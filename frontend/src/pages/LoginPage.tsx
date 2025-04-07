@@ -197,16 +197,26 @@ If you don't receive the email within a few minutes, you can click the 'Resend V
     setErrors({});
     
     try {
-      await demoLogin();
+      console.log('Starting demo login process from LoginPage');
+      const user = await demoLogin();
+      console.log('Demo login successful, user:', user?.username);
       navigate('/'); // Redirect to home page after successful demo login
     } catch (error: unknown) {
       console.error('Demo login error:', error);
       
       if (error instanceof Error) {
-        setErrors({ general: error.message });
+        setErrors({ general: `Demo login error: ${error.message}` });
       } else {
-        setErrors({ general: 'An error occurred during demo login. Please try again later.' });
+        setErrors({ 
+          general: 'An error occurred during demo login. Please try again later. The application will still function in demo mode but tweets may not be saved.'
+        });
       }
+      
+      // Even if backend login failed, we can still navigate to home as the local demo mode
+      // will provide a read-only experience
+      setTimeout(() => {
+        navigate('/');
+      }, 3000);
     } finally {
       setIsLoading(false);
     }
