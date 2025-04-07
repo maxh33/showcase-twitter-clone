@@ -133,22 +133,40 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
 
   const handleUnsplashImageSelect = async (image: UnsplashImage) => {
     try {
-      // Download the image
-      const response = await fetch(image.url);
-      const blob = await response.blob();
+      // Download the image with proper CORS headers
+      const response = await fetch(image.url, {
+        mode: 'cors',
+        headers: {
+          'Accept': 'image/jpeg'
+        }
+      });
       
-      // Create a File object from the blob
-      const file = new File([blob], `unsplash-${image.id}.jpg`, { type: 'image/jpeg' });
+      if (!response.ok) {
+        throw new Error(`Failed to download image: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      const filename = `unsplash-${image.id}.jpg`;
+      
+      // Create a File object from the blob with proper MIME type
+      const file = new File([blob], filename, { 
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
       
       // Set the file and preview URL
       setSelectedFile(file);
       setPreviewUrl(image.url);
       setShowImageSearch(false);
+      
+      console.log('Successfully created file:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
     } catch (error) {
       console.error('Error downloading Unsplash image:', error);
-      // Fallback to using the URL directly
-      setPreviewUrl(image.url);
-      setShowImageSearch(false);
+      setErrorMessage('Failed to download image. Please try again.');
     }
   };
   
@@ -192,21 +210,38 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
   const createTweetWithMedia = async () => {
     console.log('TweetComposer: Creating tweet with content:', content);
     try {
-      return selectedFile 
-        ? await tweetService.createTweet(content, selectedFile)
-        : await tweetService.createTweet(content);
+      if (selectedFile) {
+        // Create FormData and append the file
+        const formData = new FormData();
+        formData.append('content', content);
+        formData.append('media', selectedFile);
+        
+        console.log('TweetComposer: Uploading with file:', {
+          fileName: selectedFile.name,
+          fileType: selectedFile.type,
+          fileSize: selectedFile.size
+        });
+        
+        return await tweetService.createTweet(content, selectedFile);
+      } else {
+        return await tweetService.createTweet(content);
+      }
     } catch (error: unknown) {
       if (isAuthError(error)) {
         console.log('TweetComposer: Authentication error, refreshing token...');
-        await refreshToken();
-        
-        // Try again with the new token
-        console.log('TweetComposer: Retrying tweet creation after token refresh');
-        return selectedFile 
-          ? await tweetService.createTweet(content, selectedFile)
-          : await tweetService.createTweet(content);
+        try {
+          await refreshToken();
+          await setupAuthHeaders();
+          // Retry the tweet creation after token refresh
+          return selectedFile 
+            ? await tweetService.createTweet(content, selectedFile)
+            : await tweetService.createTweet(content);
+        } catch (refreshError) {
+          console.error('TweetComposer: Token refresh failed:', refreshError);
+          throw refreshError;
+        }
       }
-      throw error; // Re-throw if it's not an auth error
+      throw error;
     }
   };
 

@@ -117,6 +117,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
     try {
       const updatedTweet = await likeTweet(tweetId);
       
+      // Update tweets in state
       setTweets(prev => 
         (prev || []).map(tweet => 
           tweet.id === tweetId ? updatedTweet : tweet
@@ -138,6 +139,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
     try {
       const updatedTweet = await retweetTweet(tweetId);
       
+      // Update tweets in state
       setTweets(prev => 
         (prev || []).map(tweet => 
           tweet.id === tweetId ? updatedTweet : tweet
