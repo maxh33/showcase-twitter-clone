@@ -14,10 +14,10 @@ interface IconWrapperStyleProps {
 
 interface IconWrapperProps {
   icon: IconType;
-  onClick?: () => void;
-  disabled?: boolean;
-  active?: boolean;
   size?: 'small' | 'medium' | 'large';
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
   color?: string;
   asButton?: boolean;
 }
