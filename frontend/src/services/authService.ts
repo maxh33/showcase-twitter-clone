@@ -163,11 +163,22 @@ export const register = async (data: RegisterData, retryCount = 0, maxRetries = 
 
 // Helper function to format login data
 const formatLoginData = (data: LoginData) => {
-  return {
-    email: data.email || data.username, // Use email if provided, otherwise use username
-    username: data.email || data.username, // Include username field with same value for compatibility
+  const formattedData = {
+    email: data.email || '',
+    username: data.username || '',
     password: data.password
   };
+
+  // If only username is provided, use it for both fields
+  if (data.username && !data.email) {
+    formattedData.email = data.username;
+  }
+  // If only email is provided, use it for both fields
+  else if (data.email && !data.username) {
+    formattedData.username = data.email;
+  }
+
+  return formattedData;
 };
 
 // Define a more specific type for error data
@@ -265,10 +276,10 @@ interface LoginResponse {
 
 export const login = async (data: LoginData): Promise<LoginResponse> => {
   try {
-    const { username, email, password } = formatLoginData(data);
+    const formattedData = formatLoginData(data);
     
     // Special handling for demo users
-    if (username === 'demo' || username === 'demo@twitterclone.com') {
+    if (formattedData.username === 'demo' || formattedData.email === 'demo@twitterclone.com') {
       try {
         // Try to use the special demo endpoint
         const response = await axios.post(buildUrl('auth/demo-login/'), {});
@@ -295,7 +306,7 @@ export const login = async (data: LoginData): Promise<LoginResponse> => {
     }
     
     // Normal login flow for non-demo users
-    const response = await axios.post(buildUrl('auth/login/'), { username, password });
+    const response = await axios.post(buildUrl('auth/login/'), formattedData);
     const { refresh, access, user } = response.data;
     
     localStorage.setItem('accessToken', access);

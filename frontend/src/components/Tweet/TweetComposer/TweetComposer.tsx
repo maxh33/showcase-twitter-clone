@@ -5,7 +5,6 @@ import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../../common/IconWrapper';
 import { refreshToken, setupAuthHeaders } from '../../../services/authService';
-import { useAuth } from '../../../contexts/AuthContext';
 import DemoModal from '../../modal/DemoModal';
 
 // Simple emoji array for the custom emoji picker
@@ -31,7 +30,6 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
   onTweetCreated,
   userProfilePicture = '/logo192.png'
 }) => {
-  const { isDemoUser } = useAuth();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
