@@ -899,3 +899,28 @@ class DemoUserLoginView(CustomTokenObtainPairView):
                 {'error': f'Demo login failed: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class DemoLoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        try:
+            demo_user = User.objects.get(email='demo@twitterclone.com')
+            refresh = RefreshToken.for_user(demo_user)
+            
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': {
+                    'id': demo_user.id,
+                    'username': demo_user.username,
+                    'email': demo_user.email,
+                    'is_demo_user': True
+                }
+            })
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Demo user not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )

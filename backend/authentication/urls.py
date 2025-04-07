@@ -13,6 +13,7 @@ from .views import (
     LogoutView,
     ResendVerificationView,
     DemoUserLoginView,
+    DemoLoginView,
 )
 
 def auth_api_root(request):
@@ -39,7 +40,7 @@ urlpatterns = [
     # Authentication endpoints
     path('register/', RegistrationView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
-    path('demo-login/', DemoUserLoginView.as_view(), name='demo_login'),
+    path('demo-login/', DemoLoginView.as_view(), name='demo_login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     

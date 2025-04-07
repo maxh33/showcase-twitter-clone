@@ -162,6 +162,34 @@ export const tweetService = {
       return response.data;
     } catch (error) {
       console.error('Error creating tweet:', error);
+      
+      // If user is demo user, create a local mock tweet
+      const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('demoUser') || '{}');
+      if (user.is_demo_user) {
+        console.log('Creating local tweet for demo user');
+        const mockTweet = {
+          id: `local-${Date.now()}`,
+          content,
+          created_at: new Date().toISOString(),
+          user: {
+            id: user.id,
+            username: user.username,
+            avatar: null
+          },
+          likes_count: 0,
+          comments_count: 0,
+          retweets_count: 0,
+          is_liked: false,
+          is_retweeted: false
+        };
+        
+        // Store in local storage for persistence
+        const localTweets = JSON.parse(localStorage.getItem('localTweets') || '[]');
+        localTweets.unshift(mockTweet);
+        localStorage.setItem('localTweets', JSON.stringify(localTweets));
+        
+        return mockTweet;
+      }
       throw error;
     }
   },

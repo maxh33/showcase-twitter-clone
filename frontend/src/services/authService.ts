@@ -266,19 +266,58 @@ const storeAuthTokens = (data: AuthTokens) => {
   return data;
 };
 
-export const login = async (data: LoginData) => {
-  // Format the data to match backend expectations
-  const loginData = formatLoginData(data);
-
+export const login = async (username: string, password: string): Promise<{ success: boolean; data?: any; error?: string }> => {
   try {
-    // Debug log with masked password
-    const safeData = { ...loginData, password: '********' };
-    console.log('Sending login data:', safeData);
+    // Special handling for demo users
+    if (username === 'demo' || username === 'demo@twitterclone.com') {
+      try {
+        // Try to use the special demo endpoint
+        const response = await axios.post(buildUrl('auth/demo-login/'), {});
+        const { refresh, access, user } = response.data;
+        
+        // Store tokens and user data
+        localStorage.setItem('accessToken', access);
+        localStorage.setItem('refreshToken', refresh);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        return { success: true, data: user };
+      } catch (error) {
+        console.log('Demo login API failed, using client-side fallback');
+        // Fallback to client-side demo user if backend is unavailable
+        const demoUser = {
+          id: 999,
+          username: 'demo',
+          email: 'demo@twitterclone.com',
+          is_demo_user: true
+        };
+        localStorage.setItem('demoUser', JSON.stringify(demoUser));
+        return { success: true, data: demoUser };
+      }
+    }
     
-    const response = await axios.post(buildUrl('auth/login/'), loginData);
-    return storeAuthTokens(response.data);
-  } catch (error) {
-    return handleLoginError(error);
+    // Normal login flow for non-demo users
+    const response = await axios.post(buildUrl('auth/login/'), { username, password });
+    const { refresh, access, user } = response.data;
+    
+    localStorage.setItem('accessToken', access);
+    localStorage.setItem('refreshToken', refresh);
+    localStorage.setItem('user', JSON.stringify(user));
+    
+    return { success: true, data: user };
+  } catch (error: any) {
+    console.error('Login error:', error);
+    
+    if (error.response) {
+      // Server responded with an error
+      const errorMessage = error.response.data.detail || 'Invalid credentials';
+      return { success: false, error: errorMessage };
+    } else if (error.request) {
+      // Request made but no response
+      return { success: false, error: 'Server error. Please try again later.' };
+    } else {
+      // Something else caused the error
+      return { success: false, error: 'An unexpected error occurred.' };
+    }
   }
 };
 
