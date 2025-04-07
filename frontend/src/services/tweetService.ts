@@ -119,7 +119,7 @@ export const tweetService = {
         // Create a mock tweet that will only exist for this session
         const demoUser = JSON.parse(localStorage.getItem('demoUser') || '{}');
         const mockTweet: Tweet = {
-          id: Date.now().toString(),
+          id: Date.now(),
           content,
           author: demoUser,
           created_at: new Date().toISOString(),
@@ -127,13 +127,9 @@ export const tweetService = {
           likes_count: 0,
           comments_count: 0,
           retweet_count: 0,
-          is_liked: false,
-          is_retweeted: false,
-          is_bookmarked: false,
-          media_attachments: image ? [{ 
-            id: `media_${Date.now()}`,
-            url: URL.createObjectURL(image),
-            type: 'image',
+          media: image ? [{ 
+            id: Date.now(),
+            file: URL.createObjectURL(image),
             created_at: new Date().toISOString()
           }] : [],
         };
