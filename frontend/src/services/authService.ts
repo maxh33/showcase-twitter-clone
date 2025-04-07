@@ -92,6 +92,13 @@ interface ConfirmResetPasswordData {
   password2: string;
 }
 
+// Define a more specific type for error data
+interface ErrorData {
+  [key: string]: unknown;
+  requires_verification?: boolean;
+  detail?: string;
+}
+
 interface ApiErrorResponse {
   [key: string]: string | string[];
 }
@@ -181,13 +188,6 @@ const formatLoginData = (data: LoginData) => {
   return formattedData;
 };
 
-// Define a more specific type for error data
-interface ErrorData {
-  [key: string]: unknown;
-  requires_verification?: boolean;
-  detail?: string;
-}
-
 // Helper function to handle login error responses
 const extractVerificationError = (errorData: ErrorData): string | null => {
   if ('requires_verification' in errorData && errorData.requires_verification) {
@@ -210,42 +210,6 @@ const extractFirstError = (errorData: ErrorData): string => {
   const firstErrorField = Object.keys(errorData)[0];
   const firstError = errorData[firstErrorField];
   return Array.isArray(firstError) ? firstError[0] : String(firstError);
-};
-
-// Helper function to handle login error responses
-const handleLoginError = (error: unknown): never => {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ApiErrorResponse>;
-    // The server responded with a status code outside the 2xx range
-    if (axiosError.response?.data) {
-      const errorData = axiosError.response.data;
-      if (typeof errorData === 'object') {
-        // Check for account verification errors (status 403)
-        const verificationError = extractVerificationError(errorData as ErrorData);
-        if (verificationError) {
-          throw new Error(verificationError);
-        }
-        
-        // Check for specific error fields
-        const emailError = extractFieldError(errorData, 'email');
-        if (emailError) throw new Error(emailError);
-        
-        const passwordError = extractFieldError(errorData, 'password');
-        if (passwordError) throw new Error(passwordError);
-        
-        const generalError = extractFieldError(errorData, 'error');
-        if (generalError) throw new Error(generalError);
-        
-        // If no specific field error, get the first error message
-        throw new Error(extractFirstError(errorData as ErrorData));
-      }
-    }
-    throw new Error('Login failed. Please check your credentials and try again.');
-  } else if (error instanceof Error) {
-    throw new Error(error.message || 'An error occurred during login.');
-  } else {
-    throw new Error('An unexpected error occurred. Please try again.');
-  }
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -749,3 +713,23 @@ export const demoLogin = async () => {
 export const isDemoUser = () => {
   return localStorage.getItem('isDemoUser') === 'true';
 };
+
+// Define interfaces for tweets
+export interface Tweet {
+  id: number;
+  content: string;
+  author: {
+    id: number;
+    username: string;
+    email: string;
+    profile_picture: string | null;
+    bio: string | null;
+    location: string | null;
+  };
+  created_at: string;
+  updated_at: string;
+  likes_count: number;
+  retweet_count: number;
+  comments_count: number;
+  media: MediaAttachment[];
+}
