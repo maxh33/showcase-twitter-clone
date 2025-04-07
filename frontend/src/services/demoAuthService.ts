@@ -70,15 +70,20 @@ const createLocalDemoUser = (timestamp: string): User => {
   console.log(`[${timestamp}] Creating reliable local demo user without backend authentication`);
   
   // Create a fallback user with timestamp to ensure uniqueness
+  const now = new Date().toISOString();
   const fallbackUser: User = {
     id: `local_${timestamp}`,
     username: `demo_user_${timestamp}`,
     email: `demo_${timestamp}@twitterclone.com`,
+    bio: 'This is a demo account',
+    location: 'Demo Land',
+    profile_picture: '/logo192.png',
     is_verified: true,
     is_demo_user: true,
-    bio: 'This is a local demo account for testing',
-    profile_picture: '/logo192.png',
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
+    is_deleted: false,
+    last_activation: now,
     followers_count: 0,
     following_count: 0,
     tweets_count: 0
@@ -167,16 +172,22 @@ export const demoLogin = async (): Promise<User> => {
       // Create basic user object if not provided in response
       if (!response.data.user) {
         console.log(`[${timestamp}] Creating fallback user object from login response`);
-        const demoUser = {
-          id: response.data.user_id || '0',
-          username: 'demo_user',
-          email: 'demo@twitterclone.com',
-          is_verified: true,
+        const demoUser: User = {
+          id: response.data.id,
+          username: response.data.username,
+          email: response.data.email,
+          bio: response.data.bio || 'This is a demo account',
+          location: response.data.location || 'Demo Land',
+          profile_picture: response.data.profile_picture || '/logo192.png',
+          is_verified: response.data.is_verified || true,
           is_demo_user: true,
-          created_at: new Date().toISOString(),
-          followers_count: 0,
-          following_count: 0,
-          tweets_count: 0
+          created_at: response.data.created_at || new Date().toISOString(),
+          updated_at: response.data.updated_at || new Date().toISOString(),
+          is_deleted: response.data.is_deleted || false,
+          last_activation: response.data.last_activation || new Date().toISOString(),
+          followers_count: response.data.followers_count || 0,
+          following_count: response.data.following_count || 0,
+          tweets_count: response.data.tweets_count || 0
         };
         
         // Store the demo user in localStorage for access across components

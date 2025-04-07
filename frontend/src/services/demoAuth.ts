@@ -5,6 +5,7 @@ export const createDemoUser = async (): Promise<User> => {
   const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 12);
   const randomStr = Math.random().toString(36).substring(2, 8);
   const username = `demo_user_${timestamp}_${randomStr}`;
+  const now = new Date().toISOString();
 
   const demoUser: User = {
     id: `demo_${timestamp}`,
@@ -15,7 +16,10 @@ export const createDemoUser = async (): Promise<User> => {
     profile_picture: '/logo192.png',
     is_verified: false,
     is_demo_user: true,
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
+    is_deleted: false,
+    last_activation: now,
     followers_count: 0,
     following_count: 0,
     tweets_count: 0
