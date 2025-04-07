@@ -106,90 +106,34 @@ export const tweetService = {
   /**
    * Creates a new tweet
    * @param content - The content of the tweet
+   * @param media - Optional media file to attach to the tweet
    */
-  async createTweet(content: string, image?: File | null): Promise<Tweet> {
+  async createTweet(content: string, media?: File | null): Promise<Tweet> {
+    const axiosInstance = createAxiosInstance();
     try {
-      // Check if this is a demo user
-      const isDemoUser = localStorage.getItem('isDemoUser') === 'true';
-      
-      // For demo users in production, simulate a successful tweet creation
-      if (isDemoUser && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        console.log('Demo user tweet creation (simulated):', content);
-        
-        // Create a mock tweet that will only exist for this session
-        const demoUser = JSON.parse(localStorage.getItem('demoUser') || '{}');
-        const mockTweet: Tweet = {
-          id: Date.now(),
-          content,
-          author: demoUser,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          likes_count: 0,
-          comments_count: 0,
-          retweet_count: 0,
-          media: image ? [{ 
-            id: Date.now(),
-            file: URL.createObjectURL(image),
-            created_at: new Date().toISOString()
-          }] : [],
-        };
-        
-        // Add to local storage for persistence during session
-        const localTweets = JSON.parse(localStorage.getItem('demoTweets') || '[]');
-        localTweets.unshift(mockTweet);
-        localStorage.setItem('demoTweets', JSON.stringify(localTweets.slice(0, 50))); // Keep only 50 latest
-        
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        return mockTweet;
-      }
-      
-      // Normal API flow for real users or local development
       const formData = new FormData();
       formData.append('content', content);
       
-      if (image) {
-        formData.append('image', image);
+      if (media) {
+        formData.append('media', media);
+        console.log('Uploading media:', {
+          name: media.name,
+          type: media.type,
+          size: media.size
+        });
       }
       
-      const response = await createAxiosInstance().post('/tweets/', formData, {
+      const response = await axiosInstance.post('/tweets/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'Accept': 'application/json',
         },
       });
       
+      console.log('Tweet creation response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error creating tweet:', error);
-      
-      // If user is demo user, create a local mock tweet
-      const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('demoUser') || '{}');
-      if (user.is_demo_user) {
-        console.log('Creating local tweet for demo user');
-        const mockTweet = {
-          id: `local-${Date.now()}`,
-          content,
-          created_at: new Date().toISOString(),
-          user: {
-            id: user.id,
-            username: user.username,
-            avatar: null
-          },
-          likes_count: 0,
-          comments_count: 0,
-          retweets_count: 0,
-          is_liked: false,
-          is_retweeted: false
-        };
-        
-        // Store in local storage for persistence
-        const localTweets = JSON.parse(localStorage.getItem('localTweets') || '[]');
-        localTweets.unshift(mockTweet);
-        localStorage.setItem('localTweets', JSON.stringify(localTweets));
-        
-        return mockTweet;
-      }
       throw error;
     }
   },

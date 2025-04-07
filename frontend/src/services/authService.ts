@@ -115,8 +115,8 @@ interface AuthTokens {
 // Helper function to build complete API URLs
 export const buildUrl = (endpoint: string): string => {
   try {
-    // Remove leading slash from endpoint if present
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    // Remove leading slash and v1 from endpoint if present
+    const cleanEndpoint = endpoint.replace(/^\/?(v1\/)?/, '');
     
     // Always ensure we have a valid API URL
     let baseUrl = '';
@@ -128,32 +128,15 @@ export const buildUrl = (endpoint: string): string => {
     
     console.log(`Building URL from base: ${baseUrl} and endpoint: ${cleanEndpoint}`);
     
-    // Check if the API URL already contains the v1 part
-    const hasV1InBaseUrl = baseUrl.includes('/v1');
-    
-    // If the endpoint already starts with v1/, ensure we don't duplicate it
-    if (cleanEndpoint.startsWith('v1/')) {
-      if (hasV1InBaseUrl) {
-        // If baseUrl has v1, remove v1 from endpoint to avoid duplication
-        const endpointWithoutV1 = cleanEndpoint.replace('v1/', '');
-        return `${baseUrl}/${endpointWithoutV1}`;
-      } else {
-        return `${baseUrl}/${cleanEndpoint}`;
-      }
+    // If baseUrl already has /v1, don't add it again
+    if (baseUrl.includes('/v1')) {
+      return `${baseUrl}/${cleanEndpoint}`;
     } else {
-      // If baseUrl doesn't have v1, add it to the endpoint (unless the endpoint is already v1-prefixed)
-      if (hasV1InBaseUrl) {
-        return `${baseUrl}/${cleanEndpoint}`;
-      } else {
-        return `${baseUrl}/v1/${cleanEndpoint}`;
-      }
+      return `${baseUrl}/v1/${cleanEndpoint}`;
     }
   } catch (error) {
     console.error('Error building URL:', error);
-    // In case of any error, ensure we return a valid URL without duplicating v1
-    return FINAL_API_URL.includes('/v1') 
-      ? `${FINAL_API_URL}/${endpoint}`
-      : `${FINAL_API_URL}/v1/${endpoint}`;
+    return `${FINAL_API_URL}/v1/${endpoint.replace(/^\/?(v1\/)?/, '')}`;
   }
 };
 
@@ -254,7 +237,7 @@ const handleLoginError = (error: unknown): never => {
   }
 };
 
-// Helper function to store authentication tokens
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const storeAuthTokens = (data: AuthTokens) => {
   if (data.access) {
     localStorage.setItem('token', data.access);
@@ -266,8 +249,24 @@ const storeAuthTokens = (data: AuthTokens) => {
   return data;
 };
 
-export const login = async (username: string, password: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+// Create a more specific type for login response
+interface LoginResponse {
+  success: boolean;
+  data?: {
+    id: number | string;
+    username: string;
+    email: string;
+    is_demo_user?: boolean;
+    [key: string]: unknown;
+  };
+  error?: string;
+  user?: Record<string, unknown>;
+}
+
+export const login = async (data: LoginData): Promise<LoginResponse> => {
   try {
+    const { username, email, password } = formatLoginData(data);
+    
     // Special handling for demo users
     if (username === 'demo' || username === 'demo@twitterclone.com') {
       try {
@@ -304,14 +303,14 @@ export const login = async (username: string, password: string): Promise<{ succe
     localStorage.setItem('user', JSON.stringify(user));
     
     return { success: true, data: user };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
     
-    if (error.response) {
+    if (axios.isAxiosError(error) && error.response) {
       // Server responded with an error
       const errorMessage = error.response.data.detail || 'Invalid credentials';
       return { success: false, error: errorMessage };
-    } else if (error.request) {
+    } else if (axios.isAxiosError(error) && error.request) {
       // Request made but no response
       return { success: false, error: 'Server error. Please try again later.' };
     } else {
