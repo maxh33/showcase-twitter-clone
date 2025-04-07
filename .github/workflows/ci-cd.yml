@@ -97,7 +97,7 @@ jobs:
       
       - name: Run linting
         working-directory: ./frontend
-        run: npm run lint
+        run: npm run lint --legacy-peer-deps
       
       - name: Run tests with coverage
         working-directory: ./frontend
@@ -139,7 +139,7 @@ jobs:
       
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm install --legacy-peer-deps
       
       - name: Build frontend
         working-directory: ./frontend
@@ -171,7 +171,7 @@ jobs:
           export GENERATE_SOURCEMAP=false
           
           # 4. Run the build with CI=false to ignore warnings
-          CI=false npm run build
+          CI=false npm run build --legacy-peer-deps
           
           # 5. Check if build succeeded
           if [ $? -ne 0 ]; then
