@@ -7,26 +7,17 @@ For more information on this file, see
 https://docs.djangoproject.com/en/4.2/howto/deployment/wsgi/
 """
 
-import sys
 import os
+import socket
 
-# Add all possible project directories to the sys.path
-paths = [
-    '/home/maxh33/showcase-twitter-clone/backend',
-    '/home/maxh33/showcase-twitter-clone'
-]
+# Check if we're on PythonAnywhere
+if 'pythonanywhere.com' in socket.gethostname():
+    os.environ.setdefault('PYTHONANYWHERE', 'true')
+    # You can set MySQL password here if needed
+    # os.environ.setdefault('MYSQL_PASSWORD', 'your_actual_password')
 
-for path in paths:
-    if path not in sys.path:
-        sys.path.append(path)
-
-# Set environment variables
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
-os.environ.setdefault('DEBUG', 'False')
-os.environ.setdefault('ALLOWED_HOSTS', 'maxh33.pythonanywhere.com,localhost,127.0.0.1')
-os.environ.setdefault('CORS_ALLOW_ALL_ORIGINS', 'True')
-os.environ.setdefault('SECRET_KEY', 'django-insecure-$-t%@y85s$wl_ud2!o=(b2#(#(x+5x9!8-p6v&a&g#kn7+4bm-')  # Replace with a secure key in production
-
-# Import the Django WSGI application
 from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
+
 application = get_wsgi_application()

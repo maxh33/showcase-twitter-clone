@@ -159,6 +159,21 @@ elif os.environ.get("PYTHONANYWHERE") and os.environ.get("PYTHONANYWHERE") == 't
             },
         }
     }
+# Check if we're on PythonAnywhere by hostname
+elif 'pythonanywhere.com' in os.environ.get('HOSTNAME', ''):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'maxh33$default',
+            'USER': 'maxh33',
+            # Set your actual MySQL password here if needed
+            'PASSWORD': 'YOUR_MYSQL_PASSWORD',  # Replace with your actual password
+            'HOST': 'maxh33.mysql.pythonanywhere-services.com',
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
 else:
     # Local Database With SQLite
     DATABASES = {
