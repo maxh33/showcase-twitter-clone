@@ -4,8 +4,8 @@ import { fetchRandomImages, UnsplashImage } from '../../../services/imageService
 import { FaImage, FaSmile, FaSearch, FaTimes } from 'react-icons/fa';
 import * as S from './styles';
 import IconWrapper from '../../common/IconWrapper';
-import { refreshToken, setupAuthHeaders } from '../../../services/authService';
 import DemoModal from '../../modal/DemoModal';
+import axios from 'axios';
 
 // Simple emoji array for the custom emoji picker
 const EMOJI_LIST = [
@@ -206,53 +206,15 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
   };
 
   const createTweetWithMedia = async () => {
-    console.log('TweetComposer: Creating tweet with content:', content);
     try {
       if (selectedFile) {
-        // Create FormData and append the file
-        const formData = new FormData();
-        formData.append('content', content);
-        formData.append('media', selectedFile);
-        
-        console.log('TweetComposer: Uploading with file:', {
-          fileName: selectedFile.name,
-          fileType: selectedFile.type,
-          fileSize: selectedFile.size
-        });
-        
         return await tweetService.createTweet(content, selectedFile);
       } else {
         return await tweetService.createTweet(content);
       }
-    } catch (error: unknown) {
-      if (isAuthError(error)) {
-        console.log('TweetComposer: Authentication error, refreshing token...');
-        try {
-          await refreshToken();
-          await setupAuthHeaders();
-          // Retry the tweet creation after token refresh
-          return selectedFile 
-            ? await tweetService.createTweet(content, selectedFile)
-            : await tweetService.createTweet(content);
-        } catch (refreshError) {
-          console.error('TweetComposer: Token refresh failed:', refreshError);
-          throw refreshError;
-        }
-      }
+    } catch (error) {
       throw error;
     }
-  };
-
-  const isAuthError = (error: unknown): boolean => {
-    return Boolean(
-      error && 
-      typeof error === 'object' && 
-      'response' in error && 
-      error.response && 
-      typeof error.response === 'object' && 
-      'status' in error.response && 
-      error.response.status === 401
-    );
   };
 
   const resetForm = () => {
@@ -281,17 +243,19 @@ const TweetComposer: React.FC<TweetComposerProps> = ({
     setErrorMessage(null);
     
     try {
-      // Ensure auth headers are setup
-      setupAuthHeaders();
-      
       const createdTweet = await createTweetWithMedia();
-      console.log('TweetComposer: Tweet created successfully:', createdTweet);
+      console.log('Tweet created successfully:', createdTweet);
       
       resetForm();
       notifyParent();
     } catch (error) {
-      console.error('TweetComposer: Error creating tweet:', error);
-      setErrorMessage('Failed to create tweet. Please try again.');
+      console.error('Error creating tweet:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        setErrorMessage('Please log in to post tweets.');
+        window.location.href = '/login';
+      } else {
+        setErrorMessage('Failed to create tweet. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }

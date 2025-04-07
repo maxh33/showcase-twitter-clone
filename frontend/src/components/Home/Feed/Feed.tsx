@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Tweet from '../../Tweet/Tweet';
 import TweetComposer from '../../Tweet/TweetComposer/TweetComposer';
 import { getFeed, likeTweet, retweetTweet, createComment, Tweet as TweetType } from '../../../services/tweetService';
 import { IconContext } from 'react-icons';
 import * as S from './styles';
-import { refreshToken, setupAuthHeaders } from '../../../services/authService';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface FeedProps {
   currentUser?: {
@@ -15,6 +16,8 @@ interface FeedProps {
 }
 
 const Feed: React.FC<FeedProps> = ({ currentUser }) => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   // Initialize tweets as an empty array to prevent undefined errors
   const [tweets, setTweets] = useState<TweetType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +33,6 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   const fetchTweets = useCallback(async (pageNum = 1, refresh = false) => {
     console.log('Feed component: Fetching tweets, page:', pageNum, 'refresh:', refresh);
     try {
-      // Ensure auth headers are setup
-      setupAuthHeaders();
-      
       const response = await getFeed(pageNum);
       console.log('Feed component: Got tweets response:', response);
       
@@ -53,22 +53,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       if (err && typeof err === 'object' && 'response' in err && 
           err.response && typeof err.response === 'object' && 
           'status' in err.response && err.response.status === 401) {
-        try {
-          // Try to refresh the token
-          await refreshToken();
-          // Try the original request again
-          const response = await getFeed(pageNum);
-          const results = Array.isArray(response) ? response : (response?.results || []);
-          setTweets(prev => 
-            refresh ? [...results] : [...(prev || []), ...results]
-          );
-          setHasMore(response && typeof response === 'object' && 'next' in response ? !!response.next : results.length > 0);
-          setError(null);
-          return;
-        } catch (refreshError) {
-          console.error('Error refreshing token:', refreshError);
-          setError('Your session has expired. Please log in again.');
-        }
+        logout();
+        navigate('/login');
       } else {
         setError('Failed to load tweets. Please try again later.');
       }
@@ -76,7 +62,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [navigate, logout]);
   
   useEffect(() => {
     console.log('Feed component: Initial load of tweets');
