@@ -95,14 +95,18 @@ class TweetSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True, source='comments.all')
     comments_preview = serializers.SerializerMethodField()
     hashtags = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    is_retweeted = serializers.SerializerMethodField()
     
     class Meta:
         model = Tweet
         fields = ['id', 'content', 'author', 'created_at', 'updated_at', 
                   'likes_count', 'retweet_count', 'comments_count', 
-                  'media', 'comments', 'comments_preview', 'hashtags']
+                  'media', 'comments', 'comments_preview', 'hashtags',
+                  'is_liked', 'is_retweeted']
         read_only_fields = ['id', 'author', 'created_at', 'updated_at', 
-                           'likes_count', 'retweet_count', 'comments_count', 'hashtags']
+                           'likes_count', 'retweet_count', 'comments_count', 'hashtags',
+                           'is_liked', 'is_retweeted']
     
     def get_hashtags(self, obj):
         """Get hashtags from tweet content"""
@@ -112,6 +116,18 @@ class TweetSerializer(serializers.ModelSerializer):
         """Get the latest 3 comments for preview"""
         latest_comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:3]
         return CommentSerializer(latest_comments, many=True).data
+    
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.likes.filter(user=request.user).exists()
+        return False
+    
+    def get_is_retweeted(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.retweets.filter(user=request.user).exists()
+        return False
     
     def validate_content(self, value):
         """
