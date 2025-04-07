@@ -62,7 +62,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             ip = request.META.get('REMOTE_ADDR')
         return ip
     
-    def check_unverified_account(self, user):
+    def check_unverified_account(self, user, request):
         """Check if user exists but is inactive, and send verification email if needed"""
         if not user.is_active:
             logger.warning(f"Login attempt for inactive account: {user.email}")
@@ -280,7 +280,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             # First check directly if user exists but is inactive
             user = self.find_user_by_credentials(email, username)
             if user:
-                response = self.check_unverified_account(user)
+                response = self.check_unverified_account(user, request)
                 if response:
                     return response
             
