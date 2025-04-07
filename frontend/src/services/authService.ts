@@ -1,22 +1,6 @@
-import axios, { AxiosError, AxiosResponse } from 'axios';
-import { LoginData, LoginResponse, RegisterData, RegisterResponse, AuthResponse } from '../types/auth';
+import axios, { AxiosError } from 'axios';
+import { LoginResponse, RegisterData, RegisterResponse, AuthResponse } from '../types/auth';
 import { User } from '../types/user';
-
-interface ErrorResponse {
-  detail?: string;
-  error?: string;
-  message?: string;
-}
-
-interface LoginResponseData {
-  access: string;
-  refresh: string;
-  user: User;
-}
-
-interface MessageResponse {
-  message: string;
-}
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
@@ -79,7 +63,7 @@ export const login = async (username: string, password: string): Promise<LoginRe
 
 export const register = async (userData: RegisterData): Promise<RegisterResponse> => {
   try {
-    const response = await apiV1.post('/auth/register/', userData);
+    await apiV1.post('/auth/register/', userData);
     return { success: true, message: 'Registration successful' };
   } catch (error) {
     return { success: false, message: getErrorMessage(error) };
@@ -88,7 +72,7 @@ export const register = async (userData: RegisterData): Promise<RegisterResponse
 
 export const resendVerification = async (email: string): Promise<AuthResponse> => {
   try {
-    const response = await apiV1.post('/auth/resend-verification/', { email });
+    await apiV1.post('/auth/resend-verification/', { email });
     return { success: true, message: 'Verification email sent' };
   } catch (error) {
     return { success: false, message: getErrorMessage(error) };
