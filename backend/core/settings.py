@@ -55,8 +55,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'core.middleware.CustomCorsMiddleware',  # Our custom failsafe middleware MUST be first
     'corsheaders.middleware.CorsMiddleware',  # Django CORS middleware
-    'core.middleware.CustomCorsMiddleware',  # Our custom failsafe middleware
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

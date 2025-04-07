@@ -8,12 +8,28 @@ class CustomCorsMiddleware:
         self.get_response = get_response
         
     def __call__(self, request):
-        response = self.get_response(request)
+        # Handle OPTIONS requests directly to support preflight
+        if request.method == 'OPTIONS':
+            response = self.generate_preflight_response()
+            return response
         
-        # Add CORS headers to all responses
+        # For non-OPTIONS requests, process normally then add headers
+        response = self.get_response(request)
+        self.add_cors_headers(response)
+        return response
+        
+    def generate_preflight_response(self):
+        """Generate a response for CORS preflight requests"""
+        from django.http import HttpResponse
+        response = HttpResponse()
+        self.add_cors_headers(response)
+        return response
+        
+    def add_cors_headers(self, response):
+        """Add CORS headers to a response"""
         response["Access-Control-Allow-Origin"] = "*"
         response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept, Authorization, X-Request-With"
-        response["Access-Control-Allow-Credentials"] = "true"
-        
-        return response 
+        # Cannot use both Allow-Origin: * and Allow-Credentials: true, so commenting this out
+        # response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Max-Age"] = "86400"  # 24 hours 
